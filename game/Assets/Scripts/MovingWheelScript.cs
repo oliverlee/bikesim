@@ -19,7 +19,7 @@ public class MovingWheelScript : MonoBehaviour {
 		
 		float h = Input.GetAxis ("Horizontal");
 		float v = Input.GetAxis ("Vertical");
-		float r = Input.GetAxis ("Rotation");
+		//float r = Input.GetAxis ("Rotation");
 		
 		if (h != 0) {
 			wheelColider.steerAngle = 10* h;		

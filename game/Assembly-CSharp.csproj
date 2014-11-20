@@ -46,6 +46,7 @@
 	</Reference>
   </ItemGroup>
   <ItemGroup>
+     <Compile Include="Assets\Scripts\MovingBikeScript.cs" />
      <Compile Include="Assets\Scripts\MovingBoxScript.cs" />
      <Compile Include="Assets\Scripts\MovingSphereScript.cs" />
      <Compile Include="Assets\Scripts\MovingWheelScript.cs" />

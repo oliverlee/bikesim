@@ -1,7 +1,10 @@
 ﻿using UnityEngine;
 using System.Collections;
 
-public class MovingSphereScript : MonoBehaviour {
+public class MovingBikeScript : MonoBehaviour {
+
+	public Rigidbody frontWheel;
+	public Rigidbody rearWheel;
 
 	// Use this for initialization
 	void Start () {
@@ -10,21 +13,21 @@ public class MovingSphereScript : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-	
+
 	}
 
 	void FixedUpdate () {
-
+		
 		float h = Input.GetAxis ("Horizontal");
 		float v = Input.GetAxis ("Vertical");
 		//float r = Input.GetAxis ("Rotation");
-
+		
 		if (h != 0) {
-			this.rigidbody.AddTorque(0,h,0);	
+				frontWheel.AddTorque(0,h,0);	
 		}
 		
 		if (v != 0) {
-			this.rigidbody.AddRelativeTorque(v,0,0);	
+				rearWheel.AddRelativeTorque(50*v,0,0);	
 		}
 	}
 }
