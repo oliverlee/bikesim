@@ -25,9 +25,11 @@ public class MovingBikeScript : MonoBehaviour {
 		if (h != 0) {
 				frontWheel.AddTorque(0,h,0);	
 		}
+
+		print("heelo");
 		
 		if (v != 0) {
-				rearWheel.AddRelativeTorque(50*v,0,0);	
+				rearWheel.AddRelativeTorque(50000000*v,0,0);	
 		}
 	}
 }

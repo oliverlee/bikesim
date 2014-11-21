@@ -17,7 +17,7 @@ public class MovingBoxScript : MonoBehaviour {
 		
 		float h = Input.GetAxis ("Horizontal");
 		float v = Input.GetAxis ("Vertical");
-		float r = Input.GetAxis ("Rotation");
+		//float r = Input.GetAxis ("Rotation");
 		
 		if (h != 0) {
 			this.rigidbody.AddTorque(0,h,0);		
