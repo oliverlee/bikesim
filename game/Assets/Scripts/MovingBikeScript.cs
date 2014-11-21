@@ -8,12 +8,10 @@ public class MovingBikeScript : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
-	
 	}
 	
 	// Update is called once per frame
 	void Update () {
-
 	}
 
 	void FixedUpdate () {
@@ -22,11 +20,11 @@ public class MovingBikeScript : MonoBehaviour {
 		float v = Input.GetAxis ("Vertical");
 		//float r = Input.GetAxis ("Rotation");
 		
-		if (h != 0) {
-				frontWheel.AddTorque(0,h,0);	
+		if (h > 0 && frontWheel.rotation.y < 0.5 || h < 0 && frontWheel.rotation.y > -0.5 ) {
+				frontWheel.AddTorque(0,h/5,0);	
 		}
 
-		print("heelo");
+		//Debug.Log(frontWheel.rotation);
 		
 		if (v != 0) {
 				rearWheel.AddRelativeTorque(50000000*v,0,0);	
