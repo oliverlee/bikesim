@@ -6,7 +6,9 @@ public class Tile : MonoBehaviour {
 
     private Vector3 sourcePos;
     private float moveSpeed = 8f;
+	private float distance = 4f;
     private bool moving = true;
+	private bool deleting = false;
 
 	// Use this for initialization
 	void Start () {
@@ -18,27 +20,38 @@ public class Tile : MonoBehaviour {
         if (moving)
         {
             transform.position = Vector3.MoveTowards(transform.position, targetPos, moveSpeed * Time.deltaTime);
-            if (Vector3.Distance(transform.position, targetPos) < 0.1f)
-            {
-                transform.position = targetPos;
-                moving = false;
-                if (sourcePos.y > targetPos.y) //moving down aka deleting
-                    Destroy(gameObject);
-            }
+			if (sourcePos.y > targetPos.y) //moving down aka deleting
+			{
+				if(transform.position.y - 0.1f < targetPos.y) {
+					Destroy(gameObject);
+				}
+			}
+			else
+			{
+				if(transform.position.y + 0.1f > targetPos.y)
+				{
+					transform.position = targetPos;
+					moving = false;
+				}
+			}
         }
 	}
 
     public void StartMoving()
     {
         sourcePos = transform.position;
-		targetPos = sourcePos + Vector3.up*5f;
+		targetPos = sourcePos + Vector3.up * distance;
         moving = true;
     }
 
     public void RemoveTile()
     {
-        sourcePos = transform.position;
-		targetPos = sourcePos + Vector3.down * 5f;
-        moving = true;
+		if (!deleting)
+		{
+			sourcePos = transform.position;
+			targetPos = sourcePos + Vector3.down * distance;
+			moving = true;
+			deleting = true;
+		}
     }
 }
