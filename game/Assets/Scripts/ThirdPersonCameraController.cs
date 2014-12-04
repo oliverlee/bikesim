@@ -11,7 +11,6 @@ public class ThirdPersonCameraController : MonoBehaviour {
 		offset = transform.position;
 	}
 	
-	// Update is called once per frame
 	void LateUpdate () {
 		transform.position = player.transform.position + offset;
 	}
