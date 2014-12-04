@@ -51,12 +51,12 @@ public class MovingBikeScript : MonoBehaviour {
 			}
 		}
 
-		Vector3 vectorBike = Quaternion.Euler (frame.rotation.eulerAngles) * Vector3.forward;
+		//Vector3 vectorBike = Quaternion.Euler (frame.rotation.eulerAngles) * Vector3.forward;
 		Vector3 vector = Quaternion.Euler(0,rotation,0) * Quaternion.Euler(frame.rotation.eulerAngles) * Vector3.forward;
 		
-		testSphere.position = frontWheel.transform.position + vector;
+		//testSphere.position = frontWheel.transform.position + vector;
 
-		testSphereRear.position = frontWheel.transform.position + vectorBike;
+		//testSphereRear.position = frontWheel.transform.position + vectorBike;
 
 		frontWheel.rotation = Quaternion.LookRotation(vector);
 
