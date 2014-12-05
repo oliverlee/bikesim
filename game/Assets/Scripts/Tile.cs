@@ -5,10 +5,12 @@ public class Tile : MonoBehaviour {
     public Vector3 targetPos;
 
     private Vector3 sourcePos;
-    private float moveSpeed = 8f;
+    private float moveSpeed = 12f;
 	private float distance = 4f;
     private bool moving = true;
 	private bool deleting = false;
+
+	public Coordinates coordinates;
 
 	// Use this for initialization
 	void Start () {

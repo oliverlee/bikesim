@@ -1,161 +1,145 @@
 ﻿using UnityEngine;
 using System.Collections;
+using System.Collections.Generic;
+
+public struct Coordinates {
+	public int X;
+	public int Z;
+	
+	public Coordinates(int x, int z){
+		X = x;
+		Z = z;
+	}
+	
+	public override bool Equals(System.Object obj){
+		if (obj is Coordinates){
+			Coordinates c = (Coordinates)obj;
+			return (c.X == X && c.Z == Z);
+		} else
+			return false;
+	}
+}
 
 public class TileManager : MonoBehaviour {
     public GameObject TilePrefab;
     public GameObject Player, Floor;
 
-    private Vector3 lastPos = Vector3.zero;
+    private Vector3 playerPos, lastPos = Vector3.zero;
 	private Transform floorT;
-	private float minX,maxX,minZ,maxZ;
-	private float spawnDist = 7f, deleteDist = 9f;
+	private int spawnDist = 4, deleteDist = 4;
+	private float tileSizeX = 4f / Mathf.Sqrt (3f), tileSizeZ = 2f;
+	private float spawnDepth = -4f;
+	private Coordinates playerCoordinates;
+	private Dictionary<Coordinates, Tile> tiles = new Dictionary<Coordinates, Tile>();
 
 	// Use this for initialization
 	void Start () {
 		floorT = Floor.transform;
-		Vector3 playerPos = Player.transform.position;
-		minX = playerPos.x;
-		maxX = playerPos.x;
-		minZ = playerPos.z;
-		maxZ = playerPos.z;
+		playerPos = Player.transform.position;
+		playerCoordinates = PosToCoordinates (playerPos);
 
 		//create initial tiles
-		for (int j = 2; j <= 3; j++)
-		{
-			for (int i = -(j - 2); i < j - 1; i++) {
-				//edges
-				CreateTile (i, j - 1);
-				CreateTile (j - 1, i);
-				CreateTile (-i, -(j - 1));
-				CreateTile (-(j - 1), -i);
+		for (int i = playerCoordinates.X - spawnDist; i <= playerCoordinates.X + spawnDist; i++) {
+			for (int j = playerCoordinates.Z - spawnDist; j <= playerCoordinates.Z + spawnDist; j++) {
+				if (inRange(i, j))
+					CreateTile(i, 0f, j);
 			}
-			//corners
-			CreateTile (j - 1, j - 1);
-			CreateTile (-(j - 1), j - 1);
-			CreateTile (j - 1, -(j - 1));
-			CreateTile (-(j - 1), -(j - 1));
 		}
-		
-		UpdateTileBounds ();
-	}
-	
-	// Update is called once per frame
-	void Update () {
-        Vector3 playerPos = Player.transform.position;
-		if(playerPos != lastPos)
-			UpdateTileBounds();
-
-        if (playerPos.x > lastPos.x)
-        {
-            //move right, create tiles on right
-			if (maxX - playerPos.x < spawnDist)
-            {
-                //create tiles
-				//max pos to index
-				int x = Mathf.RoundToInt((maxX * Mathf.Sqrt(3))/3f  + 0.0001f); //make sure it is not 3.999999 -> 3
-				int zmin = Mathf.FloorToInt(minZ/2f + 0.0001f);
-				int zmax = Mathf.FloorToInt(maxZ/2f + 0.0001f);
-				for(int i = zmin; i <= zmax; i++) {
-					CreateTile(x+1,i);
-				}
-            }
-			RemoveFarTiles();
-		}
-        else if(playerPos.x < lastPos.x)
-        {
-            //move left, create tiles on left
-			if (playerPos.x - minX < spawnDist)
-            {
-                //create tiles
-				int x = Mathf.RoundToInt((minX * Mathf.Sqrt(3))/3f  + 0.0001f); //make sure it is not 3.999999 -> 3
-				int zmin = Mathf.FloorToInt(minZ/2f + 0.0001f);
-				int zmax = Mathf.FloorToInt(maxZ/2f + 0.0001f);
-				for(int i = zmin; i <= zmax; i++) {
-					CreateTile(x-1,i);
-				}
-			}
-			RemoveFarTiles();
-		}
-        if (playerPos.z > lastPos.z)
-        {
-            //move up, create tiles up
-			if (maxZ - playerPos.z < spawnDist)
-            {
-                //create tiles
-				int z = Mathf.FloorToInt(maxZ/2f + 0.0001f);
-				int xmin = Mathf.RoundToInt((minX * Mathf.Sqrt(3))/3f  + 0.0001f);
-				int xmax = Mathf.RoundToInt((maxX * Mathf.Sqrt(3))/3f  + 0.0001f);
-				for(int i = xmin; i<= xmax; i++) {
-					CreateTile(i,z+1);
-				}
-            }
-			RemoveFarTiles();
-		}
-        else if (playerPos.z < lastPos.z)
-        {
-            //move down, create tiles down
-			if (playerPos.z - minZ < spawnDist)
-            {
-                //create tiles
-				int z = Mathf.FloorToInt(minZ/2f + 0.0001f);
-				int xmin = Mathf.RoundToInt((minX * Mathf.Sqrt(3))/3f  + 0.0001f);
-				int xmax = Mathf.RoundToInt((maxX * Mathf.Sqrt(3))/3f  + 0.0001f);
-				for(int i = xmin; i<= xmax; i++) {
-					CreateTile(i,z-1);
-				}
-            }
-			RemoveFarTiles();
-		}
-
-        lastPos = playerPos;
 	}
 
-    private void CreateTile(int x, int z)
+	//Returns the distance between the player and the center of the given tiles coordinates
+	private float distToPlayer(int x, int z){
+		Vector3 checkPos = CoordinatesToPos (x, z);
+		float xDist = playerPos.x - checkPos.x;
+		float zDist = playerPos.z - checkPos.z;
+		return Mathf.Sqrt (xDist * xDist + zDist * zDist);
+	}
+
+	//Returns wether the tile at the given cordinates is within spawnrange of the player
+	private bool inRange(int x, int z){
+		return distToPlayer(x, z) <= spawnDist * 4 / Mathf.Sqrt(3f);
+	}
+
+	//Returns wether the tile at the given coordinates is outside the deletedistance from the player
+	private bool outOfRange(int x, int z){
+		return distToPlayer(x, z) > deleteDist * tileSizeX;
+	}
+
+	//Converts a Vector3 position to the corresponding Tile coordinate
+	public Coordinates PosToCoordinates(Vector3 pos){
+		int x = (int)Mathf.Round (pos.x / Mathf.Sqrt(3f));
+		int z;
+		if (x % 2 == 0)
+			z = (int)Mathf.Round (playerPos.z / tileSizeZ);
+		else
+			z = (int)Mathf.Round ((0.5f * tileSizeZ + playerPos.z )/ tileSizeZ);
+
+		return new Coordinates (x, z);
+	}
+
+	//Converts a Coordinate to the Vector3 Position of that coordinates center
+	public Vector3 CoordinatesToPos(Coordinates coords){
+		return CoordinatesToPos (coords.X, coords.Z);
+	}
+
+	public Vector3 CoordinatesToPos(int x, int z){
+		float posX, posZ;
+		posX = (x * 3 / Mathf.Sqrt (3f));
+		if (x % 2 == 0)
+			posZ = z*tileSizeZ;
+		else
+			posZ = (z+0.5f)*tileSizeZ;
+		return new Vector3 (posX, 0, posZ);
+	}
+
+	void Update(){
+		lastPos = playerPos;
+		playerPos = Player.transform.position;
+		//If we have moved to a new tile, check for new/old tiles
+		if (playerPos.x != lastPos.x || playerPos.z != lastPos.z) {
+			playerCoordinates = PosToCoordinates(playerPos);
+			UpdateTiles();
+		}
+	}
+
+	void UpdateTiles(){
+		//Check which tiles need to be removed
+		List<Coordinates> toBeRemoved = new List<Coordinates>();
+		foreach (Coordinates coords in tiles.Keys){
+			if (!inRange(coords.X, coords.Z)){
+				tiles[coords].RemoveTile();
+				toBeRemoved.Add(coords); //cant delete while in a foreach loop
+			}
+		}
+		foreach (Coordinates coords in toBeRemoved)
+			tiles.Remove(coords);
+		//Check where tiles need to be added
+		for (int i = playerCoordinates.X - deleteDist; i <= playerCoordinates.X + deleteDist; i++) {
+			for (int j = playerCoordinates.Z - deleteDist; j <= playerCoordinates.Z + deleteDist; j++) {
+				Coordinates checkCoords = new Coordinates(i, j);
+				if (inRange(i, j) && !tiles.ContainsKey(new Coordinates(i, j))) {
+						CreateTile(i, spawnDepth, j);
+				}
+			}
+		}
+	}
+
+    private void CreateTile(int x, float y, int z)
     {
-        float posX = 0, posZ = 0;
-        posX = (x * 3f) / Mathf.Sqrt(3);
-        if (x % 2 == 0)
-        {
-            posZ = z*2f;
-        }
-        else
-        {
-            posZ = z*2f+1;
-        }
+		Coordinates tileCoords = new Coordinates (x, z);
+		Vector3 finalPos = CoordinatesToPos (x, z);
+
+		Vector3 startPos = new Vector3 (finalPos.x, y, finalPos.z);
         GameObject newT = (GameObject) GameObject.Instantiate(TilePrefab);
         newT.transform.parent = floorT;
-        newT.transform.position = new Vector3(posX, -4f, posZ);
+        newT.transform.position = startPos;
+
         Tile newTile = newT.GetComponent<Tile>();
-        newTile.targetPos = new Vector3(posX, 0, posZ);
-        newTile.StartMoving();
+        newTile.targetPos = finalPos;
+		newTile.coordinates = tileCoords;
+		if (startPos.y != finalPos.y)
+       		newTile.StartMoving();
+		tiles.Add (tileCoords, newTile);
     }
 
-	private void RemoveFarTiles()
-	{
-		Vector3 player = Player.transform.position;
-		foreach (Transform child in floorT)
-		{
-			float tz = Mathf.Floor(child.position.z/2f + 0.0001f) * 2f; //make row uniform
-			if(Mathf.Abs(child.position.x - player.x) > deleteDist || Mathf.Abs(tz - player.z) > deleteDist)
-			{
-				Tile ch = child.GetComponent<Tile>();
-				ch.RemoveTile();
-			}
-		}
-	}
-
-	public void UpdateTileBounds()
-	{
-		minX = Player.transform.position.x;
-		maxX = Player.transform.position.x;
-		minZ = Player.transform.position.z;
-		maxZ = Player.transform.position.z;
-
-		foreach (Transform child in floorT) {
-			minX = Mathf.Min (minX, child.position.x);
-			maxX = Mathf.Max (maxX, child.position.x);
-			minZ = Mathf.Min (minZ, child.position.z);
-			maxZ = Mathf.Max (maxZ, child.position.z);
-		}
-	}
 }
