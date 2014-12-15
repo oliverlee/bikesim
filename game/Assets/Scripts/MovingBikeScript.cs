@@ -19,7 +19,6 @@ public class MovingBikeScript : MonoBehaviour {
 	// Use this for initialization
 	void Start () {
 		rotation = 0;
-		lastPositions[1] = rearWheel.transform.position;
 	}
 	
 	void Update () {
@@ -52,13 +51,7 @@ public class MovingBikeScript : MonoBehaviour {
 				}
 			}
 		}
-		
-		if(Vector3.Distance(rearWheel.transform.position,lastPositions[1]) > 0.5f)
-		{
-			CreateBox();
-			lastPositions[0] = lastPositions[1];
-			lastPositions[1] = rearWheel.transform.position;
-		}
+
 		
 		//Vector3 vectorBike = Quaternion.Euler (frame.rotation.eulerAngles) * Vector3.forward;
 		Vector3 vector = Quaternion.Euler(0,rotation,0) * Quaternion.Euler(frame.rotation.eulerAngles) * Vector3.forward;
@@ -83,15 +76,5 @@ public class MovingBikeScript : MonoBehaviour {
 	{
 		if (col.gameObject.name.Equals ("Box"))
 			Debug.Log ("You lost the game");
-	}
-	
-	void CreateBox()
-	{
-		var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-		//cube.AddComponent(Rigidbody);
-		
-		cube.transform.localScale = new Vector3 (0.2f, 1, 0.6f);
-		cube.transform.position = lastPositions[0];
-		cube.transform.LookAt (lastPositions[1], Vector3.up);
 	}
 }
