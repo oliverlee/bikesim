@@ -25,8 +25,9 @@ public class Trail : MonoBehaviour {
 	{
 		var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
 		//cube.AddComponent(Rigidbody);
-		
-		cube.transform.localScale = new Vector3 (0.2f, 1, 0.6f);
+
+
+		cube.transform.localScale = new Vector3 (0.2f, 1, 2*Vector3.Distance(lastPositions[0], lastPositions[1]) + 0.1f);
 		cube.transform.position = lastPositions[0];
 		cube.transform.LookAt (lastPositions[1], Vector3.up);
 	}
