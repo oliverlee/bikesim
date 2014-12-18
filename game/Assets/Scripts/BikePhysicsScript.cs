@@ -7,8 +7,7 @@ public class BikePhysicsScript : MonoBehaviour {
 	public GameObject frontWheel;
 	public GameObject rearWheel;
 
-	public GUIText rotationText;
-	public GUIText speedText;
+	public TextGUIScript TextGUI;
 
 	private float forkRotation;
 	private float speed;
@@ -113,7 +112,6 @@ public class BikePhysicsScript : MonoBehaviour {
 	}
 
 	void LateUpdate () {
-		rotationText.text = "Rotation : " + forkRotation + "º";
-		speedText.text = "Speed : " + speed.ToString();
+		TextGUI.UpdateBikeValuesText (forkRotation, speed);
 	}
 }
