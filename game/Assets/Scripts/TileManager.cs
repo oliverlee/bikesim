@@ -26,9 +26,9 @@ public class TileManager : MonoBehaviour {
 
     private Vector3 playerPos, lastPos = Vector3.zero;
 	private Transform floorT;
-	private int spawnDist = 4, deleteDist = 4;
-	private float tileSizeX = 4f / Mathf.Sqrt (3f), tileSizeZ = 2f;
-	private float spawnDepth = -4f;
+	private static int spawnDist = 4, deleteDist = 4;
+	private static float tileSizeX = 4f / Mathf.Sqrt (3f), tileSizeZ = 2f;
+	private static float spawnDepth = -4f;
 	private Coordinates playerCoordinates;
 	private Dictionary<Coordinates, Tile> tiles = new Dictionary<Coordinates, Tile>();
 
@@ -66,23 +66,23 @@ public class TileManager : MonoBehaviour {
 	}
 
 	//Converts a Vector3 position to the corresponding Tile coordinate
-	public Coordinates PosToCoordinates(Vector3 pos){
+	public static Coordinates PosToCoordinates(Vector3 pos){
 		int x = (int)Mathf.Round (pos.x / Mathf.Sqrt(3f));
 		int z;
 		if (x % 2 == 0)
-			z = (int)Mathf.Round (playerPos.z / tileSizeZ);
+			z = (int)Mathf.Round (pos.z / tileSizeZ);
 		else
-			z = (int)Mathf.Round ((0.5f * tileSizeZ + playerPos.z )/ tileSizeZ);
+			z = (int)Mathf.Round ((0.5f * tileSizeZ + pos.z )/ tileSizeZ);
 
 		return new Coordinates (x, z);
 	}
 
 	//Converts a Coordinate to the Vector3 Position of that coordinates center
-	public Vector3 CoordinatesToPos(Coordinates coords){
+	public static Vector3 CoordinatesToPos(Coordinates coords){
 		return CoordinatesToPos (coords.X, coords.Z);
 	}
 
-	public Vector3 CoordinatesToPos(int x, int z){
+	public static Vector3 CoordinatesToPos(int x, int z){
 		float posX, posZ;
 		posX = (x * 3 / Mathf.Sqrt (3f));
 		if (x % 2 == 0)
