@@ -2,13 +2,13 @@
 using System.Collections;
 
 public class Trail : MonoBehaviour {
-	public Rigidbody rearWheel;
+	public Transform rearWheel;
 
 
 	private Vector3[] lastPositions = new Vector3[2];
 	// Use this for initialization
 	void Start () {
-		lastPositions[1] = rearWheel.transform.position;
+		lastPositions[1] = rearWheel.position;
 	}
 	
 	// Update is called once per frame
@@ -17,7 +17,7 @@ public class Trail : MonoBehaviour {
 		{
 			CreateBox();
 			lastPositions[0] = lastPositions[1];
-			lastPositions[1] = rearWheel.transform.position;
+			lastPositions[1] = rearWheel.position;
 		}
 	}
 
