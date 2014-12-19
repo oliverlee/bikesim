@@ -9,17 +9,28 @@ public class BikePhysicsScript : MonoBehaviour {
 
 	public TextGUIScript TextGUI;
 
+	public float gravity;
+
 	private float forkRotation;
 	private float speed;
 	//private float bikeRotation;
 	//private float currentPosition;
 	//private float bikeRollingAngle;
 
+	private float RollAngularSpeed;
+	private float RollAngularAcc;
+
+
+	//TODO delete this!
 	private float rotationUnit = 0.5f;
 	private float speedUnit = 0.1f;
 
 	// Use this for initialization
 	void Start () {
+
+		RollAngularSpeed = 0.0f;
+		RollAngularAcc = 0.0f;
+
 		forkRotation = 0;
 		speed = 0;
 	}
@@ -71,19 +82,25 @@ public class BikePhysicsScript : MonoBehaviour {
 	}
 
 	void ApplyInstability() {
+	
+		//Debug.Log (RollAngularAcc);
 
 		if (this.transform.rotation.eulerAngles.z != 0) {
+			RollAngularAcc = gravity * Mathf.Sin (Mathf.Deg2Rad*this.transform.rotation.eulerAngles.z) / centerOfMass.transform.position.y;
+		}
+
+		if( RollAngularAcc != 0) {
+			RollAngularSpeed += RollAngularAcc * Time.deltaTime;
+		}
+
+		if (RollAngularSpeed != 0) {
 			Vector3 angleEuler = this.transform.rotation.eulerAngles;
-			if(this.transform.rotation.eulerAngles.z <0) {
-				angleEuler.z -= 1;
-			} else {
-				angleEuler.z += 1;
-			}
+			angleEuler.z += 1;
 			Quaternion angle = Quaternion.Euler(angleEuler);
 
 			this.transform.rotation = Quaternion.RotateTowards(this.transform.rotation,
 			                                                   angle,
-			                                              2*Time.deltaTime);
+			                                                   RollAngularSpeed);
 		}
 	}
 
