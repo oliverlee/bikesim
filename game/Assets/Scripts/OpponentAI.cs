@@ -75,6 +75,7 @@ public class OpponentAI : MonoBehaviour
 					enabled = false;
 			}
 		}
+		//transform.position = Vector3.MoveTowards(transform.position, waypoints[1].position, speed * Time.deltaTime);
 	}
 	
 	
