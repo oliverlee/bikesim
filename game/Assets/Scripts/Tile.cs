@@ -19,6 +19,9 @@ public class Tile : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
+        if (MenuSelection.state != GameState.Playing)
+            return;
+
         if (moving)
         {
             transform.position = Vector3.MoveTowards(transform.position, targetPos, moveSpeed * Time.deltaTime);

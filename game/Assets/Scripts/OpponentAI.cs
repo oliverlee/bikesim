@@ -18,7 +18,6 @@ public class OpponentAI : MonoBehaviour
 	private bool useRigidbody;
 	private Rigidbody rigidmember;
 	
-	
 	// Use this for initialization
 	protected void Start ()
 	{	
@@ -50,6 +49,9 @@ public class OpponentAI : MonoBehaviour
 	// calculates a new heading
 	protected void FixedUpdate ()
 	{
+        if (MenuSelection.state != GameState.Playing)
+            return;
+
 		targetHeading = waypoints[targetwaypoint].position - xform.position;
 		
 		currentHeading = Vector3.Lerp(currentHeading,targetHeading,damping*Time.deltaTime);
@@ -58,6 +60,9 @@ public class OpponentAI : MonoBehaviour
 	// moves us along current heading
 	protected void Update()
 	{
+        if (MenuSelection.state != GameState.Playing)
+            return;
+
 		if(useRigidbody)
 			rigidmember.velocity = currentHeading * speed;
 		else
