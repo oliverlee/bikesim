@@ -168,6 +168,11 @@ public class BikePhysicsScript : MonoBehaviour
                     forkRotation -= 3 * rotationUnit;
                 }
             }
+
+			if (forkRotation > 89.99f)
+				forkRotation = 89.99f;
+			else if (forkRotation < -89.99f)
+				forkRotation = -89.99f;
         }
     }
 
