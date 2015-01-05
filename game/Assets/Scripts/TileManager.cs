@@ -28,6 +28,7 @@ public class TileManager : MonoBehaviour
     public GameObject TilePrefab;
     public GameObject Player, Floor;
     public bool regularCycling = true;
+	public bool battleMode = false;
     public Vector3 hallCenter;
 
     private static Vector3 playerPos;
@@ -129,7 +130,7 @@ public class TileManager : MonoBehaviour
                 UpdateTiles();
             }
         }
-        if (Input.GetKeyDown(KeyCode.Z) || Input.GetKeyDown(KeyCode.X))
+        if (Input.GetKeyDown(KeyCode.Z) || Input.GetKeyDown(KeyCode.X) || battleMode)
         {
             if (regularCycling)
                 CreateHall();
@@ -185,6 +186,7 @@ public class TileManager : MonoBehaviour
     public void CreateHall()
     {
         regularCycling = false;
+		battleMode = false;
         //remove other tiles
         tiles.Clear();
 
@@ -226,4 +228,9 @@ public class TileManager : MonoBehaviour
         }
         CreateTile(playerCoordinates.X, spawnDepth, playerCoordinates.Z);
     }
+
+	public void setBattleMode (bool mode)
+	{
+		battleMode = mode;
+	}
 }

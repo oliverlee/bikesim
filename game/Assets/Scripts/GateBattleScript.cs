@@ -27,14 +27,12 @@ public class GateBattleScript : MonoBehaviour {
 
 	void OnTriggerEnter(Collider other){
 		if (other.gameObject.tag.Equals("Player")){
-			GeneralController.score += 100;
-			int angle_step = Random.Range(-2, 2);
-			Vector3 relative_movement = TileManager.CoordinatesToPos(5*angle_step, 10);
-			relative_movement = Quaternion.Euler(0, rotation, 0) * relative_movement;
-			Coordinates relative_coords = TileManager.PosToCoordinates(relative_movement);
-			MoveGate(relative_coords.X, relative_coords.Z, angle_step*30);
+			TileManager tileManager = GameObject.Find ("Third Person Camera").GetComponent<TileManager> ();
+			tileManager.setBattleMode(true);
+			GameObject gate = GameObject.Find ("Gate");
+			Destroy(gate);
+			Destroy(this.gameObject);
 
-			Input.
 		}
 	}
 }
