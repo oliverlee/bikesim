@@ -19,9 +19,10 @@ public class BikePhysicsScript : MonoBehaviour
     //private float currentPosition;
     //private float bikeRollingAngle;
 
+	private float rotRadius;
+
     private float RollAngularSpeed;
     private float RollAngularAcc;
-
     private float RotAngularSpeed;
 
     //TODO delete this!
@@ -31,7 +32,7 @@ public class BikePhysicsScript : MonoBehaviour
     // Use this for initialization
     void Start()
     {
-
+		rotRadius = 0;
         RollAngularSpeed = 0.0f;
         RollAngularAcc = 0.0f;
 
@@ -68,9 +69,9 @@ public class BikePhysicsScript : MonoBehaviour
                                                            RotAngularSpeed);
 
         //Rolling and gravity part
-        ApplyGravity();
-        ApplyInstability();
-        ApplyRotation();
+        ApplyGravity(); //makes sure the wheels are against the floor.. maybe it can be removed
+		ApplyRotation(); //makes the bike to steer
+        ApplyInstability(); //if the center of mass isn't over the wheels, it will fall
 
         modelFrontFork.localRotation = Quaternion.AngleAxis(forkRotation, new Vector3(0, 3, -1));
     }
@@ -99,12 +100,15 @@ public class BikePhysicsScript : MonoBehaviour
     void ApplyInstability()
     {
 
-        //Debug.Log (RollAngularAcc);
-
         if (this.transform.rotation.eulerAngles.z != 0)
         {
             RollAngularAcc = gravity * Mathf.Sin(Mathf.Deg2Rad * this.transform.rotation.eulerAngles.z) / centerOfMass.transform.position.y;
         }
+
+		if(rotRadius != 0) {
+			RollAngularAcc +=speed*speed / (rotRadius * centerOfMass.transform.position.y * centerOfMass.transform.position.y);
+
+		}
 
         if (RollAngularAcc != 0)
         {
@@ -127,18 +131,16 @@ public class BikePhysicsScript : MonoBehaviour
     {
 
         float difWheel = frontWheel.transform.localPosition.z;
-        float radius = 0;
+		rotRadius = 0;
         if (forkRotation != 0)
         {
-            radius = difWheel / Mathf.Tan(forkRotation * Mathf.Deg2Rad);
+			rotRadius = difWheel / Mathf.Tan(forkRotation * Mathf.Deg2Rad);
         }
 
-        if (radius != 0)
+		if (rotRadius != 0)
         {
-            RotAngularSpeed = speed / radius;
+			RotAngularSpeed = speed / rotRadius;
         }
-
-        Debug.Log(RotAngularSpeed);
     }
 
 
