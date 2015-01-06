@@ -7,23 +7,24 @@ public class BikePhysicsScript : MonoBehaviour
     public GameObject centerOfMass;
     public GameObject frontWheel;
     public GameObject rearWheel;
+	public Transform modelFrontFork;
 
     public TextGUIScript TextGUI;
 
     public float gravity;
-    public Transform modelFrontFork;
+	public bool canRoll;
 
     private float forkRotation;
     private float speed;
-    //private float bikeRotation;
-    //private float currentPosition;
-    //private float bikeRollingAngle;
 
 	private float rotRadius;
 
-    private float RollAngularSpeed;
-    private float RollAngularAcc;
-    private float RotAngularSpeed;
+    private float rollAngularSpeed;
+    private float rollAngularAcc;
+    private float rotAngularSpeed;
+
+	private const float maxSteerRotation = 80.0f;
+	private const float minSteerRotation = -80.0f;
 
     //TODO delete this!
     private float rotationUnit = 0.5f;
@@ -33,8 +34,8 @@ public class BikePhysicsScript : MonoBehaviour
     void Start()
     {
 		rotRadius = 0;
-        RollAngularSpeed = 0.0f;
-        RollAngularAcc = 0.0f;
+        rollAngularSpeed = 0.0f;
+        rollAngularAcc = 0.0f;
 
         forkRotation = 0;
         speed = 0;
@@ -54,7 +55,7 @@ public class BikePhysicsScript : MonoBehaviour
 
 
         // Moving and rotation part
-        float angleSpeed = Mathf.Abs(forkRotation);
+        //float angleSpeed = Mathf.Abs(forkRotation);
 
         Vector3 vector = Quaternion.Euler(0, this.transform.rotation.y, 0) * Quaternion.Euler(this.transform.rotation.eulerAngles) * Vector3.forward;
 
@@ -66,7 +67,7 @@ public class BikePhysicsScript : MonoBehaviour
 
         this.transform.rotation = Quaternion.RotateTowards(this.transform.rotation,
                                                            angle,
-                                                           RotAngularSpeed);
+                                                           rotAngularSpeed);
 
         //Rolling and gravity part
         ApplyGravity(); //makes sure the wheels are against the floor.. maybe it can be removed
@@ -99,23 +100,25 @@ public class BikePhysicsScript : MonoBehaviour
 
     void ApplyInstability()
     {
+		rollAngularAcc = 0;
 
         if (this.transform.rotation.eulerAngles.z != 0)
         {
-            RollAngularAcc = gravity * Mathf.Sin(Mathf.Deg2Rad * this.transform.rotation.eulerAngles.z) / centerOfMass.transform.position.y;
+            rollAngularAcc = gravity * Mathf.Sin(Mathf.Deg2Rad * this.transform.rotation.eulerAngles.z) / centerOfMass.transform.position.y;
         }
 
 		if(rotRadius != 0) {
-			RollAngularAcc +=speed*speed / (rotRadius * centerOfMass.transform.position.y * centerOfMass.transform.position.y);
+			rollAngularAcc +=speed*speed / (rotRadius * centerOfMass.transform.position.y * centerOfMass.transform.position.y);
 
 		}
 
-        if (RollAngularAcc != 0)
+        if (rollAngularAcc != 0)
         {
-            RollAngularSpeed += RollAngularAcc * Time.deltaTime;
+            rollAngularSpeed += rollAngularAcc * Time.deltaTime;
         }
 
-        if (RollAngularSpeed != 0)
+		//TODO: improve this
+        if (rollAngularSpeed != 0 && canRoll)
         {
             Vector3 angleEuler = this.transform.rotation.eulerAngles;
             angleEuler.z += 1;
@@ -123,7 +126,7 @@ public class BikePhysicsScript : MonoBehaviour
 
             this.transform.rotation = Quaternion.RotateTowards(this.transform.rotation,
                                                                angle,
-                                                               RollAngularSpeed);
+                                                               rollAngularSpeed);
         }
     }
 
@@ -139,7 +142,7 @@ public class BikePhysicsScript : MonoBehaviour
 
 		if (rotRadius != 0)
         {
-			RotAngularSpeed = speed / rotRadius;
+			rotAngularSpeed = speed / rotRadius;
         }
     }
 
@@ -148,7 +151,7 @@ public class BikePhysicsScript : MonoBehaviour
     {
         if (rot != 0)
         {
-            if (rot > 0)
+			if (rot > 0 && forkRotation < maxSteerRotation)
             {
                 if (forkRotation > 0)
                 {
@@ -161,20 +164,18 @@ public class BikePhysicsScript : MonoBehaviour
             }
             else
             {
-                if (forkRotation < 0)
-                {
-                    forkRotation -= 1 * rotationUnit;
-                }
-                else
-                {
-                    forkRotation -= 3 * rotationUnit;
-                }
+				if (forkRotation > minSteerRotation)
+				{
+	                if (forkRotation < 0)
+	                {
+	                    forkRotation -= 1 * rotationUnit;
+	                }
+	                else
+	                {
+	                    forkRotation -= 3 * rotationUnit;
+	                }
+				}
             }
-
-			if (forkRotation > 89.99f)
-				forkRotation = 89.99f;
-			else if (forkRotation < -89.99f)
-				forkRotation = -89.99f;
         }
     }
 

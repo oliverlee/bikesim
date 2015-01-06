@@ -26,7 +26,7 @@ public class MovingBikeScript : MonoBehaviour {
 		
 		float h = Input.GetAxis ("Horizontal");
 		float v = Input.GetAxis ("Vertical");
-		float r = Input.GetAxis ("Rotation");
+		//float r = Input.GetAxis ("Rotation");
 
 		/*if (h > 0 && frontWheel.rotation.y < 0.5 || h < 0 && frontWheel.rotation.y > -0.5 ) {
 				frontWheel.AddTorque(0,h/5,0);	
