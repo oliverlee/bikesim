@@ -15,6 +15,7 @@ public class BikePhysicsScript : MonoBehaviour
 
     public float gravity;
 	public bool canRoll;
+	public bool useNetwork;
 
     private float forkRotation;
     private float speed;
@@ -55,28 +56,31 @@ public class BikePhysicsScript : MonoBehaviour
         float h = Input.GetAxis("Horizontal");
         float v = Input.GetAxis("Vertical");
 
-		
-		forkRotation = ApplyMaxMinRotation(Network.getParsedAngle());
-  
-		float networkSpeed = Network.getParsedSpeed ();
-
-
 		float f = Input.GetAxis("Fire1");
-
+		
 		if(f ==1) {
 			ResetBike();
 			trailScript.Reset();
 		}
 
-		if (speed < networkSpeed)
-			speed = speed + speedUnit;
-		else //if (speed > networkSpeed)
-			speed = speed - speedUnit;
+		if(useNetwork) {
+			forkRotation = ApplyMaxMinRotation(Network.getParsedAngle());
+	  
+			float networkSpeed = Network.getParsedSpeed ();
 
-		if (Network.getParsedBrake() == 1) {
-			speed = speed - brakeUnit;
-			if (speed < 0)
-				speed = 0;
+			if (speed < networkSpeed)
+				speed = speed + speedUnit;
+			else //if (speed > networkSpeed)
+				speed = speed - speedUnit;
+
+			if (Network.getParsedBrake() == 1) {
+				speed = speed - brakeUnit;
+				if (speed < 0)
+					speed = 0;
+				}
+		} else {
+			UpdateRotation(h);
+			UpdateSpeed(v);
 		}
 
 
