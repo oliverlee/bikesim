@@ -94,6 +94,7 @@ public class MenuSelection : MonoBehaviour
                 {
                     case 0: //Start game
                         state = GameState.Playing;
+						StartNewGame();
                         break;
                     case 1: //How to play
                         state = GameState.Howtoplay;
@@ -170,6 +171,7 @@ public class MenuSelection : MonoBehaviour
 					switch (ind) {
 					case 0: //Start game
 						state = GameState.Playing;
+						StartNewGame();
 						break;
 					case 1: //How to play
 						state = GameState.Howtoplay;
@@ -235,4 +237,11 @@ public class MenuSelection : MonoBehaviour
         float factor = 400;
         return new Rect((Screen.width-width*factor)/2, Screen.height/2 + top*factor, width*factor, height*factor);
     }
+
+	private void StartNewGame() {
+		//reset bike, opponents, floor, walls, trails, gates, score
+		GameObject bike = GameObject.Find ("Bike");
+		BikePhysicsScript bps = bike.GetComponent<BikePhysicsScript> ();
+		bps.ResetBike ();
+	}
 }

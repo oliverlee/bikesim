@@ -3,6 +3,7 @@ using System.Collections;
 
 public class BikePhysicsScript : MonoBehaviour
 {
+	Socket Network;
 
     public GameObject centerOfMass;
     public GameObject frontWheel;
@@ -10,9 +11,11 @@ public class BikePhysicsScript : MonoBehaviour
 	public Transform modelFrontFork;
 
     public TextGUIScript TextGUI;
+	public Trail trailScript;
 
     public float gravity;
 	public bool canRoll;
+	public bool useNetwork;
 
     private float forkRotation;
     private float speed;
@@ -29,6 +32,7 @@ public class BikePhysicsScript : MonoBehaviour
     //TODO delete this!
     private float rotationUnit = 0.5f;
     private float speedUnit = 0.1f;
+	private float brakeUnit = 0.5f;
 
     // Use this for initialization
     void Start()
@@ -39,6 +43,8 @@ public class BikePhysicsScript : MonoBehaviour
 
         forkRotation = 0;
         speed = 0;
+
+		Network = GameObject.Find ("Network").GetComponent<Socket> ();
     }
 
     // Update is called once per frame
@@ -50,12 +56,36 @@ public class BikePhysicsScript : MonoBehaviour
         float h = Input.GetAxis("Horizontal");
         float v = Input.GetAxis("Vertical");
 
-        UpdateRotation(h);
-        UpdateSpeed(v);
-
-
-        // Moving and rotation part
-        //float angleSpeed = Mathf.Abs(forkRotation);
+		float f = Input.GetAxis("Fire1");
+		
+		if(f ==1) {
+			ResetBike();
+			trailScript.Reset();
+		}
+		
+		if(useNetwork) {
+			forkRotation = ApplyMaxMinRotation(Network.getParsedAngle());
+			
+			float networkSpeed = Network.getParsedSpeed ();
+			
+			if (speed < networkSpeed)
+				speed = speed + speedUnit;
+			else //if (speed > networkSpeed)
+				speed = speed - speedUnit;
+			
+			if (Network.getParsedBrake() == 1) {
+				speed = speed - brakeUnit;
+				if (speed < 0)
+					speed = 0;
+			}
+		} else {
+			UpdateRotation(h);
+			UpdateSpeed(v);
+		}
+		
+		
+		// Moving and rotation part
+		//float angleSpeed = Mathf.Abs(forkRotation);
 
         Vector3 vector = Quaternion.Euler(0, this.transform.rotation.y, 0) * Quaternion.Euler(this.transform.rotation.eulerAngles) * Vector3.forward;
 
@@ -134,16 +164,19 @@ public class BikePhysicsScript : MonoBehaviour
     {
 
         float difWheel = frontWheel.transform.localPosition.z;
-		rotRadius = 0;
         if (forkRotation != 0)
         {
 			rotRadius = difWheel / Mathf.Tan(forkRotation * Mathf.Deg2Rad);
-        }
+        } else {
+			rotRadius = 0;
+		}
 
 		if (rotRadius != 0)
         {
 			rotAngularSpeed = speed / rotRadius;
-        }
+        } else {
+			rotAngularSpeed = 0;
+		}
     }
 
 
@@ -179,6 +212,16 @@ public class BikePhysicsScript : MonoBehaviour
         }
     }
 
+	float ApplyMaxMinRotation(float rotation)
+	{
+		if (rotation > maxSteerRotation)
+						return maxSteerRotation;
+				else if (rotation < minSteerRotation)
+						return minSteerRotation;
+				else
+						return rotation;
+	}
+
     void UpdateSpeed(float force)
     {
         if (force != 0)
@@ -186,6 +229,35 @@ public class BikePhysicsScript : MonoBehaviour
             speed += force * speedUnit;
         }
     }
+
+	public void ResetBike() {
+		ResetBikeRoll();
+		ResetBikePos();
+		ResetBikeSteerAngle();
+		ResetBikeSpeed();
+	}
+
+	void ResetBikeRoll() {
+		rollAngularSpeed = 0.0f;
+		Vector3 angleEuler = this.transform.rotation.eulerAngles;
+		angleEuler.z = 0;
+		Quaternion angle = Quaternion.Euler(angleEuler);
+		
+		this.transform.rotation = angle;
+	}
+
+	void ResetBikePos() {
+		this.transform.position = new Vector3 (0, 0, 0);
+		this.transform.rotation = Quaternion.Euler (new Vector3 (0, 0, 0));
+	}
+
+	void ResetBikeSpeed() {
+		speed = 0.0f;
+	}
+
+	void ResetBikeSteerAngle() {
+		forkRotation = 0.0f;
+	}
 
     void LateUpdate()
     {

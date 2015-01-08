@@ -26,6 +26,14 @@ public class Trail : MonoBehaviour
         }
     }
 
+	public void Reset() {
+		foreach (Transform child in trailParent.GetComponentsInChildren<Transform>()){
+			if( child.tag == "Trail") {
+				DestroyImmediate(child.gameObject);
+			}
+		}
+	}
+
     void CreateBox(Vector3 p1, Vector3 p2)
     {
         float distance = Vector3.Distance(p1, p2);
@@ -38,6 +46,7 @@ public class Trail : MonoBehaviour
         cube.transform.localScale = new Vector3(0.2f, 1, distance + 0.1f);
         cube.transform.position = middle + Vector3.up; //above floor
         cube.transform.LookAt(lastPosition + Vector3.up, Vector3.up);
+		cube.tag = "Trail";
     }
 
 	public void ClearTrail()

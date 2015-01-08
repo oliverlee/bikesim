@@ -59,7 +59,7 @@ public class TileManager : MonoBehaviour
                 }
             }
         }
-        else
+		else if(MenuSelection.substate == SubGameState.Battle)
         {
             CreateArena();
         }
@@ -139,7 +139,7 @@ public class TileManager : MonoBehaviour
                 RemoveArena();
         }
     }
-
+	
     void UpdateTiles()
     {
         //Check which tiles need to be removed
@@ -244,4 +244,5 @@ public class TileManager : MonoBehaviour
 		//float arenaEndTime = Time.time;
 		//float arenaPlayTime = arenaEndTime - GeneralController.battleModeStartTime;
     }
+
 }
