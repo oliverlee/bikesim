@@ -243,5 +243,9 @@ public class MenuSelection : MonoBehaviour
 		GameObject bike = GameObject.Find ("Bike");
 		BikePhysicsScript bps = bike.GetComponent<BikePhysicsScript> ();
 		bps.ResetBike ();
+
+		TileManager tileManager = gameObject.GetComponent<TileManager> ();
+		if (substate == SubGameState.Battle)
+			tileManager.RemoveArena ();
 	}
 }
