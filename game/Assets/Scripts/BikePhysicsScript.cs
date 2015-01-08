@@ -50,12 +50,12 @@ public class BikePhysicsScript : MonoBehaviour
     // Update is called once per frame
     void FixedUpdate()
     {
-		if (MenuSelection.state != GameState.Playing)
-			return;
-		
-		float h = Input.GetAxis("Horizontal");
-		float v = Input.GetAxis("Vertical");
-		
+        if (MenuSelection.state != GameState.Playing)
+            return;
+
+        float h = Input.GetAxis("Horizontal");
+        float v = Input.GetAxis("Vertical");
+
 		float f = Input.GetAxis("Fire1");
 		
 		if(f ==1) {
