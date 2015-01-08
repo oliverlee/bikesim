@@ -62,36 +62,43 @@ public class BikePhysicsScript : MonoBehaviour
 			ResetBike();
 			trailScript.Reset();
 		}
-		
+
 		if(useNetwork) {
 			forkRotation = ApplyMaxMinRotation(Network.getParsedAngle());
-			
+	  
 			float networkSpeed = Network.getParsedSpeed ();
-			
+
 			if (speed < networkSpeed)
 				speed = speed + speedUnit;
 			else //if (speed > networkSpeed)
 				speed = speed - speedUnit;
-			
+
 			if (Network.getParsedBrake() == 1) {
 				speed = speed - brakeUnit;
 				if (speed < 0)
 					speed = 0;
-			}
+				}
 		} else {
 			UpdateRotation(h);
 			UpdateSpeed(v);
 		}
-		
-		
-		// Moving and rotation part
-		//float angleSpeed = Mathf.Abs(forkRotation);
+
+
+        // Moving and rotation part
+        //float angleSpeed = Mathf.Abs(forkRotation);
 
         Vector3 vector = Quaternion.Euler(0, this.transform.rotation.y, 0) * Quaternion.Euler(this.transform.rotation.eulerAngles) * Vector3.forward;
 
-        Quaternion angle = Quaternion.Euler(0, 1, 0) * this.transform.rotation;
+        Quaternion angle;
 
-        this.transform.position = Vector3.MoveTowards(this.transform.position,
+		if (rotAngularSpeed > 0) {
+			angle = Quaternion.Euler (0, -1, 0) * this.transform.rotation;
+			rotAngularSpeed= -rotAngularSpeed;
+		}
+		else 
+			angle = Quaternion.Euler (0, 1, 0) * this.transform.rotation;
+		
+		this.transform.position = Vector3.MoveTowards(this.transform.position,
                                                       this.transform.position + vector,
                                                       speed * Time.deltaTime);
 
