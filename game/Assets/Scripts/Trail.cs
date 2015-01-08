@@ -7,21 +7,24 @@ public class Trail : MonoBehaviour
     public Transform trailParent;
 
     public Vector3 lastPosition = new Vector3();
+	public Vector3 oldPosition = new Vector3();
     // Use this for initialization
     void Start()
     {
+		oldPosition = rearWheel.position + Vector3.back;
         lastPosition = rearWheel.position;
     }
 
     // Update is called once per frame
     void Update()
     {
-		if (MenuSelection.substate != SubGameState.Battle)
-			return;
+		
 
-        if (Vector3.Distance(rearWheel.transform.position, lastPosition) > 0.5f)
+        if (Vector3.Distance(rearWheel.transform.position, lastPosition) > 1f)
         {
-            CreateBox(lastPosition, rearWheel.position);
+			if (MenuSelection.substate == SubGameState.Battle)
+				CreateBox(oldPosition, lastPosition);
+			oldPosition = lastPosition;
             lastPosition = rearWheel.position;
         }
     }
