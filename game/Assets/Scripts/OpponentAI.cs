@@ -4,13 +4,13 @@ using System.Collections;
 public class OpponentAI : MonoBehaviour
 {
 	
-	public Transform[] waypoints;
+	public Transform waypoint;
+	public Vector3 waypointPos;
 	public float waypointRadius = 1.5f;
-	public float damping = 0.1f;
+	public float damping = 0.3f;
 	public bool loop = false;
-	public float speed = 2.0f;
+	public float speed = 0.5f;
 	public bool faceHeading = true;
-	private int n;
 	
 	private Vector3 currentHeading,targetHeading;
 	private int targetwaypoint;
@@ -21,19 +21,14 @@ public class OpponentAI : MonoBehaviour
 	// Use this for initialization
 	protected void Start ()
 	{	
-		n = 2;
-		waypoints=new Transform[n]; 
-		for (int i=0; i<n; i++) { 
-			waypoints [i] = (GameObject.Find("Waypoint"+i)).transform;
-		}
+		waypoint = (GameObject.Find("Gate")).transform;
 		xform = transform;
 		currentHeading = xform.forward;
-		if(waypoints.Length<=0)
+		if(waypoint==null)
 		{
 			Debug.Log("No waypoints on "+name);
 			enabled = false;
 		}
-		targetwaypoint = 0;
 		if(rigidbody!=null)
 		{
 			useRigidbody = true;
@@ -52,7 +47,7 @@ public class OpponentAI : MonoBehaviour
         if (MenuSelection.state != GameState.Playing)
             return;
 
-		targetHeading = waypoints[targetwaypoint].position - xform.position;
+		targetHeading = waypointPos - xform.position;
 		
 		currentHeading = Vector3.Lerp(currentHeading,targetHeading,damping*Time.deltaTime);
 	}
@@ -63,6 +58,11 @@ public class OpponentAI : MonoBehaviour
         if (MenuSelection.state != GameState.Playing)
             return;
 
+		if (waypoint == (GameObject.Find ("Gate")).transform)
+			waypointPos = waypoint.position + new Vector3 (0, 0, 2);
+		else
+			waypointPos = waypoint.position;
+
 		if(useRigidbody)
 			rigidmember.velocity = currentHeading * speed;
 		else
@@ -70,35 +70,12 @@ public class OpponentAI : MonoBehaviour
 		if(faceHeading)
 			xform.LookAt(xform.position+currentHeading);
 		
-		if(Vector3.Distance(xform.position,waypoints[targetwaypoint].position)<=waypointRadius)
+		if(Vector3.Distance(xform.position,waypointPos)<=waypointRadius)
 		{
-			targetwaypoint++;
-			if(targetwaypoint>=waypoints.Length)
-			{
-				targetwaypoint = 0;
-				if(!loop)
-					enabled = false;
-			}
+			if(!loop)
+				enabled = false;
 		}
-		//transform.position = Vector3.MoveTowards(transform.position, waypoints[1].position, speed * Time.deltaTime);
-	}
-	
-	
-	// draws red line from waypoint to waypoint
-	public void OnDrawGizmos()
-	{
-		Gizmos.color = Color.red;
-		if(waypoints==null)
-			return;
-		for(int i=0;i< waypoints.Length;i++)
-		{
-			Vector3 pos = waypoints[i].position;
-			if(i>0)
-			{
-				Vector3 prev = waypoints[i-1].position;
-				Gizmos.DrawLine(prev,pos);
-			}
-		}
+		//transform.position = Vector3.MoveTowards(transform.position, waypoint.position, speed * Time.deltaTime);
 	}
 	
 }

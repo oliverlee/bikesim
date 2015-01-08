@@ -4,12 +4,14 @@ using System.Collections;
 public class GateBattleScript : MonoBehaviour {
 	private BoxCollider coll;
 	private Coordinates coords;
+	private TileManager tileManager;
 	private int rotation = 0;
 
 	// Use this for initialization
 	void Start () {
 		coll = gameObject.GetComponent<BoxCollider>();
 		coords = TileManager.PosToCoordinates(gameObject.transform.position);
+		tileManager = GameObject.Find ("Third Person Camera").GetComponent<TileManager> ();
 	}
 	
 	// Update is called once per frame
@@ -27,12 +29,10 @@ public class GateBattleScript : MonoBehaviour {
 
 	void OnTriggerEnter(Collider other){
 		if (other.gameObject.tag.Equals("Player")){
-			TileManager tileManager = GameObject.Find ("Third Person Camera").GetComponent<TileManager> ();
-			tileManager.setBattleMode(true);
+			tileManager.CreateArena();
 			GameObject gate = GameObject.Find ("Gate");
 			Destroy(gate);
 			Destroy(this.gameObject);
-
 		}
 	}
 }

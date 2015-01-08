@@ -237,7 +237,7 @@ public class BikePhysicsScript : MonoBehaviour
         }
     }
 
-	void ResetBike() {
+	public void ResetBike() {
 		ResetBikeRoll();
 		ResetBikePos();
 		ResetBikeSteerAngle();

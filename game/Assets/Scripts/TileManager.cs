@@ -27,9 +27,7 @@ public class TileManager : MonoBehaviour
 {
     public GameObject TilePrefab;
     public GameObject Player, Floor;
-    public bool regularCycling = true;
-	public bool battleMode = false;
-    public Vector3 hallCenter;
+    public Vector3 arenaCenter;
 
     private static Vector3 playerPos;
     private Vector3 lastPos = Vector3.zero;
@@ -39,6 +37,7 @@ public class TileManager : MonoBehaviour
     private float spawnDepth = -4f;
     private Coordinates playerCoordinates;
     private Dictionary<Coordinates, Tile> tiles = new Dictionary<Coordinates, Tile>();
+	private Trail trailScript;
 
     // Use this for initialization
     void Start()
@@ -46,7 +45,9 @@ public class TileManager : MonoBehaviour
         floorT = Floor.transform;
         playerPos = Player.transform.position;
         playerCoordinates = PosToCoordinates(playerPos);
-        if (regularCycling)
+		trailScript = Player.GetComponent<Trail> ();
+
+        if (MenuSelection.substate == SubGameState.Free)
         {
             //create initial tiles
             for (int i = playerCoordinates.X - spawnDist; i <= playerCoordinates.X + spawnDist; i++)
@@ -58,9 +59,9 @@ public class TileManager : MonoBehaviour
                 }
             }
         }
-        else
+		else if(MenuSelection.substate == SubGameState.Battle)
         {
-            CreateHall();
+            CreateArena();
         }
     }
 
@@ -119,7 +120,7 @@ public class TileManager : MonoBehaviour
         if (MenuSelection.state != GameState.Playing)
             return;
 
-        if (regularCycling)
+        if (MenuSelection.substate == SubGameState.Free)
         {
             lastPos = playerPos;
             playerPos = Player.transform.position;
@@ -130,15 +131,15 @@ public class TileManager : MonoBehaviour
                 UpdateTiles();
             }
         }
-        if (Input.GetKeyDown(KeyCode.Z) || Input.GetKeyDown(KeyCode.X) || battleMode)
+        if (Input.GetKeyDown(KeyCode.Z) || Input.GetKeyDown(KeyCode.X))
         {
-            if (regularCycling)
-                CreateHall();
+			if (MenuSelection.substate == SubGameState.Free)
+                CreateArena();
             else
-                RemoveHall();
+                RemoveArena();
         }
     }
-
+	
     void UpdateTiles()
     {
         //Check which tiles need to be removed
@@ -172,65 +173,76 @@ public class TileManager : MonoBehaviour
         Coordinates tileCoords = new Coordinates(x, z);
         Vector3 finalPos = CoordinatesToPos(x, z);
         Vector3 startPos = new Vector3(finalPos.x, y, finalPos.z);
+
         GameObject newT = (GameObject)GameObject.Instantiate(TilePrefab);
         newT.transform.parent = floorT;
         newT.transform.position = startPos;
         Tile newTile = newT.GetComponent<Tile>();
         newTile.targetPos = finalPos;
         newTile.coordinates = tileCoords;
+
         if (startPos.y != finalPos.y)
             newTile.StartMoving();
         tiles.Add(tileCoords, newTile);
     }
 
-    public void CreateHall()
+    public void CreateArena()
     {
-        regularCycling = false;
-		battleMode = false;
+		MenuSelection.substate = SubGameState.Battle;
         //remove other tiles
         tiles.Clear();
 
+		//clear trail
+		trailScript.ClearTrail ();
+		trailScript.lastPosition = playerPos;
+
         //create new floor
-        Coordinates coords = PosToCoordinates(hallCenter);
-        for (int i = -10; i <= 10; i++)
+		arenaCenter = playerPos;
+        Coordinates coords = PosToCoordinates(arenaCenter);
+        for (int i = -20; i <= 20; i++)
         {
-            for (int j = -10; j <= 10; j++)
+            for (int j = -20; j <= 20; j++)
             {
                 CreateTile(coords.X + i, spawnDepth, coords.Z + j);
             }
         }
+		Vector3 center = CoordinatesToPos (coords); //not playerpos, because rounding
         //create walls
         GameObject wall1 = GameObject.CreatePrimitive(PrimitiveType.Cube);
         wall1.transform.parent = floorT;
-        wall1.transform.position = new Vector3(0, 1, 20);
-        wall1.transform.localScale = new Vector3(36, 2, .5f);
+        wall1.transform.position = new Vector3(center.x, 1, center.z+40);
+        wall1.transform.localScale = new Vector3(70, 2, .5f);
         GameObject wall2 = GameObject.CreatePrimitive(PrimitiveType.Cube);
         wall2.transform.parent = floorT;
-        wall2.transform.position = new Vector3(0, 1, -20);
-        wall2.transform.localScale = new Vector3(36, 2, .5f);
+		wall2.transform.position = new Vector3(center.x, 1, center.z-40);
+        wall2.transform.localScale = new Vector3(70, 2, .5f);
         GameObject wall3 = GameObject.CreatePrimitive(PrimitiveType.Cube);
         wall3.transform.parent = floorT;
-        wall3.transform.position = new Vector3(18, 1, 0);
-        wall3.transform.localScale = new Vector3(.5f, 2, 40);
+		wall3.transform.position = new Vector3(center.x+35, 1, center.z);
+        wall3.transform.localScale = new Vector3(.5f, 2, 80);
         GameObject wall4 = GameObject.CreatePrimitive(PrimitiveType.Cube);
         wall4.transform.parent = floorT;
-        wall4.transform.position = new Vector3(-18, 1, 0);
-        wall4.transform.localScale = new Vector3(.5f, 2, 40);
+		wall4.transform.position = new Vector3(center.x-35, 1, center.z);
+        wall4.transform.localScale = new Vector3(.5f, 2, 80);
+
+		GeneralController.battleModeActive = true;
+		GeneralController.battleModeStartTime = Time.time;
     }
 
-    public void RemoveHall()
+    public void RemoveArena()
     {
-        regularCycling = true;
+		MenuSelection.substate = SubGameState.Free;
         tiles.Clear();
         foreach (Transform child in floorT)
         {
             Destroy(child.gameObject);
         }
         CreateTile(playerCoordinates.X, spawnDepth, playerCoordinates.Z);
+
+		GeneralController.battleModeActive = false;
+		//save score to highscores
+		//float arenaEndTime = Time.time;
+		//float arenaPlayTime = arenaEndTime - GeneralController.battleModeStartTime;
     }
 
-	public void setBattleMode (bool mode)
-	{
-		battleMode = mode;
-	}
 }
