@@ -15,6 +15,7 @@ public class BikePhysicsScript : MonoBehaviour
 
     public float gravity;
 	public bool canRoll;
+	public bool useNetwork;
 
     private float forkRotation;
     private float speed;
@@ -49,39 +50,42 @@ public class BikePhysicsScript : MonoBehaviour
     // Update is called once per frame
     void FixedUpdate()
     {
-        if (MenuSelection.state != GameState.Playing)
-            return;
-
-        float h = Input.GetAxis("Horizontal");
-        float v = Input.GetAxis("Vertical");
-
+		if (MenuSelection.state != GameState.Playing)
+			return;
 		
-		forkRotation = ApplyMaxMinRotation(Network.getParsedAngle());
-  
-		float networkSpeed = Network.getParsedSpeed ();
-
-
+		float h = Input.GetAxis("Horizontal");
+		float v = Input.GetAxis("Vertical");
+		
 		float f = Input.GetAxis("Fire1");
-
+		
 		if(f ==1) {
 			ResetBike();
 			trailScript.Reset();
 		}
-
-		if (speed < networkSpeed)
-			speed = speed + speedUnit;
-		else //if (speed > networkSpeed)
-			speed = speed - speedUnit;
-
-		if (Network.getParsedBrake() == 1) {
-			speed = speed - brakeUnit;
-			if (speed < 0)
-				speed = 0;
+		
+		if(useNetwork) {
+			forkRotation = ApplyMaxMinRotation(Network.getParsedAngle());
+			
+			float networkSpeed = Network.getParsedSpeed ();
+			
+			if (speed < networkSpeed)
+				speed = speed + speedUnit;
+			else //if (speed > networkSpeed)
+				speed = speed - speedUnit;
+			
+			if (Network.getParsedBrake() == 1) {
+				speed = speed - brakeUnit;
+				if (speed < 0)
+					speed = 0;
+			}
+		} else {
+			UpdateRotation(h);
+			UpdateSpeed(v);
 		}
-
-
-        // Moving and rotation part
-        //float angleSpeed = Mathf.Abs(forkRotation);
+		
+		
+		// Moving and rotation part
+		//float angleSpeed = Mathf.Abs(forkRotation);
 
         Vector3 vector = Quaternion.Euler(0, this.transform.rotation.y, 0) * Quaternion.Euler(this.transform.rotation.eulerAngles) * Vector3.forward;
 
