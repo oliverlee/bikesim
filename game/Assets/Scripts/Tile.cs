@@ -45,7 +45,7 @@ public class Tile : MonoBehaviour {
     public void StartMoving()
     {
         sourcePos = transform.position;
-		targetPos = sourcePos + Vector3.up * distance;
+		distance = targetPos.y - sourcePos.y;
         moving = true;
     }
 
