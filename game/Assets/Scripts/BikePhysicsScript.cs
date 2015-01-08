@@ -3,6 +3,7 @@ using System.Collections;
 
 public class BikePhysicsScript : MonoBehaviour
 {
+	Socket Network;
 
     public GameObject centerOfMass;
     public GameObject frontWheel;
@@ -29,6 +30,7 @@ public class BikePhysicsScript : MonoBehaviour
     //TODO delete this!
     private float rotationUnit = 0.5f;
     private float speedUnit = 0.1f;
+	private float brakeUnit = 0.5f;
 
     // Use this for initialization
     void Start()
@@ -39,6 +41,8 @@ public class BikePhysicsScript : MonoBehaviour
 
         forkRotation = 0;
         speed = 0;
+
+		Network = GameObject.Find ("Network").GetComponent<Socket> ();
     }
 
     // Update is called once per frame
@@ -49,9 +53,22 @@ public class BikePhysicsScript : MonoBehaviour
 
         float h = Input.GetAxis("Horizontal");
         float v = Input.GetAxis("Vertical");
+		
+		forkRotation = ApplyMaxMinRotation(Network.getParsedAngle());
+  
+		float networkSpeed = Network.getParsedSpeed ();
 
-        UpdateRotation(h);
-        UpdateSpeed(v);
+
+		if (speed < networkSpeed)
+			speed = speed + speedUnit;
+		else //if (speed > networkSpeed)
+			speed = speed - speedUnit;
+
+		if (Network.getParsedBrake() == 1) {
+			speed = speed - brakeUnit;
+			if (speed < 0)
+				speed = 0;
+		}
 
 
         // Moving and rotation part
@@ -178,6 +195,16 @@ public class BikePhysicsScript : MonoBehaviour
             }
         }
     }
+
+	float ApplyMaxMinRotation(float rotation)
+	{
+		if (rotation > maxSteerRotation)
+						return maxSteerRotation;
+				else if (rotation < minSteerRotation)
+						return minSteerRotation;
+				else
+						return rotation;
+	}
 
     void UpdateSpeed(float force)
     {
