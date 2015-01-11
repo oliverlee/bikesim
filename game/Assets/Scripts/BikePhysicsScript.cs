@@ -14,6 +14,7 @@ public class BikePhysicsScript : MonoBehaviour
 	public Trail trailScript;
 
     public float gravity;
+	public float multHelpToStabilize;
 	public bool canRoll;
 	public bool useNetwork;
 
@@ -153,6 +154,13 @@ public class BikePhysicsScript : MonoBehaviour
         {
             rollAngularSpeed += rollAngularAcc * Time.deltaTime;
         }
+
+		if(multHelpToStabilize > 1) {
+			if((rollAngularAcc > 0 && this.transform.rotation.eulerAngles.z > 180 && this.transform.rotation.eulerAngles.z < 360) ||
+			   (rollAngularAcc < 0 && this.transform.rotation.eulerAngles.z < 180 && this.transform.rotation.eulerAngles.z > 0)) {
+				rollAngularAcc *= multHelpToStabilize;
+			}
+		}
 
 		//TODO: improve this
         if (rollAngularSpeed != 0 && canRoll)
