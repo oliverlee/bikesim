@@ -274,7 +274,7 @@ public class BikePhysicsScript : MonoBehaviour
 		forkRotation = 0.0f;
 	}
 
-	float GetSpeed() {
+	public float GetSpeed() {
 		return speed;
 	}
 

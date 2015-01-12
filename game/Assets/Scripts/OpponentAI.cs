@@ -6,10 +6,9 @@ public class OpponentAI : MonoBehaviour
 	
 	public Transform waypoint;
 	public Vector3 waypointPos;
-	public float waypointRadius = 1.5f;
-	public float damping = 0.3f;
+	private float damping = 0.1f;
 	public bool loop = false;
-	public float speed = 0.5f;
+	private float speed;
 	public bool faceHeading = true;
 	
 	private Vector3 currentHeading,targetHeading;
@@ -21,9 +20,11 @@ public class OpponentAI : MonoBehaviour
 	// Use this for initialization
 	protected void Start ()
 	{	
+		speed = GameObject.Find ("Bike").GetComponent<BikePhysicsScript> ().GetSpeed () * 0.1f;
 		waypoint = (GameObject.Find("Gate")).transform;
-		xform = transform;
+		xform = (GameObject.Find("Opponent")).transform;
 		currentHeading = xform.forward;
+
 		if(waypoint==null)
 		{
 			Debug.Log("No waypoints on "+name);
@@ -49,7 +50,7 @@ public class OpponentAI : MonoBehaviour
 
 		targetHeading = waypointPos - xform.position;
 		
-		currentHeading = Vector3.Lerp(currentHeading,targetHeading,damping*Time.deltaTime);
+		currentHeading = Vector3.Lerp(currentHeading,targetHeading,Time.deltaTime*damping);
 	}
 
 	// moves us along current heading
@@ -58,25 +59,21 @@ public class OpponentAI : MonoBehaviour
         if (MenuSelection.state != GameState.Playing)
             return;
 
-		if (waypoint == (GameObject.Find ("Gate")).transform)
-			waypointPos = waypoint.position;
-		else
-			waypointPos = waypoint.position;
+		waypointPos = (GameObject.Find("Gate")).transform.position;
+		float speedDiff = GameObject.Find ("Bike").GetComponent<BikePhysicsScript> ().GetSpeed () - speed;
 
-		//waypointPos = Random
+		if (speedDiff < 0.0f)
+			speed = speed;
+		else
+			speed = speed + 0.01f;
+
 		if(useRigidbody)
 			rigidmember.velocity = currentHeading * speed;
 		else
-			xform.position +=currentHeading * Time.deltaTime * speed;
+			xform.position += currentHeading * Time.deltaTime * speed;
 		if(faceHeading)
 			xform.LookAt(xform.position+currentHeading);
-		
-		if(Vector3.Distance(xform.position,waypointPos)<=waypointRadius)
-		{
-			if(!loop)
-				enabled = false;
-		}
-		//transform.position = Vector3.MoveTowards(transform.position, waypoint.position, speed * Time.deltaTime);
+
 	}
 	
 }
