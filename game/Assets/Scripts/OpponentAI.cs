@@ -51,7 +51,7 @@ public class OpponentAI : MonoBehaviour
 		
 		currentHeading = Vector3.Lerp(currentHeading,targetHeading,damping*Time.deltaTime);
 	}
-	
+
 	// moves us along current heading
 	protected void Update()
 	{
@@ -59,10 +59,11 @@ public class OpponentAI : MonoBehaviour
             return;
 
 		if (waypoint == (GameObject.Find ("Gate")).transform)
-			waypointPos = waypoint.position + new Vector3 (0, 0, 2);
+			waypointPos = waypoint.position;
 		else
 			waypointPos = waypoint.position;
 
+		//waypointPos = Random
 		if(useRigidbody)
 			rigidmember.velocity = currentHeading * speed;
 		else

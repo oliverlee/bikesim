@@ -20,6 +20,7 @@ function Update () {
 	if (Input.GetKeyDown(KeyCode.Space) && flag == false){
 		var opp = Instantiate(opponent, pos, rot);
 		opp.name = "Opponent";
+		flag = true;
 	}
 	timer = Time.deltaTime;		
 }

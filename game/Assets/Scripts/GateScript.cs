@@ -11,7 +11,7 @@ public class GateScript : MonoBehaviour {
 		coll = gameObject.GetComponent<BoxCollider>();
 		coords = TileManager.PosToCoordinates(gameObject.transform.position);
 	}
-	
+
 	// Update is called once per frame
 	void Update () {
 
@@ -26,6 +26,9 @@ public class GateScript : MonoBehaviour {
 	}
 
 	void OnTriggerEnter(Collider other){
+		if (other.gameObject.name.Equals ("Opponent")) {
+			Destroy (other.gameObject);
+				}
 		if (other.gameObject.tag.Equals("Player")){
 			GeneralController.score += 100;
 			int angle_step = Random.Range(-2, 2);
@@ -33,6 +36,7 @@ public class GateScript : MonoBehaviour {
 			relative_movement = Quaternion.Euler(0, rotation, 0) * relative_movement;
 			Coordinates relative_coords = TileManager.PosToCoordinates(relative_movement);
 			MoveGate(relative_coords.X, relative_coords.Z, angle_step*30);
+
 		}
 	}
 }
