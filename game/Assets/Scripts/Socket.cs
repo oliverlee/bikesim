@@ -131,9 +131,11 @@ public class Socket : MonoBehaviour {
 	}
 	void OnApplicationQuit() 
 	{
-		receiveThread.Abort(); 
-		
-		mySocket.Close(); 
+		if (receiveThread != null)
+			receiveThread.Abort(); 
+
+		if (mySocket != null)
+			mySocket.Close(); 
 	}
 
 	
