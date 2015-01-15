@@ -6,6 +6,10 @@ public class GateBattleScript : MonoBehaviour {
 	private Coordinates coords;
 	private TileManager tileManager;
 	private int rotation = 0;
+	private bool flag = false;
+	public GameObject opponent;
+	private Vector3 pos;
+	private Quaternion rot;
 
 	// Use this for initialization
 	void Start () {
@@ -16,7 +20,9 @@ public class GateBattleScript : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-
+		pos = (GameObject.Find("Bike")).transform.position;
+		pos.x = pos.x + 2;
+		rot = Quaternion.identity;
 	}
 
 	private void MoveGate(int relative_x, int relative_z, int relative_rotation){
@@ -33,6 +39,11 @@ public class GateBattleScript : MonoBehaviour {
 			GameObject gate = GameObject.Find ("Gate");
 			Destroy(gate);
 			Destroy(this.gameObject);
+			if (flag == false) { 
+				var opp = Instantiate(opponent, pos, rot);
+				opp.name = "Opponent";
+				flag = true;
+			}
 		}
 	}
 }

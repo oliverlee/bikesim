@@ -7,7 +7,7 @@ public class GateScript : MonoBehaviour {
 	private int rotation = 0;
 	private Vector3 pos;
 	private Quaternion rot;
-	public bool flag = false;
+	private bool flag = false;
 	public GameObject opponent;
 
 	// Use this for initialization
@@ -34,6 +34,7 @@ public class GateScript : MonoBehaviour {
 	void OnTriggerEnter(Collider other){
 		if (other.gameObject.name.Equals ("Opponent")) {
 			Destroy (other.gameObject);
+			MenuSelection.state = GameState.Highscores;
 				}
 		if (other.gameObject.tag.Equals("Player")){
 			GeneralController.score += 100;
