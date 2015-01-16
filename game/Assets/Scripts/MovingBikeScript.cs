@@ -65,6 +65,6 @@ public class MovingBikeScript : MonoBehaviour {
 	}
 	
 	void LateUpdate () {
-		TextGUI.UpdateBikeValuesText (rotation, frame.rigidbody.velocity.magnitude);
+//		TextGUI.UpdateBikeValuesText (rotation, frame.rigidbody.velocity.magnitude);
 	}
 }
