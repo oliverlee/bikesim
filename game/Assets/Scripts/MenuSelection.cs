@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-public enum GameState { Playing, Mainmenu, Howtoplay, Options, Highscores, Credits, Tips }
+public enum GameState { Playing, Mainmenu, Howtoplay, Options, Highscores, Credits }
 public enum SubGameState { None, Free, Racing, Battle }
 
 public class MenuSelection : MonoBehaviour
@@ -18,11 +18,15 @@ public class MenuSelection : MonoBehaviour
 	private float transitionProgress = 0;
 	private int activeIndex = 0;
 	private List<Rect> menu3;
-	private string[] menuElements = new string[] { "Start game", "How to play", "Options", "High scores", "Credits", "Tips" };
+	private string[] menuElements = new string[] { "Start game", "How to play", "Options", "High scores", "Credits", "Bike settings" };
 	private float menuAngleSnap = 30f;
 	private float menuAngle = 0, menuAngleSource = 0, menuAngleTarget = 0;
 	private GUIStyle backgrnd;
 	private GameObject gate, bgate;
+	
+	bool youHaveDied = false;
+	
+	
 	// Use this for initialization
 	void Start()
 	{
@@ -40,8 +44,12 @@ public class MenuSelection : MonoBehaviour
 		backgrnd.stretchWidth = true;
 		backgrnd.border = new RectOffset(0, 0, 0, 0);
 		backgrnd.overflow = new RectOffset(0, 0, 0, 0);
-		GeneralController.addScoreRace ("0");
-		GeneralController.addScoreBattle ("0:00.0");
+		GeneralController.addScoreRace ("200");
+		GeneralController.addScoreRace ("100");
+		GeneralController.addScoreRace ("300");
+		GeneralController.addScoreBattle ("0:20.0");
+		GeneralController.addScoreBattle ("0:10.0");
+		GeneralController.addScoreBattle ("0:30.0");
 		
 		gate = GameObject.Find("RaceGate");
 		bgate = GameObject.Find("BattleGate");
@@ -113,8 +121,8 @@ public class MenuSelection : MonoBehaviour
 				case 4: //Credits
 					state = GameState.Credits;
 					break;
-				case 5: //Tips
-					state = GameState.Tips;
+				case 5: //Bike settings
+					state = GameState.Options;
 					break;
 				default:
 					state = GameState.Mainmenu;
@@ -176,7 +184,7 @@ public class MenuSelection : MonoBehaviour
 					switch (ind) {
 					case 0: //Start game
 						state = GameState.Playing;
-						StartNewGame ();
+						StartNewGame();
 						break;
 					case 1: //How to play
 						state = GameState.Howtoplay;
@@ -201,10 +209,10 @@ public class MenuSelection : MonoBehaviour
 			}
 		} else if (state == GameState.Howtoplay) {
 			GUI.Box (new Rect ((Screen.width - 400) / 2, (Screen.height - 600) / 2, 400, 50), "How to play");
-			GUI.Box (new Rect ((Screen.width - 800) / 2, (Screen.height - 500) / 2, 800, 500), "This game has three game modes:\n\nFree, where you can cycle around and try to get the bike under control.\n\nRace, where you compete against an opponent to be the first to go through a set of gates.\n\nBattle, where you are playing a TRON-like game and have to survive for as long as possible.");
+			GUI.Box (new Rect ((Screen.width - 800) / 2, (Screen.height - 500) / 2, 800, 500), "Sit on the cycle and start pedalling. Don't fall over!");
 		} else if (state == GameState.Options) {
 			GUI.Box (new Rect ((Screen.width - 400) / 2, (Screen.height - 600) / 2, 400, 50), "Options");
-			GUI.Box (new Rect ((Screen.width - 800) / 2, (Screen.height - 500) / 2, 800, 500), "Right now the options menu is not available");
+			GUI.Box (new Rect ((Screen.width - 800) / 2, (Screen.height - 500) / 2, 800, 500), "Select some wonderful options. Maybe the handling of the bike or the color scheme.");
 		} else if (state == GameState.Highscores) {
 			GUI.skin.label.fontSize = 35;
 			GUI.skin.label.normal.textColor = Color.black;
@@ -213,21 +221,15 @@ public class MenuSelection : MonoBehaviour
 			GUI.Box (new Rect ((Screen.width - 800) / 2, (Screen.height - 500) / 2, 800, 500), "These are the last five scores");
 			string scoresRace = "Race:\n";
 			string scoresBattle = "Battle:\n";
-			for (int i = 0; i < 5; i++) {
-				scoresRace += "\n" + GeneralController.scoresRace [i];
-				scoresBattle += "\n" + GeneralController.scoresBattle [i];
+			for(int i = 0; i < 5; i++) {
+				scoresRace += "\n"+GeneralController.scoresRace[i];
+				scoresBattle += "\n"+GeneralController.scoresBattle[i];
 			}
-			GUI.Label (new Rect ((Screen.width - 500) / 2, (Screen.height - 300) / 2, 250, 300), scoresRace);
-			GUI.Label (new Rect (Screen.width / 2, (Screen.height - 300) / 2, 250, 300), scoresBattle);
-			
-			if(Input.GetKeyDown(KeyCode.Return))
-				StartNewGame();
+			GUI.Label (new Rect((Screen.width - 500) / 2, (Screen.height - 200) / 2, 250, 300), scoresRace);
+			GUI.Label (new Rect(Screen.width / 2, (Screen.height - 200) / 2, 250, 300), scoresBattle);
 		} else if (state == GameState.Credits) {
 			GUI.Box (new Rect ((Screen.width - 400) / 2, (Screen.height - 600) / 2, 400, 50), "Credits");
-			GUI.Box (new Rect ((Screen.width - 800) / 2, (Screen.height - 500) / 2, 800, 500), "CycloTron was commissioned by:\nJodi Kooijman\nThom van Beek\n\nThe game was developed by:\nMatthijs Amesz\nGuillermo Currás Lorenzo\nPanchamy Krishnan\nAntony Löbker\nTiago Susano Pinto");
-		} else if( state == GameState.Tips) {
-			GUI.Box (new Rect ((Screen.width - 400) / 2, (Screen.height - 600) / 2, 400, 50), "Tips");
-			GUI.Box (new Rect ((Screen.width - 800) / 2, (Screen.height - 500) / 2, 800, 500), "To start playing, sit on the cycle and start pedalling.\n\nIf you start falling over, follow the arrows on screen to get upright again.\n\nYou can prevent falling over by steering towards the ground and speeding up a bit. This puts your normal force back under your center of mass.");
+			GUI.Box (new Rect ((Screen.width - 800) / 2, (Screen.height - 500) / 2, 800, 500), "CycloTron was commissioned by:\nJodi Kooijman\nThom van Beek\n\n\nThe game was developed by:\nMatthijs Amesz\nGuillermo Currás Lorenzo\nPanchamy Krishnan\nAntony Löbker\nTiago Susano Pinto");
 		} else {
 			GUI.skin.label.fontSize = 50;
 			GUI.skin.label.alignment = TextAnchor.UpperRight;
@@ -242,7 +244,21 @@ public class MenuSelection : MonoBehaviour
 				GUI.Label(new Rect(Screen.width - 300, 10, 290, 60), String.Format("{0}:{1:00}.{2}", mins, secs, msecs));
 			}
 		}
+		
+		if (youHaveDied) {
+			GUI.skin.label.alignment = TextAnchor.MiddleCenter;
+			GUI.Label (new Rect (0, 0, Screen.width, Screen.height), "WASTED");
+			GUI.skin.label.fontSize = 150;
+			
+			//GUI.skin.label.alignment = TextAnchor.MiddleCenter;
+		}
 	}
+	
+	public void setYouHaveDied (bool flag)
+	{
+		youHaveDied = flag;
+	}
+	
 	
 	private Rect buttonAtAngle(float angle)
 	{
@@ -264,8 +280,7 @@ public class MenuSelection : MonoBehaviour
 		return new Rect((Screen.width-width*factor)/2, Screen.height/2 + top*factor, width*factor, height*factor);
 	}
 	
-	private void StartNewGame() {
-		state = GameState.Playing;
+	public void StartNewGame() {
 		//reset bike, opponents, floor, walls, trails, gates, score
 		GameObject bike = GameObject.Find ("Bike");
 		BikePhysicsScript bps = bike.GetComponent<BikePhysicsScript> ();
@@ -295,3 +310,4 @@ public class MenuSelection : MonoBehaviour
 			GameObject.Destroy (opp);
 		}
 	}
+}
