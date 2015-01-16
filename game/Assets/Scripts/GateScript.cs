@@ -2,7 +2,6 @@
 using System.Collections;
 
 public class GateScript : MonoBehaviour {
-	private BoxCollider coll;
 	private Coordinates coords;
 	private int rotation = 0;
 	private Vector3 pos;
@@ -12,7 +11,6 @@ public class GateScript : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
-		coll = gameObject.GetComponent<BoxCollider>();
 		coords = TileManager.PosToCoordinates(gameObject.transform.position);
 	}
 

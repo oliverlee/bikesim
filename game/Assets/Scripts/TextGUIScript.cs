@@ -54,9 +54,9 @@ public class TextGUIScript : MonoBehaviour {
 		mainText.text = "";
 	}
 
-	//TODO: add extra menssages
-	/*public void AddMenssage(string menssage) {
-		menssages.Enqueue (menssage);
+	//TODO: add extra messages
+	/*public void AddMessage(string message) {
+		messages.Enqueue (message);
 	}*/
 
 	public void DisplayFooter(string message, UnityEngine.Color textColor) {

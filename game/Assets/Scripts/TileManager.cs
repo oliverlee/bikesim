@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -25,7 +25,7 @@ public struct Coordinates
 
 public class TileManager : MonoBehaviour
 {
-    public GameObject TilePrefab;
+    public GameObject TilePrefab, ObstaclePrefab;
     public GameObject Player, Floor;
     public Vector3 arenaCenter;
 
@@ -55,7 +55,7 @@ public class TileManager : MonoBehaviour
                 for (int j = playerCoordinates.Z - spawnDist; j <= playerCoordinates.Z + spawnDist; j++)
                 {
                     if (inRange(i, j))
-                        CreateTile(i, 0f, j);
+                        CreateTile(i, 0f, j, false);
                 }
             }
         }
@@ -162,22 +162,32 @@ public class TileManager : MonoBehaviour
                 //Coordinates checkCoords = new Coordinates(i, j);
                 if (inRange(i, j) && !tiles.ContainsKey(new Coordinates(i, j)))
                 {
-                    CreateTile(i, spawnDepth, j);
-                }
-            }
+					//bool obstacle = (i % 10 == 0) && (j % 10 == 0);
+					bool obstacle = false;
+					CreateTile(i, spawnDepth, j, obstacle);
+				}
+			}
         }
     }
 
-    private void CreateTile(int x, float y, int z)
+    private void CreateTile(int x, float y, int z, bool obstacle)
     {
         Coordinates tileCoords = new Coordinates(x, z);
         Vector3 finalPos = CoordinatesToPos(x, z);
         Vector3 startPos = new Vector3(finalPos.x, y, finalPos.z);
 
-        GameObject newT = (GameObject)GameObject.Instantiate(TilePrefab);
+        GameObject newT;
+		Tile newTile;
+		if (obstacle){
+			newT = (GameObject)GameObject.Instantiate(ObstaclePrefab);
+			finalPos.y = 2;
+			newTile = (Tile)newT.GetComponent<Obstacle>();
+		} else {
+			newT = (GameObject)GameObject.Instantiate(TilePrefab);
+			newTile = newT.GetComponent<Tile>();
+		}
         newT.transform.parent = floorT;
         newT.transform.position = startPos;
-        Tile newTile = newT.GetComponent<Tile>();
         newTile.targetPos = finalPos;
         newTile.coordinates = tileCoords;
 
@@ -203,7 +213,7 @@ public class TileManager : MonoBehaviour
         {
             for (int j = -20; j <= 20; j++)
             {
-                CreateTile(coords.X + i, spawnDepth, coords.Z + j);
+                CreateTile(coords.X + i, spawnDepth, coords.Z + j, false);
             }
         }
 		Vector3 center = CoordinatesToPos (coords); //not playerpos, because rounding
@@ -237,7 +247,7 @@ public class TileManager : MonoBehaviour
         {
             Destroy(child.gameObject);
         }
-        CreateTile(playerCoordinates.X, spawnDepth, playerCoordinates.Z);
+        CreateTile(playerCoordinates.X, spawnDepth, playerCoordinates.Z, false);
 
 		GeneralController.battleModeActive = false;
 		//save score to highscores

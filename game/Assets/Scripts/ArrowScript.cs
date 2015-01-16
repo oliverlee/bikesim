@@ -2,62 +2,72 @@
 using System.Collections;
 
 public class ArrowScript : MonoBehaviour {
-	private GameObject gate; 
-	public GameObject camera; 
 
-	public GameObject picLeft;
-	public GameObject picRight;
-	public GameObject picForward;
+	public Texture2D texture;
+	public Camera cam;
+	public GameObject target;
+	public Color color;
 
-	private bool displayingPics;
+	private float angle;
+	private Vector2 size = new Vector2(64, 48);
+	private Vector2 pos = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f);
+	private Rect rect;
+	private Vector2 pivot;
+	private bool draw = true;
+	private Vector3 targetPos;
+	private float screenDiagAngle;
+
 	// Use this for initialization
 	void Start () {
-
+		screenDiagAngle = Mathf.Atan2(Screen.height, Screen.width);
 	}
 	
 	// Update is called once per frame
-	void FixedUpdate() {
-		gate = GameObject.Find("RaceGate");
-		
-		if (gate != null) {
-						if (computeAngle (gate) > 60) {
-				
-								this.transform.LookAt (gate.transform);
-								//transform.rotation = Quaternion.Euler(25, transform.rotation.y, transform.rotation.z);
-								this.gameObject.transform.GetChild (0).renderer.enabled = true;
-				this.gameObject.transform.GetChild (1).renderer.enabled = true; 
-				string texture = "Assets/Textures/div2.png";
+	void Update () {
 
-								Texture2D myTexture = (Texture2D) Resources.LoadAssetAtPath(texture, typeof(Texture2D));
-								Graphics.DrawTexture(new Rect(0,0,100,100),myTexture); 
-//				if (!displayingPics)
-//					StartCoroutine("suggestTurnLeft");
-				
-						} else {
-								this.gameObject.transform.GetChild (0).renderer.enabled = false;
-								this.gameObject.transform.GetChild (1).renderer.enabled = false;
-						}
-				} else
-						GameObject.Destroy (this.gameObject);
+		targetPos = cam.WorldToScreenPoint(target.transform.position + Vector3.up);
+
+		if (targetPos.z < 0 || targetPos.x < 0 || targetPos.x > Screen.width || targetPos.y < 0 || targetPos.y > Screen.height){
+			draw = true;
+			angle = Mathf.Atan2(targetPos.y - Screen.height *0.5f, targetPos.x - Screen.width * 0.5f);
+			if (targetPos.z > 0)
+				angle = -angle;
+			else
+				angle = Mathf.PI-angle;
+		}
+		else {
+			draw = false;
+		}
+		
+		if (Mathf.Abs(angle) < screenDiagAngle){ //to right of screen
+			pos.x = Screen.width - size.x;
+			pos.y = Screen.height * 0.5f + Mathf.Sin(angle) * Screen.width * 0.5f;
+		}
+		else if (Mathf.PI-Mathf.Abs(angle) < screenDiagAngle){ //to left side of screen
+			pos.x = size.x;
+			pos.y = Screen.height * 0.5f + Mathf.Sin(angle) * Screen.width * 0.5f;
+		}
+		else if (angle < 0){ //to top of screen
+			pos.y = size.x;
+			pos.x = Screen.width * 0.5f + Mathf.Cos(angle) * Screen.width * 0.5f;
+		}
+		else { //to bottom of screen
+			pos.y = Screen.height - size.x;
+			pos.x = Screen.width * 0.5f + Mathf.Cos(angle) * Screen.width * 0.5f;
+		}
+
+		rect = new Rect(pos.x - size.x * 0.5f, pos.y - size.y * 0.5f, size.x, size.y);
+		pivot = new Vector2(rect.xMin + rect.width * 0.5f, rect.yMin + rect.height * 0.5f);
 	}
 
-	float computeAngle (GameObject obj)
-	{
-		float angle = Vector3.Angle (camera.transform.forward, obj.transform.position - camera.transform.position);
+	void OnGUI() {
+		if (draw){
+			Matrix4x4 matrixBackup = GUI.matrix;
+			GUIUtility.RotateAroundPivot(Mathf.Rad2Deg*angle, pivot);
+			GUI.color = color;
+			GUI.DrawTexture(rect, texture);
+			GUI.matrix = matrixBackup;
+		}
 
-		return angle;
-	}
-	IEnumerator suggestTurnLeft() {
-		displayingPics = true;
-		picForward.SetActive (true);
-		yield return new WaitForSeconds (3);
-		picForward.SetActive (false);
-		//picLeft.SetActive (true);
-		//yield return new WaitForSeconds (3);
-		//picLeft.SetActive (false);
-		//yield return new WaitForSeconds (3);
-		//displayingPics = false;
-		
-		
 	}
 }
