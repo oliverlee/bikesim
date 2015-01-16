@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using System;
 
 public struct Coordinates
 {
@@ -241,8 +242,12 @@ public class TileManager : MonoBehaviour
 
 		GeneralController.battleModeActive = false;
 		//save score to highscores
-		//float arenaEndTime = Time.time;
-		//float arenaPlayTime = arenaEndTime - GeneralController.battleModeStartTime;
+		int totalsecs = Mathf.RoundToInt((Time.time - GeneralController.battleModeStartTime)*10);
+		int msecs = totalsecs % 10;
+		totalsecs /= 10;
+		int secs = totalsecs % 60;
+		int mins = totalsecs / 60;
+		GeneralController.addScoreBattle(String.Format("{0}:{1:00}.{2}", mins, secs, msecs));
     }
 
 }
