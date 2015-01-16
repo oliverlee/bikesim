@@ -17,8 +17,8 @@ public class ThirdPersonCameraController : MonoBehaviour {
 	}
 
 	void Update() {
-		float f = Input.GetAxis("Fire2");
-		if(f == 1) {
+		//float f = Input.GetMouseButtonDown(1);
+		if(Input.GetMouseButtonDown(1)) {
 			if(isItFPView) {
 				transform.localPosition = ThirdPersonViewPosition;
 				isItFPView = false;
