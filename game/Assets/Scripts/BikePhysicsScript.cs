@@ -319,6 +319,12 @@ public class BikePhysicsScript : MonoBehaviour
     }
 
 	public void ResetBike() {
+		Rigidbody rigid = gameObject.GetComponent<Rigidbody> ();
+		if (rigid != null) {
+			rigid.angularVelocity = Vector3.zero;
+			rigid.velocity = Vector3.zero;
+		}
+
 		ResetBikeRoll();
 		ResetBikePos();
 		ResetBikeSteerAngle();

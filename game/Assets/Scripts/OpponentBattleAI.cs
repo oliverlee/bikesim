@@ -30,12 +30,13 @@ public class OpponentBattleAI : MonoBehaviour {
 		Vector3 vector = Quaternion.Euler(0, xform.rotation.y, 0) * Quaternion.Euler(xform.rotation.eulerAngles) * Vector3.forward;
 
 		target.position = xform.position + vector;
-		float speedDiff = GameObject.Find ("Bike").GetComponent<BikePhysicsScript> ().GetSpeed () - speed;
+		/*float speedDiff = GameObject.Find ("Bike").GetComponent<BikePhysicsScript> ().GetSpeed () - speed;
 		
 		if (speedDiff < 0.0f)
 			speed = speed;
 		else
-			speed = speed + speedDiff;
+			speed = speed + speedDiff;*/
+		speed = 5f; //take a steady speed
 		
 		Vector3 relativePos = target.position - xform.position;
 		Quaternion rotation = Quaternion.LookRotation (relativePos);

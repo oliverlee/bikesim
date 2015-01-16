@@ -40,6 +40,12 @@ public class MenuSelection : MonoBehaviour
         backgrnd.stretchWidth = true;
         backgrnd.border = new RectOffset(0, 0, 0, 0);
         backgrnd.overflow = new RectOffset(0, 0, 0, 0);
+		GeneralController.addScoreRace ("200");
+		GeneralController.addScoreRace ("100");
+		GeneralController.addScoreRace ("300");
+		GeneralController.addScoreBattle ("0:20.0");
+		GeneralController.addScoreBattle ("0:10.0");
+		GeneralController.addScoreBattle ("0:30.0");
     }
 
     // Update is called once per frame
@@ -152,7 +158,7 @@ public class MenuSelection : MonoBehaviour
         GUI.skin.button.hover.background = button;
         GUI.skin.button.hover.textColor = Color.black;
         GUI.skin.box.wordWrap = true;
-        GUI.skin.box.fontSize = 25;
+        GUI.skin.box.fontSize = 35;
         GUI.skin.box.normal.background = button;
         GUI.skin.box.normal.textColor = Color.black;
         if (state == GameState.Mainmenu) {
@@ -195,13 +201,28 @@ public class MenuSelection : MonoBehaviour
 				}
 			}
 		} else if (state == GameState.Howtoplay) {
-			GUI.Box (new Rect ((Screen.width - 600) / 2, (Screen.height - 400) / 2, 600, 400), "How to play\nSit on the cycle and start pedalling. Don't fall over!");
+			GUI.Box (new Rect ((Screen.width - 400) / 2, (Screen.height - 600) / 2, 400, 50), "How to play");
+			GUI.Box (new Rect ((Screen.width - 800) / 2, (Screen.height - 500) / 2, 800, 500), "Sit on the cycle and start pedalling. Don't fall over!");
 		} else if (state == GameState.Options) {
-			GUI.Box (new Rect ((Screen.width - 600) / 2, (Screen.height - 400) / 2, 600, 400), "Select some wonderful options. Maybe the handling of the bike or the color scheme.");
+			GUI.Box (new Rect ((Screen.width - 400) / 2, (Screen.height - 600) / 2, 400, 50), "Options");
+			GUI.Box (new Rect ((Screen.width - 800) / 2, (Screen.height - 500) / 2, 800, 500), "Select some wonderful options. Maybe the handling of the bike or the color scheme.");
 		} else if (state == GameState.Highscores) {
-			GUI.Box (new Rect ((Screen.width - 600) / 2, (Screen.height - 400) / 2, 600, 400), "These are the last three scores.\n\n1234\n2345 <- highest\n0123");
+			GUI.skin.label.fontSize = 35;
+			GUI.skin.label.normal.textColor = Color.black;
+			GUI.skin.label.alignment = TextAnchor.MiddleCenter;
+			GUI.Box (new Rect ((Screen.width - 400) / 2, (Screen.height - 600) / 2, 400, 50), "High scores");
+			GUI.Box (new Rect ((Screen.width - 800) / 2, (Screen.height - 500) / 2, 800, 500), "These are the last five scores");
+			string scoresRace = "Race:\n";
+			string scoresBattle = "Battle:\n";
+			for(int i = 0; i < 5; i++) {
+				scoresRace += "\n"+GeneralController.scoresRace[i];
+				scoresBattle += "\n"+GeneralController.scoresBattle[i];
+			}
+			GUI.Label (new Rect((Screen.width - 500) / 2, (Screen.height - 200) / 2, 250, 300), scoresRace);
+			GUI.Label (new Rect(Screen.width / 2, (Screen.height - 200) / 2, 250, 300), scoresBattle);
 		} else if (state == GameState.Credits) {
-			GUI.Box (new Rect ((Screen.width - 600) / 2, (Screen.height - 400) / 2, 600, 400), "These amazing people made this game:\nPan\nTia\nGui\nMat\nAnt\n\n\nThanks to:\nJod\nTho");
+			GUI.Box (new Rect ((Screen.width - 400) / 2, (Screen.height - 600) / 2, 400, 50), "Credits");
+			GUI.Box (new Rect ((Screen.width - 800) / 2, (Screen.height - 500) / 2, 800, 500), "CycloTron was commissioned by:\nJodi Kooijman\nThom van Beek\n\n\nThe game was developed by:\nMatthijs Amesz\nGuillermo Currás Lorenzo\nPanchamy Krishnan\nAntony Löbker\nTiago Susano Pinto");
 		} else {
 			GUI.skin.label.fontSize = 50;
 			GUI.skin.label.alignment = TextAnchor.UpperRight;
