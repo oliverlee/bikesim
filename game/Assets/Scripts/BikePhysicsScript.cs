@@ -115,6 +115,11 @@ public class BikePhysicsScript : MonoBehaviour
 		this.transform.position = Vector3.MoveTowards(this.transform.position,
                                                       this.transform.position + vector,
                                                       speed * Time.deltaTime);
+		Vector3 pos = this.transform.position;		
+
+		pos.y = 0;
+
+		this.transform.position = pos;
 
         this.transform.rotation = Quaternion.RotateTowards(this.transform.rotation,
                                                            angle,
@@ -285,7 +290,6 @@ public class BikePhysicsScript : MonoBehaviour
 	void OnCollisionEnter (Collision col)
 	{
 		if (col.collider.gameObject.name.Equals ("Cube") && !dying) {
-			Debug.Log ("Collision");
 			StartCoroutine("dieFunction");
 		}
 	}
