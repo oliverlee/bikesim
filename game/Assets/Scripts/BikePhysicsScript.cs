@@ -61,6 +61,16 @@ public class BikePhysicsScript : MonoBehaviour
 		Network = GameObject.Find ("Network").GetComponent<Socket> ();
     }
 
+	void Update()
+	{
+		if (Input.GetKey(KeyCode.R))
+			canRoll = !canRoll;
+		if (Input.GetKey (KeyCode.Plus))
+			gravity = gravity + 0.25f;
+		if (Input.GetKey (KeyCode.Minus))
+			gravity = gravity - 0.25f;
+	}
+
     // Update is called once per frame
     void FixedUpdate()
     {
@@ -71,6 +81,9 @@ public class BikePhysicsScript : MonoBehaviour
         float v = Input.GetAxis("Vertical");
 
 		float f = Input.GetAxis("Fire1");
+		
+
+
 		
 		if(f ==1) {
 			ResetBike();

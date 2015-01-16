@@ -43,10 +43,10 @@ public class Socket : MonoBehaviour {
 	
 	
 	void Start() {
-		//receiveThread = new Thread(
-		//	new ThreadStart(ReceiveData));
-		//receiveThread.IsBackground = true;
-		//receiveThread.Start();
+//		receiveThread = new Thread(
+//			new ThreadStart(ReceiveData));
+//		receiveThread.IsBackground = true;
+//		receiveThread.Start();
 		
 	}
 
