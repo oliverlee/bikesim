@@ -291,17 +291,28 @@ public class BikePhysicsScript : MonoBehaviour
 	{
 
 		Color screenTint = new Color (1, 0, 0, 1f);
+		Color noTint = new Color (0.2f, 0.2f, 0.2f, 1f);
 		RenderSettings.ambientLight = screenTint;
 //		RenderSettings.fogColor = screenTint;
 //		RenderSettings.fogDensity = .9f;
 		//GUIscript.DisplayMessage ("WASTED", Color.red);
 
-		GameObject.Find ("Third Person Camera").GetComponent<DieScript>().setYouHaveDied(true);
+		MenuSelection menuObject = GameObject.Find ("Third Person Camera").GetComponent<MenuSelection> ();
+
+		menuObject.setYouHaveDied(true);
 
 		Time.timeScale = 0.5f;
 		yield return new WaitForSeconds (1f);
 		Time.timeScale = 1f;
-		Application.LoadLevel ("CyclingTest");
+		if (MenuSelection.substate == SubGameState.Free)
+			menuObject.StartNewGame ();
+		else
+			MenuSelection.state = GameState.Highscores;
+
+
+
+		menuObject.setYouHaveDied (false);
+		RenderSettings.ambientLight = noTint;
 	
 	}
 
