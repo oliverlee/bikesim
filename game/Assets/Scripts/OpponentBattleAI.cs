@@ -50,5 +50,11 @@ public class OpponentBattleAI : MonoBehaviour {
 		
 
 	}
+
+	public void OnCollisionEnter(Collision collision)
+	{
+		if(collision.collider.name.Equals("Cube"))
+			Destroy (this.gameObject);
+	}
 }
 
