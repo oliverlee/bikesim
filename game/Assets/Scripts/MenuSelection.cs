@@ -22,6 +22,7 @@ public class MenuSelection : MonoBehaviour
     private float menuAngleSnap = 30f;
     private float menuAngle = 0, menuAngleSource = 0, menuAngleTarget = 0;
     private GUIStyle backgrnd;
+	private GameObject gate, bgate;
 
     // Use this for initialization
     void Start()
@@ -46,6 +47,9 @@ public class MenuSelection : MonoBehaviour
 		GeneralController.addScoreBattle ("0:20.0");
 		GeneralController.addScoreBattle ("0:10.0");
 		GeneralController.addScoreBattle ("0:30.0");
+
+		gate = GameObject.Find("RaceGate");
+		bgate = GameObject.Find("BattleGate");
     }
 
     // Update is called once per frame
@@ -150,7 +154,7 @@ public class MenuSelection : MonoBehaviour
                 GUI.DrawTexture(new Rect(0, newy, Screen.width, newHeight), background);
             }
         }
-        GUI.Box(new Rect(0, 0, 150, 50), state.ToString());
+        //GUI.Box(new Rect(0, 0, 150, 50), state.ToString());
 
         GUI.skin.button.fontSize = 25;
         GUI.skin.button.normal.background = button;
@@ -264,9 +268,29 @@ public class MenuSelection : MonoBehaviour
 		GameObject bike = GameObject.Find ("Bike");
 		BikePhysicsScript bps = bike.GetComponent<BikePhysicsScript> ();
 		bps.ResetBike ();
+		Trail trl = bike.GetComponent<Trail> ();
+		trl.Reset();
+
+		GeneralController.score = 0;
 
 		TileManager tileManager = gameObject.GetComponent<TileManager> ();
 		if (substate == SubGameState.Battle)
 			tileManager.RemoveArena ();
+		
+		if (gate != null) {
+			gate.SetActive(true);
+			GateScript gts = gate.GetComponent<GateScript> ();
+			gts.Reset ();
+		}
+		if (bgate != null) {
+			bgate.SetActive(true);
+			GateBattleScript gbs = bgate.GetComponent<GateBattleScript> ();
+			gbs.Reset ();
+		}
+
+		GameObject opp = GameObject.Find("Opponent");
+		if (opp != null) {
+			GameObject.Destroy (opp);
+		}
 	}
 }

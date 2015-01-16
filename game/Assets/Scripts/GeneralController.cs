@@ -25,14 +25,14 @@ public class GeneralController : MonoBehaviour {
 	}*/
 
 	public static void addScoreRace(string s) {
-		for (int i = 3; i >= 0; i++) {
+		for (int i = 3; i >= 0; i--) {
 			scoresRace[i+1] = scoresRace[i];
 		}
 		scoresRace [0] = s;
 	}
 
 	public static void addScoreBattle(string s) {
-		for (int i = 3; i >= 0; i++) {
+		for (int i = 3; i >= 0; i--) {
 			scoresBattle[i+1] = scoresBattle[i];
 		}
 		scoresBattle [0] = s;
