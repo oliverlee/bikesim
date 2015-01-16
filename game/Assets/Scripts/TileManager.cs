@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
+using System;
 
 public struct Coordinates
 {
@@ -25,7 +26,7 @@ public struct Coordinates
 
 public class TileManager : MonoBehaviour
 {
-	public GameObject TilePrefab, ObstaclePrefab;
+	public GameObject TilePrefab;
 	public GameObject Player, Floor;
 	public Vector3 arenaCenter;
 	
@@ -47,7 +48,7 @@ public class TileManager : MonoBehaviour
 		playerCoordinates = PosToCoordinates(playerPos);
 		trailScript = Player.GetComponent<Trail> ();
 		
-		if (MenuSelection.substate == SubGameState.Free)
+		if (MenuSelection.substate == SubGameState.Free || MenuSelection.substate == SubGameState.Racing)
 		{
 			//create initial tiles
 			for (int i = playerCoordinates.X - spawnDist; i <= playerCoordinates.X + spawnDist; i++)
@@ -55,7 +56,7 @@ public class TileManager : MonoBehaviour
 				for (int j = playerCoordinates.Z - spawnDist; j <= playerCoordinates.Z + spawnDist; j++)
 				{
 					if (inRange(i, j))
-						CreateTile(i, 0f, j, false);
+						CreateTile(i, 0f, j);
 				}
 			}
 		}
@@ -131,13 +132,6 @@ public class TileManager : MonoBehaviour
 				UpdateTiles();
 			}
 		}
-		if (Input.GetKeyDown(KeyCode.Z) || Input.GetKeyDown(KeyCode.X))
-		{
-			if (MenuSelection.substate == SubGameState.Free)
-				CreateArena();
-			else
-				RemoveArena();
-		}
 	}
 	
 	void UpdateTiles()
@@ -162,32 +156,22 @@ public class TileManager : MonoBehaviour
 				//Coordinates checkCoords = new Coordinates(i, j);
 				if (inRange(i, j) && !tiles.ContainsKey(new Coordinates(i, j)))
 				{
-					//bool obstacle = (i % 10 == 0) && (j % 10 == 0);
-					bool obstacle = false;
-					CreateTile(i, spawnDepth, j, obstacle);
+					CreateTile(i, spawnDepth, j);
 				}
 			}
 		}
 	}
 	
-	private void CreateTile(int x, float y, int z, bool obstacle)
+	private void CreateTile(int x, float y, int z)
 	{
 		Coordinates tileCoords = new Coordinates(x, z);
 		Vector3 finalPos = CoordinatesToPos(x, z);
 		Vector3 startPos = new Vector3(finalPos.x, y, finalPos.z);
 		
-		GameObject newT;
-		Tile newTile;
-		if (obstacle){
-			newT = (GameObject)GameObject.Instantiate(ObstaclePrefab);
-			finalPos.y = 2;
-			newTile = (Tile)newT.GetComponent<Obstacle>();
-		} else {
-			newT = (GameObject)GameObject.Instantiate(TilePrefab);
-			newTile = newT.GetComponent<Tile>();
-		}
+		GameObject newT = (GameObject)GameObject.Instantiate(TilePrefab);
 		newT.transform.parent = floorT;
 		newT.transform.position = startPos;
+		Tile newTile = newT.GetComponent<Tile>();
 		newTile.targetPos = finalPos;
 		newTile.coordinates = tileCoords;
 		
