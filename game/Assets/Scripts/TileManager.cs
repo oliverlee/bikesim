@@ -32,7 +32,7 @@ public class TileManager : MonoBehaviour
     private static Vector3 playerPos;
     private Vector3 lastPos = Vector3.zero;
     private Transform floorT;
-    private int spawnDist = 8, deleteDist = 8;
+    private int spawnDist = 10, deleteDist = 10;
     private static float tileSizeX = 4f / Mathf.Sqrt(3f), tileSizeZ = 2f;
     private float spawnDepth = -4f;
     private Coordinates playerCoordinates;

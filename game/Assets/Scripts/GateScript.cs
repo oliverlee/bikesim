@@ -5,6 +5,10 @@ public class GateScript : MonoBehaviour {
 	private BoxCollider coll;
 	private Coordinates coords;
 	private int rotation = 0;
+	private Vector3 pos;
+	private Quaternion rot;
+	private bool flag = false;
+	public GameObject opponent;
 
 	// Use this for initialization
 	void Start () {
@@ -14,7 +18,9 @@ public class GateScript : MonoBehaviour {
 
 	// Update is called once per frame
 	void Update () {
-
+		pos = (GameObject.Find("Bike")).transform.position;
+		pos.x = pos.x + 2;
+		rot = Quaternion.identity;
 	}
 
 	private void MoveGate(int relative_x, int relative_z, int relative_rotation){
@@ -28,6 +34,7 @@ public class GateScript : MonoBehaviour {
 	void OnTriggerEnter(Collider other){
 		if (other.gameObject.name.Equals ("Opponent")) {
 			Destroy (other.gameObject);
+			MenuSelection.state = GameState.Highscores;
 				}
 		if (other.gameObject.tag.Equals("Player")){
 			GeneralController.score += 100;
@@ -36,7 +43,11 @@ public class GateScript : MonoBehaviour {
 			relative_movement = Quaternion.Euler(0, rotation, 0) * relative_movement;
 			Coordinates relative_coords = TileManager.PosToCoordinates(relative_movement);
 			MoveGate(relative_coords.X, relative_coords.Z, angle_step*30);
-
+			if (flag == false) { 
+				var opp = Instantiate(opponent, pos, rot);
+				opp.name = "Opponent";
+				flag = true;
+			}
 		}
 	}
 }

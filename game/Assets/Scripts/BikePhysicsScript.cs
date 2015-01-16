@@ -14,8 +14,15 @@ public class BikePhysicsScript : MonoBehaviour
 	public Trail trailScript;
 
     public float gravity;
+	public float multHelpToStabilize;
 	public bool canRoll;
 	public bool useNetwork;
+	public bool useSteeringSuggestions;
+
+	public GameObject picLeft;
+	public GameObject picRight;
+	public GameObject picForward;
+	private bool displayingPics = false;
 
     private float forkRotation;
     private float speed;
@@ -154,6 +161,13 @@ public class BikePhysicsScript : MonoBehaviour
             rollAngularSpeed += rollAngularAcc * Time.deltaTime;
         }
 
+		if(multHelpToStabilize > 1) {
+			if((rollAngularAcc > 0 && this.transform.rotation.eulerAngles.z > 180 && this.transform.rotation.eulerAngles.z < 360) ||
+			   (rollAngularAcc < 0 && this.transform.rotation.eulerAngles.z < 180 && this.transform.rotation.eulerAngles.z > 0)) {
+				rollAngularAcc *= multHelpToStabilize;
+			}
+		}
+
 		//TODO: improve this
         if (rollAngularSpeed != 0 && canRoll)
         {
@@ -163,9 +177,76 @@ public class BikePhysicsScript : MonoBehaviour
 
             this.transform.rotation = Quaternion.RotateTowards(this.transform.rotation,
                                                                angle,
-                                                               rollAngularSpeed);
+			                                                   rollAngularSpeed);
+
+			if (useSteeringSuggestions)
+			{
+				Debug.Log ("roll speed:" + rollAngularSpeed + ", fork rot:" + forkRotation);
+				if(rollAngularSpeed > 0.3 && forkRotation > 0) {
+					displayingPics = true;
+					picLeft.SetActive(true);
+				} else if(rollAngularSpeed < - 0.3 && forkRotation < 0) {
+					displayingPics = true;
+					picRight.SetActive (true);
+				} else {
+					displayingPics = false;
+					picLeft.SetActive (false);
+					picRight.SetActive (false);
+				}
+				/*
+				if (rollAngularSpeed > 0.5 && forkRotation > 0 && !displayingPics)
+				{
+					StartCoroutine("suggestTurnLeft");	
+				}
+
+				else if (rollAngularSpeed < - 0.5 && forkRotation < 0 && !displayingPics)
+				{
+					StartCoroutine("suggestTurnRight");
+				}
+				*/
+			}
         }
     }
+
+		IEnumerator suggestTurnLeft() {
+				Time.timeScale = 0.1f;
+				displayingPics = true;
+				picForward.SetActive (true);
+				yield return new WaitForSeconds (0.05f);
+				picForward.SetActive (false);
+				picLeft.SetActive (true);
+				yield return new WaitForSeconds (0.05f);
+				picLeft.SetActive (false);
+				yield return new WaitForSeconds (0.05f);
+				picForward.SetActive (false);
+				picLeft.SetActive (true);
+				yield return new WaitForSeconds (0.05f);
+				picLeft.SetActive (false);
+				yield return new WaitForSeconds (0.02f);
+				Time.timeScale = 1;
+				yield return new WaitForSeconds (1);
+				displayingPics = false;
+			}
+
+		IEnumerator suggestTurnRight() {
+			Time.timeScale = 0.1f;
+			displayingPics = true;
+			picForward.SetActive (true);
+			yield return new WaitForSeconds (0.05f);
+			picForward.SetActive (false);
+			picRight.SetActive (true);
+			yield return new WaitForSeconds (0.05f);
+			picRight.SetActive (false);
+			yield return new WaitForSeconds (0.05f);
+			picForward.SetActive (false);
+			picRight.SetActive (true);
+			yield return new WaitForSeconds (0.05f);
+			picRight.SetActive (false);
+			yield return new WaitForSeconds (0.02f);
+			Time.timeScale = 1;
+			yield return new WaitForSeconds (1);
+			displayingPics = false;
+		}
 
     void ApplyRotation()
     {
@@ -238,6 +319,12 @@ public class BikePhysicsScript : MonoBehaviour
     }
 
 	public void ResetBike() {
+		Rigidbody rigid = gameObject.GetComponent<Rigidbody> ();
+		if (rigid != null) {
+			rigid.angularVelocity = Vector3.zero;
+			rigid.velocity = Vector3.zero;
+		}
+
 		ResetBikeRoll();
 		ResetBikePos();
 		ResetBikeSteerAngle();
@@ -264,6 +351,10 @@ public class BikePhysicsScript : MonoBehaviour
 
 	void ResetBikeSteerAngle() {
 		forkRotation = 0.0f;
+	}
+
+	public float GetSpeed() {
+		return speed;
 	}
 
     void LateUpdate()
