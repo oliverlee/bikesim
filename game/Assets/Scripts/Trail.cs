@@ -13,6 +13,10 @@ public class Trail : MonoBehaviour
 	{
 		oldPosition = rearWheel.position + Vector3.back;
 		lastPosition = rearWheel.position;
+
+
+		if (trailParent == null)
+						trailParent = GameObject.Find ("Trail").transform;
 	}
 	
 	// Update is called once per frame

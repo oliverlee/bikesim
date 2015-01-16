@@ -287,7 +287,7 @@ public class MenuSelection : MonoBehaviour
 		bps.ResetBike ();
 		Trail trl = bike.GetComponent<Trail> ();
 		trl.Reset();
-		
+
 		GeneralController.score = 0;
 		
 		TileManager tileManager = gameObject.GetComponent<TileManager> ();
@@ -308,6 +308,11 @@ public class MenuSelection : MonoBehaviour
 		GameObject opp = GameObject.Find("Opponent");
 		if (opp != null) {
 			GameObject.Destroy (opp);
+		}
+
+		GameObject batopp = GameObject.Find("BattleOpponent");
+		if (batopp != null) {
+			GameObject.Destroy (batopp);
 		}
 	}
 }
