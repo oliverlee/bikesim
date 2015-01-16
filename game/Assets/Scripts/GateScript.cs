@@ -5,9 +5,6 @@ public class GateScript : MonoBehaviour {
 	private Coordinates coords;
 	private int rotation = 0;
 
-	public Camera cam;
-	public GUIText arrowText;
-
 	// Use this for initialization
 	void Start () {
 		coords = TileManager.PosToCoordinates(gameObject.transform.position);
@@ -15,12 +12,6 @@ public class GateScript : MonoBehaviour {
 	
 	// Update is called once per frame
 	void Update () {
-		Vector3 screenPos = cam.WorldToScreenPoint(gameObject.transform.position);
-		arrowText.text = screenPos.ToString();
-		float arrowAngle = 0;
-		if (screenPos.x < 0 || screenPos.x > Screen.width || screenPos.y < 0 || screenPos.y > Screen.height){
-			arrowAngle = Mathf.Atan2(screenPos.y, screenPos.x);
-		}
 
 	}
 

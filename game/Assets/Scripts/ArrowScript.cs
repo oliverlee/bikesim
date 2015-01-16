@@ -20,15 +20,12 @@ public class ArrowScript : MonoBehaviour {
 	// Use this for initialization
 	void Start () {
 		screenDiagAngle = Mathf.Atan2(Screen.height, Screen.width);
-		Debug.Log (screenDiagAngle);
 	}
 	
 	// Update is called once per frame
 	void Update () {
 
 		targetPos = cam.WorldToScreenPoint(target.transform.position + Vector3.up);
-		rect = new Rect(pos.x - size.x * 0.5f, pos.y - size.y * 0.5f, size.x, size.y);
-		pivot = new Vector2(rect.xMin + rect.width * 0.5f, rect.yMin + rect.height * 0.5f);
 
 		if (targetPos.x < 0 || targetPos.x > Screen.width || targetPos.y < 0 || targetPos.y > Screen.height){
 			draw = true;
@@ -41,36 +38,35 @@ public class ArrowScript : MonoBehaviour {
 		else {
 			draw = false;
 		}
-
-
-
+		
 		if (Mathf.Abs(angle) < screenDiagAngle){ //to right of screen
 			pos.x = Screen.width - size.x;
 			pos.y = Screen.height * 0.5f + Mathf.Sin(angle) * Screen.width * 0.5f;
 		}
-		else if (Mathf.PI-Mathf.Abs(angle) < screenDiagAngle){
+		else if (Mathf.PI-Mathf.Abs(angle) < screenDiagAngle){ //to left side of screen
 			pos.x = size.x;
 			pos.y = Screen.height * 0.5f + Mathf.Sin(angle) * Screen.width * 0.5f;
 		}
-		else if (angle < 0){
+		else if (angle < 0){ //to top of screen
 			pos.y = size.x;
 			pos.x = Screen.width * 0.5f + Mathf.Cos(angle) * Screen.width * 0.5f;
 		}
-		else{
+		else { //to bottom of screen
 			pos.y = Screen.height - size.x;
 			pos.x = Screen.width * 0.5f + Mathf.Cos(angle) * Screen.width * 0.5f;
 		}
 
-		Debug.Log ("angle: " + angle + " Pos: " + pos.ToString());
+		rect = new Rect(pos.x - size.x * 0.5f, pos.y - size.y * 0.5f, size.x, size.y);
+		pivot = new Vector2(rect.xMin + rect.width * 0.5f, rect.yMin + rect.height * 0.5f);
 	}
 
 	void OnGUI() {
 		if (draw){
-		Matrix4x4 matrixBackup = GUI.matrix;
-		GUIUtility.RotateAroundPivot(Mathf.Rad2Deg*angle, pivot);
-		GUI.color = color;
-		GUI.DrawTexture(rect, texture);
-		GUI.matrix = matrixBackup;
+			Matrix4x4 matrixBackup = GUI.matrix;
+			GUIUtility.RotateAroundPivot(Mathf.Rad2Deg*angle, pivot);
+			GUI.color = color;
+			GUI.DrawTexture(rect, texture);
+			GUI.matrix = matrixBackup;
 		}
 	}
 }
