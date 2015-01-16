@@ -46,6 +46,11 @@ public class Trail : MonoBehaviour
 		
 		var cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
 		//cube.AddComponent(Rigidbody);
+
+		if(this.gameObject.name.Equals("Bike"))
+		   cube.renderer.material.color = Color.cyan;
+		else
+		   cube.renderer.material.color = Color.magenta;
 		
 		cube.transform.parent = trailParent;
 		cube.transform.localScale = new Vector3(0.2f, 1, distance + 0.1f);
