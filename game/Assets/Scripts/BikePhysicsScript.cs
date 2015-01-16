@@ -41,6 +41,11 @@ public class BikePhysicsScript : MonoBehaviour
     private float speedUnit = 0.1f;
 	private float brakeUnit = 0.5f;
 
+	public TextGUIScript GUIscript;
+
+
+	private bool youHaveDied = false;
+
     // Use this for initialization
     void Start()
     {
@@ -119,7 +124,14 @@ public class BikePhysicsScript : MonoBehaviour
         ApplyInstability(); //if the center of mass isn't over the wheels, it will fall
 
         modelFrontFork.localRotation = Quaternion.AngleAxis(forkRotation, new Vector3(0, 3, -1));
-    }
+    
+		Debug.Log (this.transform.rotation.eulerAngles);
+
+		if( this.transform.rotation.eulerAngles.z > 85 && this.transform.rotation.eulerAngles.z < 275)
+		   StartCoroutine("dieFunction");
+
+		  
+	}
 
     void ApplyGravity()
     {
@@ -161,7 +173,9 @@ public class BikePhysicsScript : MonoBehaviour
             rollAngularSpeed += rollAngularAcc * Time.deltaTime;
         }
 
+		//Debug.Log(rollAngularAcc);
 		if(multHelpToStabilize > 1) {
+
 			if((rollAngularAcc > 0 && this.transform.rotation.eulerAngles.z > 180 && this.transform.rotation.eulerAngles.z < 360) ||
 			   (rollAngularAcc < 0 && this.transform.rotation.eulerAngles.z < 180 && this.transform.rotation.eulerAngles.z > 0)) {
 				rollAngularAcc *= multHelpToStabilize;
@@ -181,7 +195,6 @@ public class BikePhysicsScript : MonoBehaviour
 
 			if (useSteeringSuggestions)
 			{
-				Debug.Log ("roll speed:" + rollAngularSpeed + ", fork rot:" + forkRotation);
 				if(rollAngularSpeed > 0.3 && forkRotation > 0) {
 					displayingPics = true;
 					picLeft.SetActive(true);
@@ -267,6 +280,30 @@ public class BikePhysicsScript : MonoBehaviour
 		}
     }
 
+	void OnCollisionEnter (Collision col)
+	{
+		if (col.collider.gameObject.name.Equals ("Cube")) {
+			StartCoroutine("dieFunction");
+		}
+	}
+
+	IEnumerator dieFunction()
+	{
+
+		Color screenTint = new Color (1, 0, 0, 1f);
+		RenderSettings.ambientLight = screenTint;
+//		RenderSettings.fogColor = screenTint;
+//		RenderSettings.fogDensity = .9f;
+		//GUIscript.DisplayMessage ("WASTED", Color.red);
+
+		GameObject.Find ("Third Person Camera").GetComponent<DieScript>().setYouHaveDied(true);
+
+		Time.timeScale = 0.5f;
+		yield return new WaitForSeconds (1f);
+		Time.timeScale = 1f;
+		Application.LoadLevel ("CyclingTest");
+	
+	}
 
     void UpdateRotation(float rot)
     {
@@ -359,6 +396,6 @@ public class BikePhysicsScript : MonoBehaviour
 
     void LateUpdate()
     {
-        TextGUI.UpdateBikeValuesText(forkRotation, speed);
+        //TextGUI.UpdateBikeValuesText(forkRotation, speed);
     }
 }
