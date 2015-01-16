@@ -3,8 +3,8 @@ using System.Collections;
 
 public class ThirdPersonCameraController : MonoBehaviour {
 
-	public Vector3 ThirdPersonView;
-	public Vector3 FirstPersonView;
+	public Vector3 ThirdPersonViewPosition;
+	public Vector3 FirstPersonViewPosition;
 
 	private bool isItFPView;
 	/*public GameObject player;
@@ -20,10 +20,10 @@ public class ThirdPersonCameraController : MonoBehaviour {
 		float f = Input.GetAxis("Fire2");
 		if(f == 1) {
 			if(isItFPView) {
-				transform.localPosition = ThirdPersonView;
+				transform.localPosition = ThirdPersonViewPosition;
 				isItFPView = false;
 			} else {
-				transform.localPosition = FirstPersonView;
+				transform.localPosition = FirstPersonViewPosition;
 				isItFPView = true;
 			}
 		}
