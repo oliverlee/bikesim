@@ -43,6 +43,8 @@ public class BikePhysicsScript : MonoBehaviour
 
 	public TextGUIScript GUIscript;
 
+	private bool dying = false;
+
 
 	private bool youHaveDied = false;
 
@@ -113,6 +115,11 @@ public class BikePhysicsScript : MonoBehaviour
 		this.transform.position = Vector3.MoveTowards(this.transform.position,
                                                       this.transform.position + vector,
                                                       speed * Time.deltaTime);
+		Vector3 pos = this.transform.position;		
+
+		pos.y = 0;
+
+		this.transform.position = pos;
 
         this.transform.rotation = Quaternion.RotateTowards(this.transform.rotation,
                                                            angle,
@@ -124,12 +131,12 @@ public class BikePhysicsScript : MonoBehaviour
         ApplyInstability(); //if the center of mass isn't over the wheels, it will fall
 
         modelFrontFork.localRotation = Quaternion.AngleAxis(forkRotation, new Vector3(0, 3, -1));
-    
-		Debug.Log (this.transform.rotation.eulerAngles);
-
-		if( this.transform.rotation.eulerAngles.z > 85 && this.transform.rotation.eulerAngles.z < 275)
-		   StartCoroutine("dieFunction");
-
+   
+		if (this.transform.rotation.eulerAngles.z > 85 && this.transform.rotation.eulerAngles.z < 275) {
+			this.transform.rotation = Quaternion.identity;
+			StartCoroutine ("dieFunction");
+		
+		}
 		  
 	}
 
@@ -282,27 +289,41 @@ public class BikePhysicsScript : MonoBehaviour
 
 	void OnCollisionEnter (Collision col)
 	{
-		if (col.collider.gameObject.name.Equals ("Cube")) {
+		if (col.collider.gameObject.name.Equals ("Cube") && !dying) {
 			StartCoroutine("dieFunction");
 		}
 	}
 
 	IEnumerator dieFunction()
 	{
-
-		Color screenTint = new Color (1, 0, 0, 1f);
-		RenderSettings.ambientLight = screenTint;
+		dying = true;
+		if (MenuSelection.state == GameState.Playing) {
+						Color screenTint = new Color (1, 0, 0, 1f);
+						Color noTint = new Color (0.2f, 0.2f, 0.2f, 1f);
+						RenderSettings.ambientLight = screenTint;
 //		RenderSettings.fogColor = screenTint;
 //		RenderSettings.fogDensity = .9f;
-		//GUIscript.DisplayMessage ("WASTED", Color.red);
+						//GUIscript.DisplayMessage ("WASTED", Color.red);
 
-		GameObject.Find ("Third Person Camera").GetComponent<DieScript>().setYouHaveDied(true);
+						MenuSelection menuObject = GameObject.Find ("Third Person Camera").GetComponent<MenuSelection> ();
+						menuObject.setYouHaveDied (true);
 
-		Time.timeScale = 0.5f;
-		yield return new WaitForSeconds (1f);
-		Time.timeScale = 1f;
-		Application.LoadLevel ("CyclingTest");
-	
+
+						Time.timeScale = 0.5f;
+						yield return new WaitForSeconds (1f);
+						Time.timeScale = 1f;
+						if (MenuSelection.substate == SubGameState.Free)
+								menuObject.StartNewGame ();
+						else {
+								GeneralController.addScoreRace ("" + GeneralController.score);
+								MenuSelection.state = GameState.Highscores;
+						}
+
+
+						menuObject.setYouHaveDied (false);
+						RenderSettings.ambientLight = noTint;
+				}
+		dying = false;
 	}
 
     void UpdateRotation(float rot)

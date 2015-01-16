@@ -2,7 +2,6 @@
 using System.Collections;
 
 public class GateScript : MonoBehaviour {
-	private BoxCollider coll;
 	private Coordinates coords;
 	private int rotation = 0;
 	private Vector3 defaultPos;
@@ -13,7 +12,6 @@ public class GateScript : MonoBehaviour {
 
 	// Use this for initialization
 	void Start () {
-		coll = gameObject.GetComponent<BoxCollider>();
 		coords = TileManager.PosToCoordinates(gameObject.transform.position);
 		defaultPos = transform.position;
 		defaultRot = transform.rotation;
@@ -42,6 +40,7 @@ public class GateScript : MonoBehaviour {
 			MenuSelection.state = GameState.Highscores;
 		}
 		if (other.gameObject.tag.Equals("Player")){
+			MenuSelection.substate = SubGameState.Racing;
 			GeneralController.score += 100;
 			int angle_step = Random.Range(-2, 2);
 			Vector3 relative_movement = TileManager.CoordinatesToPos(5*angle_step, 10);

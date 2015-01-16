@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using System.Collections;
 using System;
 using System.Collections.Generic;
@@ -9,172 +9,173 @@ public enum SubGameState { None, Free, Racing, Battle }
 
 public class MenuSelection : MonoBehaviour
 {
-    public static GameState state = GameState.Mainmenu;
+	public static GameState state = GameState.Mainmenu;
 	public static SubGameState substate = SubGameState.Free;
-    public Texture2D background, button;
+	public Texture2D background, button;
 	public string currentscore = "";
-	public AudioClip menuAudio;
-	public AudioClip playingAudio;
-
-    private bool transitioning = false;
-    private float transitionProgress = 0;
-    private int activeIndex = 0;
-    private List<Rect> menu3;
-    private string[] menuElements = new string[] { "Start game", "How to play", "Options", "High scores", "Credits", "Bike settings" };
-    private float menuAngleSnap = 30f;
-    private float menuAngle = 0, menuAngleSource = 0, menuAngleTarget = 0;
-    private GUIStyle backgrnd;
+	
+	private bool transitioning = false;
+	private float transitionProgress = 0;
+	private int activeIndex = 0;
+	private List<Rect> menu3;
+	private string[] menuElements = new string[] { "Start game", "How to play", "Options", "High scores", "Credits", "Bike settings" };
+	private float menuAngleSnap = 30f;
+	private float menuAngle = 0, menuAngleSource = 0, menuAngleTarget = 0;
+	private GUIStyle backgrnd;
 	private GameObject gate, bgate;
-
-    // Use this for initialization
-    void Start()
-    {
-        menu3 = new List<Rect>();
-        for (int i = 0; i < menuElements.Length; i++)
-        {
-            int ind = ((i + (menuElements.Length / 2)) % menuElements.Length) - (menuElements.Length / 2);
-            float angle = ind * menuAngleSnap * Mathf.Deg2Rad;
-            menu3.Add(buttonAtAngle(angle));
-        }
-        backgrnd = new GUIStyle();
-        backgrnd.fixedHeight = 0;
-        backgrnd.fixedWidth = 0;
-        backgrnd.stretchHeight = true;
-        backgrnd.stretchWidth = true;
-        backgrnd.border = new RectOffset(0, 0, 0, 0);
-        backgrnd.overflow = new RectOffset(0, 0, 0, 0);
+	
+	bool youHaveDied = false;
+	
+	
+	// Use this for initialization
+	void Start()
+	{
+		menu3 = new List<Rect>();
+		for (int i = 0; i < menuElements.Length; i++)
+		{
+			int ind = ((i + (menuElements.Length / 2)) % menuElements.Length) - (menuElements.Length / 2);
+			float angle = ind * menuAngleSnap * Mathf.Deg2Rad;
+			menu3.Add(buttonAtAngle(angle));
+		}
+		backgrnd = new GUIStyle();
+		backgrnd.fixedHeight = 0;
+		backgrnd.fixedWidth = 0;
+		backgrnd.stretchHeight = true;
+		backgrnd.stretchWidth = true;
+		backgrnd.border = new RectOffset(0, 0, 0, 0);
+		backgrnd.overflow = new RectOffset(0, 0, 0, 0);
 		GeneralController.addScoreRace ("200");
 		GeneralController.addScoreRace ("100");
 		GeneralController.addScoreRace ("300");
 		GeneralController.addScoreBattle ("0:20.0");
 		GeneralController.addScoreBattle ("0:10.0");
 		GeneralController.addScoreBattle ("0:30.0");
-
+		
 		gate = GameObject.Find("RaceGate");
 		bgate = GameObject.Find("BattleGate");
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        if (state == GameState.Mainmenu)
-        {
-            if (!transitioning)
-            {
-                if (Input.GetKey(KeyCode.UpArrow))
-                {
-                    //go up
-                    transitioning = true;
-                    transitionProgress = 0;
-                    menuAngleSource = menuAngle;
-                    menuAngleTarget = menuAngle + menuAngleSnap;
-                    activeIndex = (activeIndex - 1 + menuElements.Length) % menuElements.Length;
-                }
-                else if (Input.GetKey(KeyCode.DownArrow))
-                {
-                    //go down
-                    transitioning = true;
-                    transitionProgress = 0;
-                    menuAngleSource = menuAngle;
-                    menuAngleTarget = menuAngle - menuAngleSnap;
-                    activeIndex = (activeIndex + 1) % menuElements.Length;
-                }
-            }
-            else
-            {
-                transitionProgress += Time.deltaTime * 3;
-                menuAngle = (1 - transitionProgress) * menuAngleSource + transitionProgress * menuAngleTarget;
-                //move towards target
-
-                if (transitionProgress >= 1f)
-                {
-                    menuAngle = menuAngleTarget % 360;
-                    transitioning = false;
-                }
-
-                for (int i = 0; i < menuElements.Length; i++)
-                {
-                    float angle = ((menuAngle + 360 + menuAngleSnap * i) + 90f) % 180f - 90f;
-                    menu3[i] = buttonAtAngle(Mathf.Deg2Rad*angle);
-                }
-            }
-            if (Input.GetKeyDown(KeyCode.Escape))
-				ChangeStateToPlaying();
-            else if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Space))
-            {
-                switch (activeIndex)
-                {
-                    case 0: //Start game
-                        ChangeStateToPlaying();
-						StartNewGame();
-                        break;
-                    case 1: //How to play
-                        state = GameState.Howtoplay;
-                        break;
-                    case 2: //Options
-                        state = GameState.Options;
-                        break;
-                    case 3: //High scores
-                        state = GameState.Highscores;
-                        break;
-                    case 4: //Credits
-                        state = GameState.Credits;
-                        break;
-                    case 5: //Bike settings
-                        state = GameState.Options;
-                        break;
-                    default:
-						ChangeStateToMenu();
-                        break;
-                }
-            }
-        }
-        else
-        {
-            if (Input.GetKeyDown(KeyCode.Escape))
-				ChangeStateToMenu();
-        }
-    }
-
-    void OnGUI()
-    {
-        if (state != GameState.Playing)
-        {
-            float imgratio = (background.height * 1f) / background.width;
-            if (Screen.height > imgratio * Screen.width)
-            {
-                //vertical, crop left-right
-                float newWidth = Screen.height / imgratio;
-                float newx = (Screen.width - newWidth)/2;
-                GUI.DrawTexture(new Rect(newx, 0, newWidth, Screen.height), background);
-            }
-            else
-            {
-                //horizontal, crop up-down
-                float newHeight = Screen.width * imgratio;
-                float newy = (Screen.height - newHeight)/2;
-                GUI.DrawTexture(new Rect(0, newy, Screen.width, newHeight), background);
-            }
-        }
-        //GUI.Box(new Rect(0, 0, 150, 50), state.ToString());
-
-        GUI.skin.button.fontSize = 25;
-        GUI.skin.button.normal.background = button;
-        GUI.skin.button.normal.textColor = Color.black;
-        GUI.skin.button.hover.background = button;
-        GUI.skin.button.hover.textColor = Color.black;
-        GUI.skin.box.wordWrap = true;
-        GUI.skin.box.fontSize = 35;
-        GUI.skin.box.normal.background = button;
-        GUI.skin.box.normal.textColor = Color.black;
-        if (state == GameState.Mainmenu) {
+	}
+	
+	// Update is called once per frame
+	void Update()
+	{
+		if (state == GameState.Mainmenu)
+		{
+			if (!transitioning)
+			{
+				if (Input.GetKey(KeyCode.UpArrow))
+				{
+					//go up
+					transitioning = true;
+					transitionProgress = 0;
+					menuAngleSource = menuAngle;
+					menuAngleTarget = menuAngle + menuAngleSnap;
+					activeIndex = (activeIndex - 1 + menuElements.Length) % menuElements.Length;
+				}
+				else if (Input.GetKey(KeyCode.DownArrow))
+				{
+					//go down
+					transitioning = true;
+					transitionProgress = 0;
+					menuAngleSource = menuAngle;
+					menuAngleTarget = menuAngle - menuAngleSnap;
+					activeIndex = (activeIndex + 1) % menuElements.Length;
+				}
+			}
+			else
+			{
+				transitionProgress += Time.deltaTime * 3;
+				menuAngle = (1 - transitionProgress) * menuAngleSource + transitionProgress * menuAngleTarget;
+				//move towards target
+				
+				if (transitionProgress >= 1f)
+				{
+					menuAngle = menuAngleTarget % 360;
+					transitioning = false;
+				}
+				
+				for (int i = 0; i < menuElements.Length; i++)
+				{
+					float angle = ((menuAngle + 360 + menuAngleSnap * i) + 90f) % 180f - 90f;
+					menu3[i] = buttonAtAngle(Mathf.Deg2Rad*angle);
+				}
+			}
+			if (Input.GetKeyDown(KeyCode.Escape))
+				state = GameState.Playing;
+			else if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Space))
+			{
+				switch (activeIndex)
+				{
+				case 0: //Start game
+					state = GameState.Playing;
+					StartNewGame();
+					break;
+				case 1: //How to play
+					state = GameState.Howtoplay;
+					break;
+				case 2: //Options
+					state = GameState.Options;
+					break;
+				case 3: //High scores
+					state = GameState.Highscores;
+					break;
+				case 4: //Credits
+					state = GameState.Credits;
+					break;
+				case 5: //Bike settings
+					state = GameState.Options;
+					break;
+				default:
+					state = GameState.Mainmenu;
+					break;
+				}
+			}
+		}
+		else
+		{
+			if (Input.GetKeyDown(KeyCode.Escape))
+				state = GameState.Mainmenu;
+		}
+	}
+	
+	void OnGUI()
+	{
+		if (state != GameState.Playing)
+		{
+			float imgratio = (background.height * 1f) / background.width;
+			if (Screen.height > imgratio * Screen.width)
+			{
+				//vertical, crop left-right
+				float newWidth = Screen.height / imgratio;
+				float newx = (Screen.width - newWidth)/2;
+				GUI.DrawTexture(new Rect(newx, 0, newWidth, Screen.height), background);
+			}
+			else
+			{
+				//horizontal, crop up-down
+				float newHeight = Screen.width * imgratio;
+				float newy = (Screen.height - newHeight)/2;
+				GUI.DrawTexture(new Rect(0, newy, Screen.width, newHeight), background);
+			}
+		}
+		//GUI.Box(new Rect(0, 0, 150, 50), state.ToString());
+		
+		GUI.skin.button.fontSize = 25;
+		GUI.skin.button.normal.background = button;
+		GUI.skin.button.normal.textColor = Color.black;
+		GUI.skin.button.hover.background = button;
+		GUI.skin.button.hover.textColor = Color.black;
+		GUI.skin.box.wordWrap = true;
+		GUI.skin.box.fontSize = 35;
+		GUI.skin.box.normal.background = button;
+		GUI.skin.box.normal.textColor = Color.black;
+		if (state == GameState.Mainmenu) {
 			//sorted drawing, draw the smaller buttons first because they are further away
 			List<KeyValuePair<int,float>> widths = new List<KeyValuePair<int,float>> ();
 			for (int i = 0; i < menuElements.Length; i++)
 				widths.Add (new KeyValuePair<int,float> (i, menu3 [i].width));
 			var sorted = widths.OrderBy (x => x.Value).ToList ();
 			List<int> idx = sorted.Select (x => x.Key).ToList ();
-
+			
 			for (int i = 0; i < idx.Count; i++) {
 				int ind = idx [i];
 				//caroussel
@@ -182,7 +183,7 @@ public class MenuSelection : MonoBehaviour
 				if (GUI.Button (menu3 [ind], menuElements [ind])) {
 					switch (ind) {
 					case 0: //Start game
-						ChangeStateToPlaying();
+						state = GameState.Playing;
 						StartNewGame();
 						break;
 					case 1: //How to play
@@ -201,7 +202,7 @@ public class MenuSelection : MonoBehaviour
 						state = GameState.Options;
 						break;
 					default:
-						ChangeStateToPlaying();
+						state = GameState.Playing;
 						break;
 					}
 				}
@@ -243,29 +244,43 @@ public class MenuSelection : MonoBehaviour
 				GUI.Label(new Rect(Screen.width - 300, 10, 290, 60), String.Format("{0}:{1:00}.{2}", mins, secs, msecs));
 			}
 		}
-    }
-    
-    private Rect buttonAtAngle(float angle)
-    {
-        float centerY = Mathf.Sin(angle);
-        float btnRadiusW = 0.75f;
-        float btnRadiusH = 0.25f;
-        float centerZ = Mathf.Cos(angle);
-        float cameraZ = 3f;
-        float projZ = 1.5f;
-
-        float left = -btnRadiusW * (cameraZ-projZ)/(cameraZ-centerZ);
-        float right = -left;
-        float top = (centerY-btnRadiusH) *(cameraZ - projZ) / (cameraZ - centerZ);
-        float bottom = (centerY+btnRadiusH)  *(cameraZ - projZ) / (cameraZ - centerZ);
-        float width = right-left;
-        float height = bottom-top;
-
-        float factor = 400;
-        return new Rect((Screen.width-width*factor)/2, Screen.height/2 + top*factor, width*factor, height*factor);
-    }
-
-	private void StartNewGame() {
+		
+		if (youHaveDied) {
+			GUI.skin.label.alignment = TextAnchor.MiddleCenter;
+			GUI.Label (new Rect (0, 0, Screen.width, Screen.height), "WASTED");
+			GUI.skin.label.fontSize = 150;
+			
+			//GUI.skin.label.alignment = TextAnchor.MiddleCenter;
+		}
+	}
+	
+	public void setYouHaveDied (bool flag)
+	{
+		youHaveDied = flag;
+	}
+	
+	
+	private Rect buttonAtAngle(float angle)
+	{
+		float centerY = Mathf.Sin(angle);
+		float btnRadiusW = 0.75f;
+		float btnRadiusH = 0.25f;
+		float centerZ = Mathf.Cos(angle);
+		float cameraZ = 3f;
+		float projZ = 1.5f;
+		
+		float left = -btnRadiusW * (cameraZ-projZ)/(cameraZ-centerZ);
+		float right = -left;
+		float top = (centerY-btnRadiusH) *(cameraZ - projZ) / (cameraZ - centerZ);
+		float bottom = (centerY+btnRadiusH)  *(cameraZ - projZ) / (cameraZ - centerZ);
+		float width = right-left;
+		float height = bottom-top;
+		
+		float factor = 400;
+		return new Rect((Screen.width-width*factor)/2, Screen.height/2 + top*factor, width*factor, height*factor);
+	}
+	
+	public void StartNewGame() {
 		//reset bike, opponents, floor, walls, trails, gates, score
 		GameObject bike = GameObject.Find ("Bike");
 		BikePhysicsScript bps = bike.GetComponent<BikePhysicsScript> ();
@@ -274,7 +289,7 @@ public class MenuSelection : MonoBehaviour
 		trl.Reset();
 
 		GeneralController.score = 0;
-
+		
 		TileManager tileManager = gameObject.GetComponent<TileManager> ();
 		if (substate == SubGameState.Battle)
 			tileManager.RemoveArena ();
@@ -289,23 +304,15 @@ public class MenuSelection : MonoBehaviour
 			GateBattleScript gbs = bgate.GetComponent<GateBattleScript> ();
 			gbs.Reset ();
 		}
-
+		
 		GameObject opp = GameObject.Find("Opponent");
 		if (opp != null) {
 			GameObject.Destroy (opp);
 		}
-	}
 
-	private void ChangeStateToPlaying() {
-		state = GameState.Playing;
-		this.audio.clip = playingAudio;
-		audio.Play ();
-		//this.audio.clip;
-	}
-	
-	private void ChangeStateToMenu() {
-		state = GameState.Mainmenu;
-		this.audio.clip = menuAudio;
-		audio.Play ();
+		GameObject batopp = GameObject.Find("BattleOpponent");
+		if (batopp != null) {
+			GameObject.Destroy (batopp);
+		}
 	}
 }
