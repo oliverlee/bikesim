@@ -17,7 +17,7 @@ public class OpponentAI : MonoBehaviour {
 	// Use this for initialization
 	void Start ()
 	{
-		target = (GameObject.Find ("Gate")).transform;
+		target = (GameObject.Find ("RaceGate")).transform;
 		xform = (GameObject.Find("Opponent")).transform;
 		range = 2;
 		speed = GameObject.Find ("Bike").GetComponent<BikePhysicsScript> ().GetSpeed () * 0.1f;
@@ -30,13 +30,14 @@ public class OpponentAI : MonoBehaviour {
 		if (MenuSelection.state != GameState.Playing)
 			return;
 
-		target = (GameObject.Find("Gate")).transform;
-		float speedDiff = GameObject.Find ("Bike").GetComponent<BikePhysicsScript> ().GetSpeed () - speed;
+		target = (GameObject.Find("RaceGate")).transform;
+		//float speedDiff = GameObject.Find ("Bike").GetComponent<BikePhysicsScript> ().GetSpeed () - speed;
 		
-		if (speedDiff < 0.0f)
-			speed = speed;
-		else
-			speed = speed + speedDiff;
+		//if (speedDiff < 0.0f)
+		//	speed = speed;
+		//else
+		//	speed = speed + speedDiff;
+		speed = 3f + (GeneralController.score / 200f);
 
 		Vector3 relativePos = target.position - xform.position;
 		Quaternion rotation = Quaternion.LookRotation (relativePos);

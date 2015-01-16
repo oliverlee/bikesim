@@ -17,7 +17,7 @@ public class ArrowScript : MonoBehaviour {
 	
 	// Update is called once per frame
 	void FixedUpdate() {
-		gate = GameObject.Find("BattleGate");
+		gate = GameObject.Find("RaceGate");
 		
 		if (gate != null) {
 						if (computeAngle (gate) > 60) {
@@ -52,11 +52,11 @@ public class ArrowScript : MonoBehaviour {
 		picForward.SetActive (true);
 		yield return new WaitForSeconds (3);
 		picForward.SetActive (false);
-		picLeft.SetActive (true);
-		yield return new WaitForSeconds (3);
-		picLeft.SetActive (false);
-		yield return new WaitForSeconds (3);
-		displayingPics = false;
+		//picLeft.SetActive (true);
+		//yield return new WaitForSeconds (3);
+		//picLeft.SetActive (false);
+		//yield return new WaitForSeconds (3);
+		//displayingPics = false;
 		
 		
 	}

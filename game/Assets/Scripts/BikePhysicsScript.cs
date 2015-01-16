@@ -182,7 +182,18 @@ public class BikePhysicsScript : MonoBehaviour
 			if (useSteeringSuggestions)
 			{
 				Debug.Log ("roll speed:" + rollAngularSpeed + ", fork rot:" + forkRotation);
-
+				if(rollAngularSpeed > 0.3 && forkRotation > 0) {
+					displayingPics = true;
+					picLeft.SetActive(true);
+				} else if(rollAngularSpeed < - 0.3 && forkRotation < 0) {
+					displayingPics = true;
+					picRight.SetActive (true);
+				} else {
+					displayingPics = false;
+					picLeft.SetActive (false);
+					picRight.SetActive (false);
+				}
+				/*
 				if (rollAngularSpeed > 0.5 && forkRotation > 0 && !displayingPics)
 				{
 					StartCoroutine("suggestTurnLeft");	
@@ -192,6 +203,7 @@ public class BikePhysicsScript : MonoBehaviour
 				{
 					StartCoroutine("suggestTurnRight");
 				}
+				*/
 			}
         }
     }
