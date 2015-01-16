@@ -5,8 +5,8 @@ public class TextGUIScript : MonoBehaviour {
 
 	public UnityEngine.Color defaultColor;
 
-	public GUIText rotationText;
-	public GUIText speedText;
+	/*public GUIText rotationText;
+	public GUIText speedText;*/
 	public GUIText mainText;
 	public GUIText footnote;
 
@@ -15,7 +15,7 @@ public class TextGUIScript : MonoBehaviour {
 	void Start () {
 		MainStart ();
 		FooterStart ();
-		BikeValuesTextStart ();
+		//BikeValuesTextStart ();
 	}
 
 	void MainStart() {
@@ -30,10 +30,10 @@ public class TextGUIScript : MonoBehaviour {
 		footnote.fontSize = 10;
 	}
 
-	void BikeValuesTextStart() {
+	/*void BikeValuesTextStart() {
 		speedText.fontSize = 13;
 		rotationText.fontSize = 13;
-	}
+	}*/
 	
 	// Update is called once per frame
 	void Update () {
@@ -68,8 +68,8 @@ public class TextGUIScript : MonoBehaviour {
 		footnote.text = "";
 	}
 
-	public void UpdateBikeValuesText(float steerRot, float speed) {
+	/*public void UpdateBikeValuesText(float steerRot, float speed) {
 		rotationText.text = "Steer Rotation\n" + steerRot.ToString("F2") + "º";
 		speedText.text = "Speed\n" + speed.ToString ("F2");
-	}
+	}*/
 }
