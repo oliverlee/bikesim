@@ -25,7 +25,7 @@ public class GateBattleScript : MonoBehaviour {
 			tileManager.CreateArena();
 			if (flag == false) { 
 				var opp = Instantiate(opponent, transform.position+Vector3.right, Quaternion.identity);
-				opp.name = "Opponent";
+				opp.name = "BattleOpponent";
 				flag = true;
 			}
 			GameObject gate = GameObject.Find ("RaceGate");
