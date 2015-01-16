@@ -23,7 +23,6 @@ public class MenuSelection : MonoBehaviour
 	private float menuAngle = 0, menuAngleSource = 0, menuAngleTarget = 0;
 	private GUIStyle backgrnd;
 	private GameObject gate, bgate;
-	
 	// Use this for initialization
 	void Start()
 	{
@@ -296,4 +295,3 @@ public class MenuSelection : MonoBehaviour
 			GameObject.Destroy (opp);
 		}
 	}
-}
