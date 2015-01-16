@@ -43,6 +43,8 @@ public class BikePhysicsScript : MonoBehaviour
 
 	public TextGUIScript GUIscript;
 
+	private bool dying = false;
+
 
 	private bool youHaveDied = false;
 
@@ -124,12 +126,12 @@ public class BikePhysicsScript : MonoBehaviour
         ApplyInstability(); //if the center of mass isn't over the wheels, it will fall
 
         modelFrontFork.localRotation = Quaternion.AngleAxis(forkRotation, new Vector3(0, 3, -1));
-    
-		Debug.Log (this.transform.rotation.eulerAngles);
-
-		if( this.transform.rotation.eulerAngles.z > 85 && this.transform.rotation.eulerAngles.z < 275)
-		   StartCoroutine("dieFunction");
-
+   
+		if (this.transform.rotation.eulerAngles.z > 85 && this.transform.rotation.eulerAngles.z < 275) {
+			this.transform.rotation = Quaternion.identity;
+			StartCoroutine ("dieFunction");
+		
+		}
 		  
 	}
 
@@ -282,13 +284,15 @@ public class BikePhysicsScript : MonoBehaviour
 
 	void OnCollisionEnter (Collision col)
 	{
-		if (col.collider.gameObject.name.Equals ("Cube")) {
+		if (col.collider.gameObject.name.Equals ("Cube") && !dying) {
+			Debug.Log ("Collision");
 			StartCoroutine("dieFunction");
 		}
 	}
 
 	IEnumerator dieFunction()
 	{
+		dying = true;
 		if (MenuSelection.state == GameState.Playing) {
 						Color screenTint = new Color (1, 0, 0, 1f);
 						Color noTint = new Color (0.2f, 0.2f, 0.2f, 1f);
@@ -315,6 +319,7 @@ public class BikePhysicsScript : MonoBehaviour
 						menuObject.setYouHaveDied (false);
 						RenderSettings.ambientLight = noTint;
 				}
+		dying = false;
 	}
 
     void UpdateRotation(float rot)
