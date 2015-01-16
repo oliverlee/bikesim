@@ -24,7 +24,7 @@ public class GateBattleScript : MonoBehaviour {
 		if (other.gameObject.tag.Equals("Player")){
 			tileManager.CreateArena();
 			if (flag == false) { 
-				var opp = Instantiate(opponent, transform.position+Vector3.right, Quaternion.identity);
+				var opp = Instantiate(opponent, transform.position+5*Vector3.right, Quaternion.identity);
 				opp.name = "BattleOpponent";
 				flag = true;
 			}
