@@ -13,6 +13,8 @@ public class MenuSelection : MonoBehaviour
 	public static SubGameState substate = SubGameState.Free;
 	public Texture2D background, button;
 	public string currentscore = "";
+	public AudioClip playingAudio;
+	public AudioClip menuAudio;
 	
 	private bool transitioning = false;
 	private float transitionProgress = 0;
@@ -100,13 +102,13 @@ public class MenuSelection : MonoBehaviour
 				}
 			}
 			if (Input.GetKeyDown(KeyCode.Escape))
-				state = GameState.Playing;
+				changeStateToPlaying();
 			else if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Space))
 			{
 				switch (activeIndex)
 				{
 				case 0: //Start game
-					state = GameState.Playing;
+					changeStateToPlaying();
 					StartNewGame();
 					break;
 				case 1: //How to play
@@ -125,7 +127,7 @@ public class MenuSelection : MonoBehaviour
 					state = GameState.Options;
 					break;
 				default:
-					state = GameState.Mainmenu;
+					changeStateToMenu();
 					break;
 				}
 			}
@@ -133,7 +135,7 @@ public class MenuSelection : MonoBehaviour
 		else
 		{
 			if (Input.GetKeyDown(KeyCode.Escape))
-				state = GameState.Mainmenu;
+				changeStateToMenu();
 		}
 	}
 	
@@ -183,7 +185,7 @@ public class MenuSelection : MonoBehaviour
 				if (GUI.Button (menu3 [ind], menuElements [ind])) {
 					switch (ind) {
 					case 0: //Start game
-						state = GameState.Playing;
+						changeStateToPlaying();
 						StartNewGame();
 						break;
 					case 1: //How to play
@@ -202,7 +204,7 @@ public class MenuSelection : MonoBehaviour
 						state = GameState.Options;
 						break;
 					default:
-						state = GameState.Playing;
+						changeStateToPlaying();
 						break;
 					}
 				}
@@ -314,5 +316,17 @@ public class MenuSelection : MonoBehaviour
 		if (batopp != null) {
 			GameObject.Destroy (batopp);
 		}
+	}
+
+	public void changeStateToPlaying() {
+		state = GameState.Playing;
+		audio.clip = playingAudio;
+		audio.Play ();
+	}
+
+	public void changeStateToMenu() {
+		state = GameState.Mainmenu;
+		audio.clip = menuAudio;
+		audio.Play ();
 	}
 }
