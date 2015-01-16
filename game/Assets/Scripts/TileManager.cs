@@ -48,8 +48,8 @@ public class TileManager : MonoBehaviour
         playerCoordinates = PosToCoordinates(playerPos);
 		trailScript = Player.GetComponent<Trail> ();
 
-        if (MenuSelection.substate == SubGameState.Free)
-        {
+		if (MenuSelection.substate == SubGameState.Free || MenuSelection.substate == SubGameState.Racing)
+		{
             //create initial tiles
             for (int i = playerCoordinates.X - spawnDist; i <= playerCoordinates.X + spawnDist; i++)
             {
@@ -131,13 +131,6 @@ public class TileManager : MonoBehaviour
                 playerCoordinates = PosToCoordinates(playerPos);
                 UpdateTiles();
             }
-        }
-        if (Input.GetKeyDown(KeyCode.Z) || Input.GetKeyDown(KeyCode.X))
-        {
-			if (MenuSelection.substate == SubGameState.Free)
-                CreateArena();
-            else
-                RemoveArena();
         }
     }
 	

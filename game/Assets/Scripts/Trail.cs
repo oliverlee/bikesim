@@ -18,8 +18,6 @@ public class Trail : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-		
-
         if (Vector3.Distance(rearWheel.transform.position, lastPosition) > 1f)
         {
 			if (MenuSelection.substate == SubGameState.Battle)
