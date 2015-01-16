@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
@@ -213,7 +214,7 @@ public class TileManager : MonoBehaviour
 		{
 			for (int j = -20; j <= 20; j++)
 			{
-				CreateTile(coords.X + i, spawnDepth, coords.Z + j, false);
+				CreateTile(coords.X + i, spawnDepth, coords.Z + j);
 			}
 		}
 		Vector3 center = CoordinatesToPos (coords); //not playerpos, because rounding
@@ -247,12 +248,16 @@ public class TileManager : MonoBehaviour
 		{
 			Destroy(child.gameObject);
 		}
-		CreateTile(playerCoordinates.X, spawnDepth, playerCoordinates.Z, false);
+		CreateTile(playerCoordinates.X, spawnDepth, playerCoordinates.Z);
 		
 		GeneralController.battleModeActive = false;
 		//save score to highscores
-		//float arenaEndTime = Time.time;
-		//float arenaPlayTime = arenaEndTime - GeneralController.battleModeStartTime;
+		int totalsecs = Mathf.RoundToInt((Time.time - GeneralController.battleModeStartTime)*10);
+		int msecs = totalsecs % 10;
+		totalsecs /= 10;
+		int secs = totalsecs % 60;
+		int mins = totalsecs / 60;
+		GeneralController.addScoreBattle(String.Format("{0}:{1:00}.{2}", mins, secs, msecs));
 	}
 	
 }
