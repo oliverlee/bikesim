@@ -125,7 +125,7 @@ public class BikePhysicsScript : MonoBehaviour
 
         modelFrontFork.localRotation = Quaternion.AngleAxis(forkRotation, new Vector3(0, 3, -1));
     
-		//Debug.Log (this.transform.rotation.eulerAngles);
+		Debug.Log (this.transform.rotation.eulerAngles);
 
 		if( this.transform.rotation.eulerAngles.z > 85 && this.transform.rotation.eulerAngles.z < 275)
 		   StartCoroutine("dieFunction");
@@ -173,7 +173,9 @@ public class BikePhysicsScript : MonoBehaviour
             rollAngularSpeed += rollAngularAcc * Time.deltaTime;
         }
 
+		//Debug.Log(rollAngularAcc);
 		if(multHelpToStabilize > 1) {
+
 			if((rollAngularAcc > 0 && this.transform.rotation.eulerAngles.z > 180 && this.transform.rotation.eulerAngles.z < 360) ||
 			   (rollAngularAcc < 0 && this.transform.rotation.eulerAngles.z < 180 && this.transform.rotation.eulerAngles.z > 0)) {
 				rollAngularAcc *= multHelpToStabilize;
@@ -405,6 +407,6 @@ public class BikePhysicsScript : MonoBehaviour
 
     void LateUpdate()
     {
-        TextGUI.UpdateBikeValuesText(forkRotation, speed);
+        //TextGUI.UpdateBikeValuesText(forkRotation, speed);
     }
 }
