@@ -289,31 +289,32 @@ public class BikePhysicsScript : MonoBehaviour
 
 	IEnumerator dieFunction()
 	{
-
-		Color screenTint = new Color (1, 0, 0, 1f);
-		Color noTint = new Color (0.2f, 0.2f, 0.2f, 1f);
-		RenderSettings.ambientLight = screenTint;
+		if (MenuSelection.state == GameState.Playing) {
+						Color screenTint = new Color (1, 0, 0, 1f);
+						Color noTint = new Color (0.2f, 0.2f, 0.2f, 1f);
+						RenderSettings.ambientLight = screenTint;
 //		RenderSettings.fogColor = screenTint;
 //		RenderSettings.fogDensity = .9f;
-		//GUIscript.DisplayMessage ("WASTED", Color.red);
+						//GUIscript.DisplayMessage ("WASTED", Color.red);
 
-		MenuSelection menuObject = GameObject.Find ("Third Person Camera").GetComponent<MenuSelection> ();
-
-		menuObject.setYouHaveDied(true);
-
-		Time.timeScale = 0.5f;
-		yield return new WaitForSeconds (1f);
-		Time.timeScale = 1f;
-		if (MenuSelection.substate == SubGameState.Free)
-			menuObject.StartNewGame ();
-		else
-			MenuSelection.state = GameState.Highscores;
+						MenuSelection menuObject = GameObject.Find ("Third Person Camera").GetComponent<MenuSelection> ();
+						menuObject.setYouHaveDied (true);
 
 
+						Time.timeScale = 0.5f;
+						yield return new WaitForSeconds (1f);
+						Time.timeScale = 1f;
+						if (MenuSelection.substate == SubGameState.Free)
+								menuObject.StartNewGame ();
+						else {
+								GeneralController.addScoreRace ("" + GeneralController.score);
+								MenuSelection.state = GameState.Highscores;
+						}
 
-		menuObject.setYouHaveDied (false);
-		RenderSettings.ambientLight = noTint;
-	
+
+						menuObject.setYouHaveDied (false);
+						RenderSettings.ambientLight = noTint;
+				}
 	}
 
     void UpdateRotation(float rot)
