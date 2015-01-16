@@ -13,6 +13,8 @@ public class MenuSelection : MonoBehaviour
 	public static SubGameState substate = SubGameState.Free;
     public Texture2D background, button;
 	public string currentscore = "";
+	public AudioClip menuAudio;
+	public AudioClip playingAudio;
 
     private bool transitioning = false;
     private float transitionProgress = 0;
@@ -97,13 +99,13 @@ public class MenuSelection : MonoBehaviour
                 }
             }
             if (Input.GetKeyDown(KeyCode.Escape))
-                state = GameState.Playing;
+				ChangeStateToPlaying();
             else if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Space))
             {
                 switch (activeIndex)
                 {
                     case 0: //Start game
-                        state = GameState.Playing;
+                        ChangeStateToPlaying();
 						StartNewGame();
                         break;
                     case 1: //How to play
@@ -122,7 +124,7 @@ public class MenuSelection : MonoBehaviour
                         state = GameState.Options;
                         break;
                     default:
-                        state = GameState.Mainmenu;
+						ChangeStateToMenu();
                         break;
                 }
             }
@@ -130,7 +132,7 @@ public class MenuSelection : MonoBehaviour
         else
         {
             if (Input.GetKeyDown(KeyCode.Escape))
-                state = GameState.Mainmenu;
+				ChangeStateToMenu();
         }
     }
 
@@ -180,7 +182,7 @@ public class MenuSelection : MonoBehaviour
 				if (GUI.Button (menu3 [ind], menuElements [ind])) {
 					switch (ind) {
 					case 0: //Start game
-						state = GameState.Playing;
+						ChangeStateToPlaying();
 						StartNewGame();
 						break;
 					case 1: //How to play
@@ -199,7 +201,7 @@ public class MenuSelection : MonoBehaviour
 						state = GameState.Options;
 						break;
 					default:
-						state = GameState.Playing;
+						ChangeStateToPlaying();
 						break;
 					}
 				}
@@ -292,5 +294,18 @@ public class MenuSelection : MonoBehaviour
 		if (opp != null) {
 			GameObject.Destroy (opp);
 		}
+	}
+
+	private void ChangeStateToPlaying() {
+		state = GameState.Playing;
+		this.audio.clip = playingAudio;
+		audio.Play ();
+		//this.audio.clip;
+	}
+	
+	private void ChangeStateToMenu() {
+		state = GameState.Mainmenu;
+		this.audio.clip = menuAudio;
+		audio.Play ();
 	}
 }
