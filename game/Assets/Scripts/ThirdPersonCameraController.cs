@@ -3,15 +3,33 @@ using System.Collections;
 
 public class ThirdPersonCameraController : MonoBehaviour {
 
-	public GameObject player;
-	private Vector3 offset;
+	public Vector3 ThirdPersonViewPosition;
+	public Vector3 FirstPersonViewPosition;
 
+	private bool isItFPView;
+	/*public GameObject player;
+	private Vector3 offset;*/
+	
 	// Use this for initialization
 	void Start () {
-		offset = transform.position;
+		isItFPView = false;
+		//offset = transform.position;
 	}
-	
+
+	void Update() {
+		//float f = Input.GetMouseButtonDown(1);
+		if(Input.GetMouseButtonDown(1)) {
+			if(isItFPView) {
+				transform.localPosition = ThirdPersonViewPosition;
+				isItFPView = false;
+			} else {
+				transform.localPosition = FirstPersonViewPosition;
+				isItFPView = true;
+			}
+		}
+	}
+
 	void LateUpdate () {
-		transform.position = player.transform.position + offset;
+		//transform.position = player.transform.position + offset;
 	}
 }
