@@ -24,6 +24,9 @@ public class MenuSelection : MonoBehaviour
     private GUIStyle backgrnd;
 	private GameObject gate, bgate;
 
+	bool youHaveDied = false;
+
+
     // Use this for initialization
     void Start()
     {
@@ -241,7 +244,21 @@ public class MenuSelection : MonoBehaviour
 				GUI.Label(new Rect(Screen.width - 300, 10, 290, 60), String.Format("{0}:{1:00}.{2}", mins, secs, msecs));
 			}
 		}
+
+		if (youHaveDied) {
+			GUI.skin.label.alignment = TextAnchor.MiddleCenter;
+			GUI.Label (new Rect (0, 0, Screen.width, Screen.height), "WASTED");
+			GUI.skin.label.fontSize = 150;
+			
+			//GUI.skin.label.alignment = TextAnchor.MiddleCenter;
+		}
     }
+
+	public void setYouHaveDied (bool flag)
+	{
+		youHaveDied = flag;
+	}
+
     
     private Rect buttonAtAngle(float angle)
     {
@@ -263,7 +280,7 @@ public class MenuSelection : MonoBehaviour
         return new Rect((Screen.width-width*factor)/2, Screen.height/2 + top*factor, width*factor, height*factor);
     }
 
-	private void StartNewGame() {
+	public void StartNewGame() {
 		//reset bike, opponents, floor, walls, trails, gates, score
 		GameObject bike = GameObject.Find ("Bike");
 		BikePhysicsScript bps = bike.GetComponent<BikePhysicsScript> ();
