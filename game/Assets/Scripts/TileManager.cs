@@ -121,7 +121,7 @@ public class TileManager : MonoBehaviour
 		if (MenuSelection.state != GameState.Playing)
 			return;
 		
-		if (MenuSelection.substate == SubGameState.Free)
+		if (MenuSelection.substate == SubGameState.Free || MenuSelection.substate == SubGameState.Racing)
 		{
 			lastPos = playerPos;
 			playerPos = Player.transform.position;
