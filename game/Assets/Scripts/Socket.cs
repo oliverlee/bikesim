@@ -28,7 +28,7 @@ public class Socket : MonoBehaviour {
 	
 	public float getParsedSpeed()
 	{
-		return parsedSpeed/5;
+		return parsedSpeed/10;
 	}
 	
 	public float getParsedAngle()
@@ -43,10 +43,10 @@ public class Socket : MonoBehaviour {
 	
 	
 	void Start() {
-//		receiveThread = new Thread(
-//			new ThreadStart(ReceiveData));
-//		receiveThread.IsBackground = true;
-//		receiveThread.Start();
+		receiveThread = new Thread(
+			new ThreadStart(ReceiveData));
+		receiveThread.IsBackground = true;
+		receiveThread.Start();
 		
 	}
 
@@ -89,10 +89,10 @@ public class Socket : MonoBehaviour {
 			theWriter = new StreamWriter(theStream);
 			theReader = new StreamReader(theStream);
 			socketReady = true;
-			Debug.Log("Connection started");
+			//Debug.Log("Connection started");
 		}
 		catch (Exception e) {
-			Debug.Log("Socket error:" + e);                // catch any exceptions
+			//Debug.Log("Socket error:" + e);                // catch any exceptions
 		}
 	}
 
@@ -100,7 +100,7 @@ public class Socket : MonoBehaviour {
 	{
 		try{
 			XmlDocument xmlDoc = new XmlDocument(); // xmlDoc is the new xml document.
-			Debug.Log (lineRead);
+			//Debug.Log (lineRead);
 			xmlDoc.LoadXml(lineRead); // load the file.
 			XmlNodeList levelsList = xmlDoc.GetElementsByTagName("root"); // array of the level nodes.
 			
@@ -126,7 +126,7 @@ public class Socket : MonoBehaviour {
 				}
 			}
 		}catch(Exception e){
-			Debug.Log ("Write error:" + e);
+			//Debug.Log ("Write error:" + e);
 		}
 	}
 	void OnApplicationQuit() 

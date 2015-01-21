@@ -38,7 +38,7 @@ public class BikePhysicsScript : MonoBehaviour
 
     //TODO delete this!
     private float rotationUnit = 0.5f;
-    private float speedUnit = 0.1f;
+    private float speedUnit = 0.08f;
 	private float brakeUnit = 0.5f;
 
 	public TextGUIScript GUIscript;
@@ -63,7 +63,7 @@ public class BikePhysicsScript : MonoBehaviour
 
 	void Update()
 	{
-		if (Input.GetKey(KeyCode.R))
+		if (Input.GetKeyDown(KeyCode.R))
 			canRoll = !canRoll;
 		if (Input.GetKey (KeyCode.Plus))
 			gravity = gravity + 0.25f;
@@ -128,11 +128,13 @@ public class BikePhysicsScript : MonoBehaviour
 		this.transform.position = Vector3.MoveTowards(this.transform.position,
                                                       this.transform.position + vector,
                                                       speed * Time.deltaTime);
-		Vector3 pos = this.transform.position;		
 
-		pos.y = 0;
-
-		this.transform.position = pos;
+		Debug.Log (transform.position.y);
+//			Vector3 pos = this.transform.position;		
+//
+//			pos.y = 0;
+//
+//			this.transform.position = pos;
 
         this.transform.rotation = Quaternion.RotateTowards(this.transform.rotation,
                                                            angle,
@@ -156,7 +158,21 @@ public class BikePhysicsScript : MonoBehaviour
     void ApplyGravity()
     {
 
-        if (frontWheel.transform.position.y != 0)
+		if(transform.position.y > 0.5 || transform.position.y < -0.5) 
+		{
+			Vector3 vector = new Vector3(0,0,0);
+			vector.x = transform.position.x;
+			vector.z = transform.position.z;
+			transform.position = Vector3.MoveTowards(this.transform.position,
+			                                         vector,
+			                                         Time.deltaTime);
+			Vector3 vector2 = new Vector3(0,0,0);
+			vector2.y = transform.localRotation.eulerAngles.y;
+			vector2.z = transform.localRotation.eulerAngles.z;
+			transform.localRotation = Quaternion.Euler(vector2);
+		}
+        
+        /*if (frontWheel.transform.position.y != 0)
         {
             Vector3 vector;
             if (frontWheel.transform.position.y < 0)
@@ -171,7 +187,7 @@ public class BikePhysicsScript : MonoBehaviour
             this.transform.position = Vector3.MoveTowards(this.transform.position,
                                                           this.transform.position + vector,
                                                           2 * Time.deltaTime);
-        }
+        }*/
     }
 
     void ApplyInstability()
@@ -218,10 +234,14 @@ public class BikePhysicsScript : MonoBehaviour
 				if(rollAngularSpeed > 0.3 && forkRotation > 0) {
 					displayingPics = true;
 					picLeft.SetActive(true);
-				} else if(rollAngularSpeed < - 0.3 && forkRotation < 0) {
+					picRight.SetActive (false);
+                    
+                } else if(rollAngularSpeed < - 0.3 && forkRotation < 0) {
 					displayingPics = true;
 					picRight.SetActive (true);
-				} else {
+					picLeft.SetActive (false);
+                    
+                } else {
 					displayingPics = false;
 					picLeft.SetActive (false);
 					picRight.SetActive (false);
