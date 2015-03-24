@@ -138,7 +138,8 @@ public class BicycleController : MonoBehaviour {
 			new Vector3(rearFrameLength/2, 0.0f, frontFrameLength/2), rearFrame.transform);
 
 		//   Update front wheel angle
-		frontWheel.transform.localRotation = Quaternion.Euler(0.0f, Mathf.Rad2Deg*q.thetaF, 0.0f);
+		frontWheel.transform.localRotation = frontFrame.transform.localRotation*
+			Quaternion.Euler(0.0f, Mathf.Rad2Deg*q.thetaF, 0.0f);
 		frontWheel.transform.localPosition = frontFrame.transform.localPosition;
 		frontWheel.transform.Translate(
 			new Vector3(frontWheelOffset, 0.0f, frontFrameLength/2), frontFrame.transform);
