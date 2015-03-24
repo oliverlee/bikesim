@@ -113,9 +113,9 @@ public class BicycleController : MonoBehaviour {
 		// by modifying the transform of root bicycle game object.
 		// As Euler angles use the zxy ordering in Unity, yaw will be applied before lean.
 		// In Unity, a series of rotations R1*R2 will apply R2 after R1.
-		transform.localPosition = new Vector3(q.x, 0.0f, q.y); // y and z axes are switched
+		transform.localPosition = new Vector3(q.x, 0.0f, -q.y); // y and z axes are switched
 		transform.localRotation = Quaternion.Euler(90.0f, 0, 0) *
-			Quaternion.Euler(Mathf.Rad2Deg*q.lean, 0.0f, Mathf.Rad2Deg*q.yaw);
+			Quaternion.Euler(-Mathf.Rad2Deg*q.lean, 0.0f, -Mathf.Rad2Deg*q.yaw);
 		Debug.Log(transform.position);
 
 		// All wheel and frame local transforms are with respect to the container game or lean frame
