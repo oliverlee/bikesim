@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 using UnityEngine.UI;
+using System;
 
 public class VizState {
 	public float x, y, pitch, lean, yaw, thetaR, thetaF, steer;
@@ -148,4 +149,25 @@ public class BicycleController : MonoBehaviour {
 	private float CalculateNominalPitch() {
 		return Mathf.Atan(frontFrameLength / (rearFrameLength + frontWheelOffset));
 	}
+
+//	private float CalculatePitch(VizState q) {
+//		
+//	}
+
+    // pitch angle configuration constraint
+    private double f(double lean, double pitch, double steer) {
+        return cF*Math.Sin(steer)*Math.Sin(lean) - cF*Math.Sin(pitch)*Math.Cos(steer)*Math.Cos(lean) -
+            cR*Math.Sin(pitch)*Math.Cos(lean) + ls*Math.Cos(pitch)*Math.Cos(lean) -
+            rF*Math.Sin(steer)*Math.Sin(pitch)*Math.Cos(pitch)*Math.Pow(Math.Cos(lean), 2) -
+            rF*Math.Sin(lean)*Math.Cos(steer)*Math.Cos(pitch)*Math.Cos(lean) - rR*Math.Pow(Math.Cos(lean),
+                    2);
+    }
+
+    // derivative of f wrt to pitch
+    private double df(double lean, double pitch, double steer) {
+        return (-cF*Math.Cos(steer)*Math.Cos(pitch) - cR*Math.Cos(pitch) - ls*Math.Sin(pitch) -
+                2*rF*Math.Sin(steer)*Math.Pow(Math.Cos(pitch), 2)*Math.Cos(lean) +
+                rF*Math.Sin(steer)*Math.Cos(lean) +
+                rF*Math.Sin(pitch)*Math.Sin(lean)*Math.Cos(steer))*Math.Cos(lean);
+    }
 }
