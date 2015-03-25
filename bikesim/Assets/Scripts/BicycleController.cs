@@ -46,16 +46,16 @@ public class BicycleController : MonoBehaviour {
 	public Text stateInfo;
 	
 	// visualization parameters
-	private float rearRadius; // m
-	private float frontRadius; // m
-	private float rearFrameLength; // m
-	private float frontFrameLength; // m
-	private float frontWheelOffset; // m
+	private float rR; // m
+	private float rF; // m
+	private float cR; // m
+	private float ls; // m
+	private float cF; // m
 
 	// dependent parameters
 	private float headAngle; // rad
-	private float trail; // m
-	private float wheelbase; // m
+	//private float trail; // m
+	//private float wheelbase; // m
 
 	// sensor measurements
 	private float wheelRate; // rad/s
@@ -68,12 +68,12 @@ public class BicycleController : MonoBehaviour {
 	// Setup the Bicycle Configuration
 	void Start () {
 		// Set component sizes
-		// TODO: replace with benchmark parameters
-		rearRadius = rearWheel.transform.localScale.x/2;
-		frontRadius = frontWheel.transform.localScale.x/2;
-		rearFrameLength = rearFrame.transform.localScale.x;
-		frontFrameLength = frontFrame.transform.localScale.z;
-		frontWheelOffset = 0.1f;
+		// Values from Peterson dissertation
+		rR = 0.3f;
+		rF = 0.35f;
+		cR = 0.9534570696121847f;
+		ls = 0.2676445084476887f;
+		cF = 0.0320714267276193f;
 
 		headAngle = CalculateNominalPitch();
 
@@ -122,13 +122,13 @@ public class BicycleController : MonoBehaviour {
 		// All wheel and frame local transforms are with respect to the container game or lean frame
 		//   Update rear wheel angle
 		rearWheel.transform.localRotation = Quaternion.Euler(0.0f, Mathf.Rad2Deg*q.thetaR, 0.0f);
-		rearWheel.transform.localPosition = new Vector3(0.0f, 0.0f, -rearRadius);
+		rearWheel.transform.localPosition = new Vector3(0.0f, 0.0f, -rR);
 
 		//   Update pitch of the rear frame
 		rearFrame.transform.localRotation = Quaternion.Euler(0.0f, Mathf.Rad2Deg*q.pitch, 0.0f);
 		//   Set rear frame origin at rear wheel position, then translate alone the frame axis
 		rearFrame.transform.localPosition = rearWheel.transform.localPosition;
-		rearFrame.transform.Translate(new Vector3(rearFrameLength/2, 0.0f, 0.0f), rearFrame.transform);
+		rearFrame.transform.Translate(new Vector3(cR/2, 0.0f, 0.0f), rearFrame.transform);
 
 		//   Update pitch and steer of the front frame
 		frontFrame.transform.localRotation = 
@@ -136,18 +136,18 @@ public class BicycleController : MonoBehaviour {
 		//   Set front frame origin at rear frame position, then translate alone the frame axes
 		frontFrame.transform.localPosition = rearFrame.transform.localPosition;
 		frontFrame.transform.Translate(
-			new Vector3(rearFrameLength/2, 0.0f, frontFrameLength/2), rearFrame.transform);
+			new Vector3(cR/2, 0.0f, ls/2), rearFrame.transform);
 
 		//   Update front wheel angle
 		frontWheel.transform.localRotation = frontFrame.transform.localRotation*
 			Quaternion.Euler(0.0f, Mathf.Rad2Deg*q.thetaF, 0.0f);
 		frontWheel.transform.localPosition = frontFrame.transform.localPosition;
 		frontWheel.transform.Translate(
-			new Vector3(frontWheelOffset, 0.0f, frontFrameLength/2), frontFrame.transform);
+			new Vector3(cF, 0.0f, ls/2), frontFrame.transform);
 	}
 
 	private float CalculateNominalPitch() {
-		return Mathf.Atan(frontFrameLength / (rearFrameLength + frontWheelOffset));
+		return Mathf.Atan(ls / (cR + cF));
 	}
 
 //	private float CalculatePitch(VizState q) {
