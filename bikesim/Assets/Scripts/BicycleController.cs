@@ -150,7 +150,10 @@ public class BicycleController : MonoBehaviour {
 	}
 
 	private float CalculateNominalPitch() {
-		return Mathf.Atan(ls / (cR + cF));
+		float theta1 = Mathf.Atan(ls / (cR + cF));
+		float dropoutLength = Mathf.Sqrt(Mathf.Pow(cR + cF, 2) + Mathf.Pow(ls, 2));
+		float theta2 = Mathf.Asin((rR - rF) / dropoutLength);
+		return theta1 - theta2;
 	}
 
 	private void SetConstraintPitch(VizState q) {
