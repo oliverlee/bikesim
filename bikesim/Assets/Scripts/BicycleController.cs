@@ -98,8 +98,11 @@ public class BicycleController : MonoBehaviour {
 	}
 
 	void Update() {
+        float pitch = q.pitch; // save previous pitch value
 		q.SetState(sim.GetQState());
-		q.pitch = headAngle; // FIXME: Currently, nominal pitch is used instead of calculating each time.
+        q.pitch = pitch; // restore previous pitch value
+        SetConstraintPitch(q); // calculate pitch to satify constraints
+
 		SetBicycleTransform(q);
 		sensorInfo.text = System.String.Format(
 			"wheelrate: {0}\nsteerrate: {1}\nsteer: {2}",
@@ -150,9 +153,15 @@ public class BicycleController : MonoBehaviour {
 		return Mathf.Atan(ls / (cR + cF));
 	}
 
-//	private float CalculatePitch(VizState q) {
-//		
-//	}
+	private void SetConstraintPitch(VizState q) {
+		Func<double, double> f0 = pitch => f(q.lean, pitch, q.steer);
+		Func<double, double> df0 = pitch => df(q.lean, pitch, q.steer);
+
+		// We only calculate pitch for visualization so accuracy can be low.
+        double p = MathNet.Numerics.RootFinding.NewtonRaphson.FindRootNearGuess(f0, df0,
+                q.pitch, 0, Math.PI/2, 1e-4, 10);
+        q.pitch = System.Convert.ToSingle(p);
+	}
 
     // pitch angle configuration constraint
     private double f(double lean, double pitch, double steer) {
