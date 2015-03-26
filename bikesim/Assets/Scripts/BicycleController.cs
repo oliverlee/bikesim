@@ -104,10 +104,10 @@ public class BicycleController : MonoBehaviour {
 	}
 
 	void Update() {
-        float pitch = q.pitch; // save previous pitch value
-		q.SetState(sim.GetQState());
-        q.pitch = pitch; // restore previous pitch value
-        SetConstraintPitch(q); // calculate pitch to satify constraints
+		QState qq = sim.GetQState();
+		qq.pitch = q.pitch; // use previous pitch value as initial guess
+		SetConstraintPitch(qq);
+		q.SetState(qq);
 
 		SetBicycleTransform(q);
 		sensorInfo.text = System.String.Format(
@@ -126,7 +126,6 @@ public class BicycleController : MonoBehaviour {
 		transform.localPosition = new Vector3(q.x, 0.0f, -q.y); // y and z axes are switched
 		transform.localRotation = Quaternion.Euler(90.0f, 0, 0) *
 			Quaternion.Euler(-Mathf.Rad2Deg*q.lean, 0.0f, -Mathf.Rad2Deg*q.yaw);
-		Debug.Log(transform.position);
 
 		// All wheel and frame local transforms are with respect to the container game or lean frame
 		//   Update rear wheel angle
@@ -162,31 +161,51 @@ public class BicycleController : MonoBehaviour {
 		return theta1 - theta2;
 	}
 
-	private void SetConstraintPitch(VizState q) {
+	private void SetConstraintPitch(QState q) {
 		Func<double, double> f0 = pitch => f(q.lean, pitch, q.steer);
 		Func<double, double> df0 = pitch => df(q.lean, pitch, q.steer);
 
-		// We only calculate pitch for visualization so accuracy can be low.
-        double p = MathNet.Numerics.RootFinding.NewtonRaphson.FindRootNearGuess(f0, df0,
-                q.pitch, 0, Math.PI/2, 1e-4, 10);
-
-        q.pitch = System.Convert.ToSingle(p);
+        q.pitch = MathNet.Numerics.RootFinding.NewtonRaphson.FindRootNearGuess(f0, df0,
+                q.pitch, 0, Math.PI/2, 1e-10, 100);
+		Debug.Log(q.pitch);
 	}
 
     // pitch angle configuration constraint
     private double f(double lean, double pitch, double steer) {
-        return cF*Math.Sin(steer)*Math.Sin(lean) - cF*Math.Sin(pitch)*Math.Cos(steer)*Math.Cos(lean) -
-            cR*Math.Sin(pitch)*Math.Cos(lean) + ls*Math.Cos(pitch)*Math.Cos(lean) -
-            rF*Math.Sin(steer)*Math.Sin(pitch)*Math.Cos(pitch)*Math.Pow(Math.Cos(lean), 2) -
-            rF*Math.Sin(lean)*Math.Cos(steer)*Math.Cos(pitch)*Math.Cos(lean) - rR*Math.Pow(Math.Cos(lean),
-                    2);
-    }
+		return (rF*Math.Pow(Math.Cos(lean),
+		2)*Math.Pow(Math.Cos(pitch), 2) +
+		(cF*Math.Sqrt(Math.Pow(Math.Sin(lean)*Math.Sin(steer) -
+		Math.Sin(pitch)*Math.Cos(lean)*Math.Cos(steer), 2) +
+		Math.Pow(Math.Cos(lean), 2)*Math.Pow(Math.Cos(pitch), 2)) +
+		rF*(Math.Sin(lean)*Math.Sin(steer) -
+		Math.Sin(pitch)*Math.Cos(lean)*Math.Cos(steer)))*(Math.Sin(lean)*Math.Sin(steer)
+		- Math.Sin(pitch)*Math.Cos(lean)*Math.Cos(steer)) +
+		Math.Sqrt(Math.Pow(Math.Sin(lean)*Math.Sin(steer) -
+		Math.Sin(pitch)*Math.Cos(lean)*Math.Cos(steer), 2) +
+		Math.Pow(Math.Cos(lean), 2)*Math.Pow(Math.Cos(pitch),
+		2))*(-cR*Math.Sin(pitch) + ls*Math.Cos(pitch) -
+		rR)*Math.Cos(lean))/Math.Sqrt(Math.Pow(Math.Sin(lean)*Math.Sin(steer)
+		- Math.Sin(pitch)*Math.Cos(lean)*Math.Cos(steer), 2) +
+		Math.Pow(Math.Cos(lean), 2)*Math.Pow(Math.Cos(pitch), 2));
+	}
 
     // derivative of f wrt to pitch
     private double df(double lean, double pitch, double steer) {
-        return (-cF*Math.Cos(steer)*Math.Cos(pitch) - cR*Math.Cos(pitch) - ls*Math.Sin(pitch) -
-                2*rF*Math.Sin(steer)*Math.Pow(Math.Cos(pitch), 2)*Math.Cos(lean) +
-                rF*Math.Sin(steer)*Math.Cos(lean) +
-                rF*Math.Sin(pitch)*Math.Sin(lean)*Math.Cos(steer))*Math.Cos(lean);
+		return -(cF*Math.Cos(pitch)*Math.Cos(steer) +
+		cR*Math.Cos(pitch) + ls*Math.Sin(pitch) +
+		rF*Math.Sin(lean)*Math.Sin(steer)*Math.Cos(pitch)*Math.Cos(steer)/Math.Sqrt(Math.Pow(Math.Sin(lean),
+		2)*Math.Pow(Math.Sin(pitch), 2)*Math.Pow(Math.Sin(steer), 2) +
+		Math.Pow(Math.Sin(lean), 2)*Math.Pow(Math.Sin(steer), 2) -
+		Math.Pow(Math.Sin(lean), 2) -
+		2*Math.Sin(lean)*Math.Sin(pitch)*Math.Sin(steer)*Math.Cos(lean)*Math.Cos(steer)
+		- Math.Pow(Math.Sin(pitch), 2)*Math.Pow(Math.Sin(steer), 2) +
+		1) + rF*Math.Sin(pitch)*Math.Pow(Math.Sin(steer),
+		2)*Math.Cos(lean)*Math.Cos(pitch)/Math.Sqrt(Math.Pow(Math.Sin(lean),
+		2)*Math.Pow(Math.Sin(pitch), 2)*Math.Pow(Math.Sin(steer), 2) +
+		Math.Pow(Math.Sin(lean), 2)*Math.Pow(Math.Sin(steer), 2) -
+		Math.Pow(Math.Sin(lean), 2) -
+		2*Math.Sin(lean)*Math.Sin(pitch)*Math.Sin(steer)*Math.Cos(lean)*Math.Cos(steer)
+		- Math.Pow(Math.Sin(pitch), 2)*Math.Pow(Math.Sin(steer), 2) +
+		1))*Math.Cos(lean);
     }
 }
