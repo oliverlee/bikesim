@@ -46,11 +46,13 @@ public class BicycleController : MonoBehaviour {
 	public Text stateInfo;
 	
 	// visualization parameters
-	private float rR; // m
-	private float rF; // m
-	private float cR; // m
-	private float ls; // m
-	private float cF; // m
+	// Values from Peterson dissertation
+	private float rR = 0.3f; // m
+	private float rF = 0.35f; // m
+	private float cR = 0.9534570696121847f; // m
+	private float ls = 0.2676445084476887f; // m
+	private float cF = 0.0320714267276193f; // m
+
 
 	// dependent parameters
 	private float headAngle; // rad
@@ -68,12 +70,16 @@ public class BicycleController : MonoBehaviour {
 	// Setup the Bicycle Configuration
 	void Start () {
 		// Set component sizes
-		// Values from Peterson dissertation
-		rR = 0.3f;
-		rF = 0.35f;
-		cR = 0.9534570696121847f;
-		ls = 0.2676445084476887f;
-		cF = 0.0320714267276193f;
+		const float wheelWidth = 0.01f;
+		const float frameWidth = 0.05f;
+		Vector3 v = new Vector3(2*rR, wheelWidth, 2*rR);
+		rearWheel.transform.localScale = v;
+		v = new Vector3(2*rF, wheelWidth, 2*rF);
+		frontWheel.transform.localScale = v;
+		v = new Vector3(cR, frameWidth, frameWidth);
+		rearFrame.transform.localScale = v;
+		v = new Vector3(frameWidth, frameWidth, ls);
+		frontFrame.transform.localScale = v;
 
 		headAngle = CalculateNominalPitch();
 
@@ -163,6 +169,7 @@ public class BicycleController : MonoBehaviour {
 		// We only calculate pitch for visualization so accuracy can be low.
         double p = MathNet.Numerics.RootFinding.NewtonRaphson.FindRootNearGuess(f0, df0,
                 q.pitch, 0, Math.PI/2, 1e-4, 10);
+
         q.pitch = System.Convert.ToSingle(p);
 	}
 
