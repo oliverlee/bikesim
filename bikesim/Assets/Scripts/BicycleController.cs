@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using System.Collections;
 using UnityEngine.UI;
+using System;
 
 public class VizState {
 	public float x, y, pitch, lean, yaw, thetaR, thetaF, steer;
@@ -45,16 +46,18 @@ public class BicycleController : MonoBehaviour {
 	public Text stateInfo;
 	
 	// visualization parameters
-	private float rearRadius; // m
-	private float frontRadius; // m
-	private float rearFrameLength; // m
-	private float frontFrameLength; // m
-	private float frontWheelOffset; // m
+	// Values from Peterson dissertation
+	private float rR = 0.3f; // m
+	private float rF = 0.35f; // m
+	private float cR = 0.9534570696121847f; // m
+	private float ls = 0.2676445084476887f; // m
+	private float cF = 0.0320714267276193f; // m
+
 
 	// dependent parameters
 	private float headAngle; // rad
-	private float trail; // m
-	private float wheelbase; // m
+	//private float trail; // m
+	//private float wheelbase; // m
 
 	// sensor measurements
 	private float wheelRate; // rad/s
@@ -67,12 +70,16 @@ public class BicycleController : MonoBehaviour {
 	// Setup the Bicycle Configuration
 	void Start () {
 		// Set component sizes
-		// TODO: replace with benchmark parameters
-		rearRadius = rearWheel.transform.localScale.x/2;
-		frontRadius = frontWheel.transform.localScale.x/2;
-		rearFrameLength = rearFrame.transform.localScale.x;
-		frontFrameLength = frontFrame.transform.localScale.z;
-		frontWheelOffset = 0.1f;
+		const float wheelWidth = 0.01f;
+		const float frameWidth = 0.05f;
+		Vector3 v = new Vector3(2*rR, wheelWidth, 2*rR);
+		rearWheel.transform.localScale = v;
+		v = new Vector3(2*rF, wheelWidth, 2*rF);
+		frontWheel.transform.localScale = v;
+		v = new Vector3(cR, frameWidth, frameWidth);
+		rearFrame.transform.localScale = v;
+		v = new Vector3(frameWidth, frameWidth, ls);
+		frontFrame.transform.localScale = v;
 
 		headAngle = CalculateNominalPitch();
 
@@ -97,8 +104,11 @@ public class BicycleController : MonoBehaviour {
 	}
 
 	void Update() {
-		q.SetState(sim.GetQState());
-		q.pitch = headAngle; // FIXME: Currently, nominal pitch is used instead of calculating each time.
+		QState qq = sim.GetQState();
+		qq.pitch = q.pitch; // use previous pitch value as initial guess
+		SetConstraintPitch(qq);
+		q.SetState(qq);
+
 		SetBicycleTransform(q);
 		sensorInfo.text = System.String.Format(
 			"wheelrate: {0}\nsteerrate: {1}\nsteer: {2}",
@@ -111,23 +121,22 @@ public class BicycleController : MonoBehaviour {
 	void SetBicycleTransform(VizState q) {
 		// Update x and y positions of the rear wheel contact, yaw and lean of the rear frame
 		// by modifying the transform of root bicycle game object.
-		// As Euler angles use the zxy ordering in Unity, yaw will be applied before lean.
-		// In Unity, a series of rotations R1*R2 will apply R2 after R1.
+		// Explictly apply the yaw and lean rotations.
 		transform.localPosition = new Vector3(q.x, 0.0f, -q.y); // y and z axes are switched
 		transform.localRotation = Quaternion.Euler(90.0f, 0, 0) *
-			Quaternion.Euler(-Mathf.Rad2Deg*q.lean, 0.0f, -Mathf.Rad2Deg*q.yaw);
-		Debug.Log(transform.position);
+			Quaternion.Euler(0.0f, 0.0f, -Mathf.Rad2Deg*q.yaw) *
+			Quaternion.Euler(-Mathf.Rad2Deg*q.lean, 0.0f, 0.0f);
 
 		// All wheel and frame local transforms are with respect to the container game or lean frame
 		//   Update rear wheel angle
 		rearWheel.transform.localRotation = Quaternion.Euler(0.0f, Mathf.Rad2Deg*q.thetaR, 0.0f);
-		rearWheel.transform.localPosition = new Vector3(0.0f, 0.0f, -rearRadius);
+		rearWheel.transform.localPosition = new Vector3(0.0f, 0.0f, -rR);
 
 		//   Update pitch of the rear frame
 		rearFrame.transform.localRotation = Quaternion.Euler(0.0f, Mathf.Rad2Deg*q.pitch, 0.0f);
 		//   Set rear frame origin at rear wheel position, then translate alone the frame axis
 		rearFrame.transform.localPosition = rearWheel.transform.localPosition;
-		rearFrame.transform.Translate(new Vector3(rearFrameLength/2, 0.0f, 0.0f), rearFrame.transform);
+		rearFrame.transform.Translate(new Vector3(cR/2, 0.0f, 0.0f), rearFrame.transform);
 
 		//   Update pitch and steer of the front frame
 		frontFrame.transform.localRotation = 
@@ -135,17 +144,68 @@ public class BicycleController : MonoBehaviour {
 		//   Set front frame origin at rear frame position, then translate alone the frame axes
 		frontFrame.transform.localPosition = rearFrame.transform.localPosition;
 		frontFrame.transform.Translate(
-			new Vector3(rearFrameLength/2, 0.0f, frontFrameLength/2), rearFrame.transform);
+			new Vector3(cR/2, 0.0f, ls/2), rearFrame.transform);
 
 		//   Update front wheel angle
 		frontWheel.transform.localRotation = frontFrame.transform.localRotation*
 			Quaternion.Euler(0.0f, Mathf.Rad2Deg*q.thetaF, 0.0f);
 		frontWheel.transform.localPosition = frontFrame.transform.localPosition;
 		frontWheel.transform.Translate(
-			new Vector3(frontWheelOffset, 0.0f, frontFrameLength/2), frontFrame.transform);
+			new Vector3(cF, 0.0f, ls/2), frontFrame.transform);
 	}
 
 	private float CalculateNominalPitch() {
-		return Mathf.Atan(frontFrameLength / (rearFrameLength + frontWheelOffset));
+		float theta1 = Mathf.Atan(ls / (cR + cF));
+		float dropoutLength = Mathf.Sqrt(Mathf.Pow(cR + cF, 2) + Mathf.Pow(ls, 2));
+		float theta2 = Mathf.Asin((rR - rF) / dropoutLength);
+		return theta1 - theta2;
 	}
+
+	private void SetConstraintPitch(QState q) {
+		Func<double, double> f0 = pitch => f(q.lean, pitch, q.steer);
+		Func<double, double> df0 = pitch => df(q.lean, pitch, q.steer);
+
+        q.pitch = MathNet.Numerics.RootFinding.NewtonRaphson.FindRootNearGuess(f0, df0,
+                q.pitch, 0, Math.PI/2, 1e-10, 100);
+		Debug.Log(q.pitch);
+	}
+
+    // pitch angle configuration constraint
+    private double f(double lean, double pitch, double steer) {
+		return (rF*Math.Pow(Math.Cos(lean),
+		2)*Math.Pow(Math.Cos(pitch), 2) +
+		(cF*Math.Sqrt(Math.Pow(Math.Sin(lean)*Math.Sin(steer) -
+		Math.Sin(pitch)*Math.Cos(lean)*Math.Cos(steer), 2) +
+		Math.Pow(Math.Cos(lean), 2)*Math.Pow(Math.Cos(pitch), 2)) +
+		rF*(Math.Sin(lean)*Math.Sin(steer) -
+		Math.Sin(pitch)*Math.Cos(lean)*Math.Cos(steer)))*(Math.Sin(lean)*Math.Sin(steer)
+		- Math.Sin(pitch)*Math.Cos(lean)*Math.Cos(steer)) +
+		Math.Sqrt(Math.Pow(Math.Sin(lean)*Math.Sin(steer) -
+		Math.Sin(pitch)*Math.Cos(lean)*Math.Cos(steer), 2) +
+		Math.Pow(Math.Cos(lean), 2)*Math.Pow(Math.Cos(pitch),
+		2))*(-cR*Math.Sin(pitch) + ls*Math.Cos(pitch) -
+		rR)*Math.Cos(lean))/Math.Sqrt(Math.Pow(Math.Sin(lean)*Math.Sin(steer)
+		- Math.Sin(pitch)*Math.Cos(lean)*Math.Cos(steer), 2) +
+		Math.Pow(Math.Cos(lean), 2)*Math.Pow(Math.Cos(pitch), 2));
+	}
+
+    // derivative of f wrt to pitch
+    private double df(double lean, double pitch, double steer) {
+		return -(cF*Math.Cos(pitch)*Math.Cos(steer) +
+		cR*Math.Cos(pitch) + ls*Math.Sin(pitch) +
+		rF*Math.Sin(lean)*Math.Sin(steer)*Math.Cos(pitch)*Math.Cos(steer)/Math.Sqrt(Math.Pow(Math.Sin(lean),
+		2)*Math.Pow(Math.Sin(pitch), 2)*Math.Pow(Math.Sin(steer), 2) +
+		Math.Pow(Math.Sin(lean), 2)*Math.Pow(Math.Sin(steer), 2) -
+		Math.Pow(Math.Sin(lean), 2) -
+		2*Math.Sin(lean)*Math.Sin(pitch)*Math.Sin(steer)*Math.Cos(lean)*Math.Cos(steer)
+		- Math.Pow(Math.Sin(pitch), 2)*Math.Pow(Math.Sin(steer), 2) +
+		1) + rF*Math.Sin(pitch)*Math.Pow(Math.Sin(steer),
+		2)*Math.Cos(lean)*Math.Cos(pitch)/Math.Sqrt(Math.Pow(Math.Sin(lean),
+		2)*Math.Pow(Math.Sin(pitch), 2)*Math.Pow(Math.Sin(steer), 2) +
+		Math.Pow(Math.Sin(lean), 2)*Math.Pow(Math.Sin(steer), 2) -
+		Math.Pow(Math.Sin(lean), 2) -
+		2*Math.Sin(lean)*Math.Sin(pitch)*Math.Sin(steer)*Math.Cos(lean)*Math.Cos(steer)
+		- Math.Pow(Math.Sin(pitch), 2)*Math.Pow(Math.Sin(steer), 2) +
+		1))*Math.Cos(lean);
+    }
 }
