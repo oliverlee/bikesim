@@ -4,15 +4,14 @@ using UnityEngine.UI;
 using System;
 
 public class VizState {
-	public float x, y, pitch, lean, yaw, thetaR, thetaF, steer;
-	public VizState(QState q) {
+	public float x, y, pitch, lean, yaw, wheelAngle, steer;
+	public VizState(State q) {
 		x = System.Convert.ToSingle(q.x);
 		y = System.Convert.ToSingle(q.y);
-		pitch = System.Convert.ToSingle(q.pitch);
+		pitch = 0.0f;
 		lean = System.Convert.ToSingle(q.lean);
 		yaw = System.Convert.ToSingle(q.yaw);
-		thetaR = System.Convert.ToSingle(q.thetaR);
-		thetaF = System.Convert.ToSingle(q.thetaF);
+		wheelAngle = System.Convert.ToSingle(q.wheelAngle);
 		steer = System.Convert.ToSingle(q.steer);
 	}
 	public VizState() {
@@ -21,18 +20,15 @@ public class VizState {
 		pitch = 0.0f;
 		lean = 0.0f;
 		yaw = 0.0f;
-		thetaR = 0.0f;
-		thetaF = 0.0f;
+		wheelAngle = 0.0f;
 		steer = 0.0f;
 	}
-	public void SetState(QState q) {
+	public void SetState(State q) {
 		x = System.Convert.ToSingle(q.x);
 		y = System.Convert.ToSingle(q.y);
-		pitch = System.Convert.ToSingle(q.pitch);
 		lean = System.Convert.ToSingle(q.lean);
 		yaw = System.Convert.ToSingle(q.yaw);
-		thetaR = System.Convert.ToSingle(q.thetaR);
-		thetaF = System.Convert.ToSingle(q.thetaF);
+		wheelAngle = System.Convert.ToSingle(q.wheelAngle);
 		steer = System.Convert.ToSingle(q.steer);
 	}
 }
@@ -104,11 +100,9 @@ public class BicycleController : MonoBehaviour {
 	}
 
 	void Update() {
-		QState qq = sim.GetQState();
-		qq.pitch = q.pitch; // use previous pitch value as initial guess
-		SetConstraintPitch(qq);
-		q.SetState(qq);
-
+		q.SetState(sim.GetState());
+		SetConstraintPitch(q);
+		
 		SetBicycleTransform(q);
 		sensorInfo.text = System.String.Format(
 			"wheelrate: {0}\nsteerrate: {1}\nsteer: {2}",
@@ -129,7 +123,7 @@ public class BicycleController : MonoBehaviour {
 
 		// All wheel and frame local transforms are with respect to the container game or lean frame
 		//   Update rear wheel angle
-		rearWheel.transform.localRotation = Quaternion.Euler(0.0f, Mathf.Rad2Deg*q.thetaR, 0.0f);
+		rearWheel.transform.localRotation = Quaternion.Euler(0.0f, Mathf.Rad2Deg*q.wheelAngle, 0.0f);
 		rearWheel.transform.localPosition = new Vector3(0.0f, 0.0f, -rR);
 
 		//   Update pitch of the rear frame
@@ -148,7 +142,7 @@ public class BicycleController : MonoBehaviour {
 
 		//   Update front wheel angle
 		frontWheel.transform.localRotation = frontFrame.transform.localRotation*
-			Quaternion.Euler(0.0f, Mathf.Rad2Deg*q.thetaF, 0.0f);
+			Quaternion.Euler(0.0f, Mathf.Rad2Deg*q.wheelAngle, 0.0f);
 		frontWheel.transform.localPosition = frontFrame.transform.localPosition;
 		frontWheel.transform.Translate(
 			new Vector3(cF, 0.0f, ls/2), frontFrame.transform);
@@ -161,13 +155,13 @@ public class BicycleController : MonoBehaviour {
 		return theta1 - theta2;
 	}
 
-	private void SetConstraintPitch(QState q) {
+	private void SetConstraintPitch(VizState q) {
 		Func<double, double> f0 = pitch => f(q.lean, pitch, q.steer);
 		Func<double, double> df0 = pitch => df(q.lean, pitch, q.steer);
 
-        q.pitch = MathNet.Numerics.RootFinding.NewtonRaphson.FindRootNearGuess(f0, df0,
-                q.pitch, 0, Math.PI/2, 1e-10, 100);
-		Debug.Log(q.pitch);
+        q.pitch = System.Convert.ToSingle(
+			MathNet.Numerics.RootFinding.NewtonRaphson.FindRootNearGuess(f0, df0,
+                q.pitch, 0, Math.PI/2, 1e-10, 100));
 	}
 
     // pitch angle configuration constraint
