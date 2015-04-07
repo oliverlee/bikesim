@@ -4,17 +4,15 @@ using MathNet.Numerics.LinearAlgebra.Double;
 
 
 public class Sensor {
-    public double steerAngle, steerRate, wheelRate, sampleTime;
-    public Sensor() : this(0.0f, 0.0f, 0.0, 0.0f) { }
-    public Sensor(double delta, double deltad, double thetad, double dt) {
-        steerAngle = delta;
-        steerRate = deltad;
+    public double steerTorque, wheelRate, sampleTime;
+    public Sensor() : this(0.0f, 0.0, 0.0f) { }
+    public Sensor(double torque, double thetad, double dt) {
+        steerTorque = torque;
         wheelRate = thetad;
         sampleTime = dt;
     }
-    public void Update(double delta, double deltad, double thetad, double dt) {
-        steerAngle = delta;
-        steerRate = deltad;
+    public void Update(double tau, double thetad, double dt) {
+        steerTorque = tau;
         wheelRate = thetad;
         sampleTime = dt;
     }
@@ -85,6 +83,7 @@ public class BicycleSimulator {
     private Sensor sensor;
     private State state;
     private double feedbackTorque;
+    private Matrix<double> InvMM;
 
 
     public BicycleSimulator() {
@@ -92,13 +91,15 @@ public class BicycleSimulator {
         sensor = new Sensor();
         state = new State();
         feedbackTorque = 0.0;
+        InvMM = new DenseMatrix(2, 2, new double[] { // column major
+                    M_phiphi, M_deltaphi,
+                    M_phidelta, M_deltadelta,
+                }).Inverse();
     }
 
-    public void UpdateSteerAngleRateWheelRate(
-        float steerAngle, float steerRate, float wheelRate, float samplePeriod) {
-        sensor.Update(steerAngle, steerRate, wheelRate, samplePeriod);
-        state.steerRate = steerRate;
-        state.steer = steerAngle;
+    public void UpdateSteerTorqueWheelRate(
+        float steerTorque, float wheelRate, float samplePeriod) {
+        sensor.Update(steerTorque, wheelRate, samplePeriod);
         valid = false;
     }
 
@@ -119,38 +120,45 @@ public class BicycleSimulator {
     private void Simulate() {
         double v = -sensor.wheelRate * rR;
         IntegrateState(v);
-        EstimateFeedbackTorque(v);
         valid = true;
     }
 
-    // roll equation and kinematics
-    private double phidd(State s, double v) {
-        return -(v*C1_phidelta*s.steerRate + (K0_phidelta +
-                    v*v*K2_phidelta)*s.steer - v*C1_phiphi*s.leanRate -
-                (K0_phiphi + v*v*K2_phiphi)*s.lean)/M_phiphi;
+    private Matrix<double> C(double v) {
+        return v*(new DenseMatrix(2, 2, new double[] { // column major
+                    C1_phiphi, C1_deltaphi,
+                    C1_phidelta, C1_deltadelta,
+                }));
     }
-//
-//    private double psid(State s, double v) {
-//        return (v*s.steer + trail*s.steerRate)*Math.Cos(steerAxisTilt)/wheelbase;
-//    }
-//
-//    private static double xd(State s, double v) {
-//        return v*Math.Cos(s.yaw);
-//    }
-//
-//    private static double yd(State s, double v) {
-//        return v*Math.Sin(s.yaw);
-//    }
+
+    private Matrix<double> K(double v) {
+        // matrix construction uses column major order
+        Matrix<double> K0 = new DenseMatrix(2, 2, new double[] {
+                    K0_phiphi, K0_deltaphi,
+                    K0_phidelta, K0_deltadelta,
+                });
+        Matrix<double> K2 = new DenseMatrix(2, 2, new double[] {
+                    K2_phiphi, K2_deltaphi,
+                    K2_phidelta, K2_deltadelta,
+                });
+        return K0 + v*v*K2;
+    }
 
     private void IntegrateState(double v) {
+        Matrix<double> Cv = C(v);
+        Matrix<double> Kv = K(v);
+        Vector<double> u = new DenseVector(new double[] {
+                0.0, sensor.steerTorque});
+
         IntegratorFunction f = delegate(double t, Vector<double> y) {
+            Vector<double> q = new DenseVector(new double[] {y[2], y[3]});
+            Vector<double> qd = new DenseVector(new double[] {y[0], y[1]});
+            Vector<double> qdd = InvMM*(u - Cv*qd - Kv*q);
+
             return new DenseVector(new double[] {
-                    -(v*C1_phidelta*y[1] + (K0_phidelta + v*v*K2_phidelta)*y[3]
-                        - v*C1_phiphi*y[0] - (K0_phiphi +
-                            v*v*K2_phiphi)*y[2])/M_phiphi,
-                    0, // steer rate is controlled by physical handlebar
-                    y[0], // lean rate
-                    0, // steer is controller by physical handlebar
+                    qdd[0],
+                    qdd[1],
+                    y[0],
+                    y[1],
                     v*y[3] + trail*y[1]*Math.Cos(steerAxisTilt)/wheelbase,
                     v*Math.Cos(y[4]),
                     v*Math.Sin(y[4]),
@@ -159,13 +167,5 @@ public class BicycleSimulator {
 
         state.vector = Integrator.RungeKutta4(f, state.vector, 0,
                 sensor.sampleTime);
-    }
-
-    private void EstimateFeedbackTorque(double v) {
-        feedbackTorque = -( M_deltaphi*phidd(state, v) +
-                v*C1_deltaphi*state.lean + v*C1_deltadelta*state.steer +
-                (K0_deltaphi + v*v*K2_deltaphi)*state.lean + (K0_deltaphi +
-                    v*v*K2_deltadelta)*state.steer);
-        UnityEngine.Debug.Log(feedbackTorque);
     }
 }

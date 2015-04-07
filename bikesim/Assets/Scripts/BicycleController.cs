@@ -1,7 +1,8 @@
 ﻿using UnityEngine;
-using System.Collections;
 using UnityEngine.UI;
 using System;
+using System.Collections;
+using System.IO;
 
 public class VizState {
 	public float x, y, pitch, lean, yaw, wheelAngle, steer;
@@ -49,7 +50,6 @@ public class BicycleController : MonoBehaviour {
 	private float ls = 0.2676445084476887f; // m
 	private float cF = 0.0320714267276193f; // m
 
-
 	// dependent parameters
 	private float headAngle; // rad
 	//private float trail; // m
@@ -57,8 +57,7 @@ public class BicycleController : MonoBehaviour {
 
 	// sensor measurements
 	private float wheelRate; // rad/s
-	private float steerRate; // rad/s
-	private float steer; // rad
+	private float steerTorque; // N-m
 	
 	private VizState q;
 	private BicycleSimulator sim;
@@ -81,21 +80,20 @@ public class BicycleController : MonoBehaviour {
 
 		// sensor measurements
 		wheelRate = 0.0f;
-		steerRate = 0.0f;
-		steer = 0.0f;
+		steerTorque = 0.0f;
 
 		q = new VizState();
 		q.pitch = headAngle;
 		SetBicycleTransform(q);
 		sim = new BicycleSimulator();
+
 	}
 
 	void FixedUpdate () {
 		wheelRate -= Input.GetAxis("Vertical");
-		steerRate = Input.GetAxis("Horizontal");
-		steer += steerRate * Time.deltaTime;
+		steerTorque = 10*Input.GetAxis("Horizontal");
 
-		sim.UpdateSteerAngleRateWheelRate(steer, steerRate, wheelRate, Time.deltaTime);
+		sim.UpdateSteerTorqueWheelRate(steerTorque, wheelRate, Time.deltaTime);
 		double T_f = sim.GetFeedbackTorque();
 	}
 
@@ -105,8 +103,8 @@ public class BicycleController : MonoBehaviour {
 		
 		SetBicycleTransform(q);
 		sensorInfo.text = System.String.Format(
-			"wheelrate: {0}\nsteerrate: {1}\nsteer: {2}",
-			wheelRate, steerRate, steer);
+			"wheelrate: {0}\nsteertorque: {1}",
+			wheelRate, steerTorque);
 		stateInfo.text = System.String.Format(
 			"x: {0}\ny: {1}\nlean: {2}\nyaw: {3}\nsteer: {4}",
 			q.x, q.y, q.lean, q.yaw, q.steer);
