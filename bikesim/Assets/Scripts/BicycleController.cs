@@ -61,6 +61,7 @@ public class BicycleController : MonoBehaviour {
 	
 	private VizState q;
 	private BicycleSimulator sim;
+	private string filename = "test_torque_pulse.txt";
 
 	// Setup the Bicycle Configuration
 	void Start () {
@@ -87,6 +88,10 @@ public class BicycleController : MonoBehaviour {
 		SetBicycleTransform(q);
 		sim = new BicycleSimulator();
 
+		using (FileStream fs = new FileStream(filename, FileMode.Create, FileAccess.Write))
+		using (StreamWriter sw = new StreamWriter(fs)) {
+			sw.WriteLine("time\twheelrate\tsteertorque\tleanrate\tsteerate\tlean\tsteer");
+		}
 	}
 
 	void FixedUpdate () {
@@ -95,6 +100,14 @@ public class BicycleController : MonoBehaviour {
 
 		sim.UpdateSteerTorqueWheelRate(steerTorque, wheelRate, Time.deltaTime);
 		double T_f = sim.GetFeedbackTorque();
+
+		State s = sim.GetState();
+		using (FileStream fs = new FileStream(filename, FileMode.Append, FileAccess.Write))
+		using (StreamWriter sw = new StreamWriter(fs)) {
+			sw.WriteLine("{0}\t{1}\t{2}\t{3}\t{3}\t{4}\t{5}",
+			             Time.time, wheelRate, steerTorque, s.leanRate,
+			             s.steerRate, s.lean, s.steer);
+		}
 	}
 
 	void Update() {
