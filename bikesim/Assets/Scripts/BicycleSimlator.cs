@@ -140,7 +140,7 @@ public class BicycleSimulator {
                     K2_phiphi, K2_deltaphi,
                     K2_phidelta, K2_deltadelta,
                 });
-        return K0 + v*v*K2;
+        return g*K0 + v*v*K2;
     }
 
     private void IntegrateState(double v) {
