@@ -112,9 +112,9 @@ public class BicycleSimulator {
 		// Use previously computed lean angle/rate for acceleration calculation.
 		// Integrate to update lean angle/rate.
 		leanAccel = -(v*C1_phidelta*u.steer + 
-		              (K0_phidelta + vSq*K2_phidelta)*q.steer + 
+		              (g*K0_phidelta + vSq*K2_phidelta)*q.steer + 
 		              v*C1_phidelta*u.lean + 
-		              (K0_phidelta + vSq*K2_phidelta)*q.lean)/M_phiphi;
+		              (g*K0_phidelta + vSq*K2_phidelta)*q.lean)/M_phiphi;
 
 		q.lean += u.lean * timeStep; // update lean angle by integrating previous lean rate
 		u.lean += leanAccel * timeStep; // update lean rate by integrating lean accel
@@ -123,7 +123,7 @@ public class BicycleSimulator {
 	private void EstimateFeedbackTorque() {
 		feedbackTorque = -(
 			M_deltaphi*leanAccel + v*C1_deltaphi*u.lean + v*C1_deltadelta*u.steer + 
-			(K0_deltaphi + vSq*K2_deltaphi)*q.lean + (K0_deltaphi + vSq*K2_deltadelta)*q.steer);
+			(g*K0_deltaphi + vSq*K2_deltaphi)*q.lean + (g*K0_deltaphi + vSq*K2_deltadelta)*q.steer);
 	}
 
 	private void UpdateYawStates() {
