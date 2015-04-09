@@ -56,116 +56,124 @@ public class State {
 // in Schwab, Recuero 2013.
 public class BicycleSimulator {
 
-    // parameters from Meijaard et al. 2007
-    private const double g = 9.81;
-    private const double M_phiphi = 80.81722;
-    private const double M_phidelta = 2.31941332208709;
-    private const double M_deltaphi = M_phidelta;
-    private const double M_deltadelta = 0.29784188199686;
-    private const double C1_phiphi = 0;
-    private const double C1_phidelta = 33.86641391492494;
-    private const double C1_deltaphi = -0.85035641456978;
-    private const double C1_deltadelta = 1.68540397397560;
-    private const double K0_phiphi = -80.95;
-    private const double K0_phidelta = -2.59951685249872;
-    private const double K0_deltaphi = K0_phidelta;
-    private const double K0_deltadelta = -0.80329488458618;
-    private const double K2_phiphi = 0;
-    private const double K2_phidelta = 76.59734589573222;
-    private const double K2_deltaphi = 0;
-    private const double K2_deltadelta = 2.65431523794604;
+	// parameters from Meijaard et al. 2007
+	private const double g = 9.81;
+	private const double M_phiphi = 80.81722;
+	private const double M_phidelta = 2.31941332208709;
+	private const double M_deltaphi = M_phidelta;
+	private const double M_deltadelta = 0.29784188199686;
+	private const double C1_phiphi = 0;
+	private const double C1_phidelta = 33.86641391492494;
+	private const double C1_deltaphi = -0.85035641456978;
+	private const double C1_deltadelta = 1.68540397397560;
+	private const double K0_phiphi = -80.95;
+	private const double K0_phidelta = -2.59951685249872;
+	private const double K0_deltaphi = K0_phidelta;
+	private const double K0_deltadelta = -0.80329488458618;
+	private const double K2_phiphi = 0;
+	private const double K2_phidelta = 76.59734589573222;
+	private const double K2_deltaphi = 0;
+	private const double K2_deltadelta = 2.65431523794604;
 
-    public const double steerAxisTilt = Math.PI/10; // rad
-    public const double trail = 0.08; // m
-    public const double wheelbase = 1.02; // m
-    public const double rR = 0.3; // m
+	public const double steerAxisTilt = Math.PI/10; // rad
+	public const double trail = 0.08; // m
+	public const double wheelbase = 1.02; // m
+	public const double r_R = 0.3; // m
 
-    // bicycle state
-    private bool valid; // if state is valid
-    private Sensor sensor;
-    private State state;
-    private double feedbackTorque;
+	// bicycle state
+	private QState q;
+	private UState u;
+	private double v;
+	private double vSq;
+	bool outputValid;
 
+	private double leanAccel;
+	private double feedbackTorque;
+	private double timeStep;
 
-    public BicycleSimulator() {
-        valid = true;
-        sensor = new Sensor();
-        state = new State();
-        feedbackTorque = 0.0;
-    }
+	public BicycleSimulator() {
+		q = new QState();
+		u = new UState();
 
-    public void UpdateSteerAngleRateWheelRate(
-        float steerAngle, float steerRate, float wheelRate, float samplePeriod) {
-        sensor.Update(steerAngle, steerRate, wheelRate, samplePeriod);
-        state.steerRate = steerRate;
-        state.steer = steerAngle;
-        valid = false;
-    }
+		// Let the pitch of the rear frame to be equal to the 
+		// steer axis tilt in the nominal configuration.
+		// q.pitch = steerAxisTilt; // NOTE: pitch is only used for visualization
+		outputValid = true;
+	}
 
-    public double GetFeedbackTorque() {
-        if (!valid) {
-            Simulate();
-        }
-        return feedbackTorque;
-    }
+	public void UpdateSteerAngleRateWheelRate(
+		float steerAngle, float steerRate, float wheelRate, float samplePeriod) {
+		q.steer = steerAngle;
+		u.steer = steerRate;
+		u.thetaR = wheelRate;
 
-    public State GetState() {
-        if (!valid) {
-            Simulate();
-        }
-        return state;
-    }
+		// Measurements have just been updated and the previously computed state
+		// is no longer valid.
+		outputValid = false;
+		v = -wheelRate*r_R;
+		vSq = v*v;
+		timeStep = samplePeriod;
+	}
+	
+	public double GetFeedbackTorque() {
+		if (!outputValid) {
+			SimulateTimeStep();
+		}
+		return feedbackTorque;
+	}
+	
+	public QState GetQState() {
+		if (!outputValid) {
+			SimulateTimeStep();
+		}
+		return q;
+	}
 
-    private void Simulate() {
-        double v = -sensor.wheelRate * rR;
-        IntegrateState(v);
-        EstimateFeedbackTorque(v);
-        valid = true;
-    }
+	private void UpdateLeanStates() {
+		// Use previously computed lean angle/rate for acceleration calculation.
+		// Integrate to update lean angle/rate.
+		leanAccel = -(v*C1_phidelta*u.steer + 
+		              (g*K0_phidelta + vSq*K2_phidelta)*q.steer + 
+		              v*C1_phidelta*u.lean + 
+		              (g*K0_phidelta + vSq*K2_phidelta)*q.lean)/M_phiphi;
 
-    // roll equation and kinematics
-    private double phidd(State s, double v) {
-        return -(v*C1_phidelta*s.steerRate + (K0_phidelta +
-                    v*v*K2_phidelta)*s.steer - v*C1_phiphi*s.leanRate -
-                (K0_phiphi + v*v*K2_phiphi)*s.lean)/M_phiphi;
-    }
-//
-//    private double psid(State s, double v) {
-//        return (v*s.steer + trail*s.steerRate)*Math.Cos(steerAxisTilt)/wheelbase;
-//    }
-//
-//    private static double xd(State s, double v) {
-//        return v*Math.Cos(s.yaw);
-//    }
-//
-//    private static double yd(State s, double v) {
-//        return v*Math.Sin(s.yaw);
-//    }
+		q.lean += u.lean * timeStep; // update lean angle by integrating previous lean rate
+		u.lean += leanAccel * timeStep; // update lean rate by integrating lean accel
+	}
 
-    private void IntegrateState(double v) {
-        IntegratorFunction f = delegate(double t, Vector<double> y) {
-            return new DenseVector(new double[] {
-                    -(v*C1_phidelta*y[1] + (K0_phidelta + v*v*K2_phidelta)*y[3]
-                        - v*C1_phiphi*y[0] - (K0_phiphi +
-                            v*v*K2_phiphi)*y[2])/M_phiphi,
-                    0, // steer rate is controlled by physical handlebar
-                    y[0], // lean rate
-                    0, // steer is controller by physical handlebar
-                    v*y[3] + trail*y[1]*Math.Cos(steerAxisTilt)/wheelbase,
-                    v*Math.Cos(y[4]),
-                    v*Math.Sin(y[4]),
-                    sensor.wheelRate});
-        };
+	private void EstimateFeedbackTorque() {
+		feedbackTorque = -(
+			M_deltaphi*leanAccel + v*C1_deltaphi*u.lean + v*C1_deltadelta*u.steer + 
+			(g*K0_deltaphi + vSq*K2_deltaphi)*q.lean + (g*K0_deltaphi + vSq*K2_deltadelta)*q.steer);
+	}
 
-        state.vector = Integrator.RungeKutta4(f, state.vector, 0,
-                sensor.sampleTime);
-    }
+	private void UpdateYawStates() {
+		u.yaw = (v*q.steer + trail*u.steer)/wheelbase * Math.Cos(steerAxisTilt);
 
-    private void EstimateFeedbackTorque(double v) {
-        feedbackTorque = -( M_deltaphi*phidd(state, v) +
-                v*C1_deltaphi*state.lean + v*C1_deltadelta*state.steer +
-                (K0_deltaphi + v*v*K2_deltaphi)*state.lean + (K0_deltaphi +
-                    v*v*K2_deltadelta)*state.steer);
-        UnityEngine.Debug.Log(feedbackTorque);
-    }
+		// integration step
+		q.yaw += u.yaw * timeStep;
+	}
+
+	private void UpdateXYStates() {
+		u.x = v*Math.Cos(q.yaw);
+		u.y = v*Math.Sin(q.yaw);
+	
+		// integration step
+		q.x += u.x * timeStep;
+		q.y += u.y * timeStep;
+	}
+
+	private void UpdateWheelStates() {
+		q.thetaR += u.thetaR * timeStep;
+		q.thetaF += u.thetaR * timeStep; // TODO: calculate front wheel rate and use in integration
+	}
+
+	private void SimulateTimeStep() {
+		UpdateLeanStates();
+		UpdateYawStates();
+		UpdateXYStates();
+		UpdateWheelStates();
+		EstimateFeedbackTorque();
+		outputValid = true;
+	}
 }
