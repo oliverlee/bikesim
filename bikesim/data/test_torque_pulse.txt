@@ -1,4 +1,4 @@
-time	wheelrate	steertorque	leanrate	steerate	lean	steer
+time	wheelrate	steertorque	leanrate	steerrate	lean	steer
 0	0	0	0	0	0	0
 0.02	0	0	0	0	0	0
 0.04	0	0	0	0	0	0

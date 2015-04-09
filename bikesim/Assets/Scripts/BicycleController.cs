@@ -90,7 +90,7 @@ public class BicycleController : MonoBehaviour {
 
 		using (FileStream fs = new FileStream(filename, FileMode.Create, FileAccess.Write))
 		using (StreamWriter sw = new StreamWriter(fs)) {
-			sw.WriteLine("time\twheelrate\tsteertorque\tleanrate\tsteerate\tlean\tsteer");
+			sw.WriteLine("time\twheelrate\tsteertorque\tleanrate\tsteerrate\tlean\tsteer");
 		}
 	}
 
