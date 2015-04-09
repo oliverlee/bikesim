@@ -83,7 +83,7 @@ public class BicycleSimulator {
     private Sensor sensor;
     private State state;
     private double feedbackTorque;
-    private Matrix<double> InvMM;
+    private Matrix<double> MM;
 
 
     public BicycleSimulator() {
@@ -91,10 +91,10 @@ public class BicycleSimulator {
         sensor = new Sensor();
         state = new State();
         feedbackTorque = 0.0;
-        InvMM = new DenseMatrix(2, 2, new double[] { // column major
-                    M_phiphi, M_deltaphi,
-                    M_phidelta, M_deltadelta,
-                }).Inverse();
+        MM = new DenseMatrix(2, 2, new double[] { // column major
+            M_phiphi, M_deltaphi,
+            M_phidelta, M_deltadelta,
+        });
     }
 
     public void UpdateSteerTorqueWheelRate(
@@ -152,7 +152,7 @@ public class BicycleSimulator {
         IntegratorFunction f = delegate(double t, Vector<double> y) {
             Vector<double> q = new DenseVector(new double[] {y[2], y[3]});
             Vector<double> qd = new DenseVector(new double[] {y[0], y[1]});
-            Vector<double> qdd = InvMM*(u - Cv*qd - Kv*q);
+            Vector<double> qdd = MM.Solve(u - Cv*qd - Kv*q);
 
             return new DenseVector(new double[] {
                     qdd[0],
