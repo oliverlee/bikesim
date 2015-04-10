@@ -10,6 +10,7 @@ import sys
 import numpy as np
 from numpy import linalg as la
 from scipy import signal as sig
+import control as ctrl
 import matplotlib.pyplot as plt
 
 
@@ -100,8 +101,17 @@ def create_system(data):
                    np.hstack((np.eye(2), np.zeros((2, 2))))))
     B = np.vstack((la.solve(M, np.array([[0], [1]])),
                    np.array([[0], [0]])))
-    sys = sig.lti(A, B, np.array([1, 0, 0, 0]), 0)
+    # sys = sig.lti(A, B, np.array([1, 0, 0, 0]), 0)
+    sys = ctrl.matlab.StateSpace(A, B, np.array([1, 0, 0, 0]), 0)
     return sys
+
+
+def rungekutta4(f, y0, t0, h, u=0):
+    k1 = f(t0, y0, u)
+    k2 = f(t0 + h/2, y0 + h/2*k1, u)
+    k3 = f(t0 + h/2, y0 + h/2*k2, u)
+    k4 = f(t0 + h, y0 + h*k3, u)
+    return y0 + h/6*(k1 + 2*k2 + 2*k3 + k4)
 
 
 if __name__ == "__main__":
@@ -121,7 +131,17 @@ if __name__ == "__main__":
     u = d.data[:, d.map['steertorque']]
     x = d.data[:, state_idx]
 
-    t_out, y_out, x_out = sig.lsim(sys, u, t)
+    # t_out, y_out, x_out = sig.lsim(sys, u, t)
+    integrate_type = 'rk4'
+    if integrate_type == 'control':
+        y_out, t_out, x_out = ctrl.matlab.lsim(sys, u, t)
+    elif integrate_type == 'rk4':
+        f = lambda t, y, u: sys.A*y + sys.B*u
+        y = np.zeros((4, 1))
+        x_out = np.matrix(np.zeros(x.shape))
+        h = np.diff(t)
+        for i, (ti, hi, ui) in enumerate(zip(t[:-1], h, u[:-1])):
+            x_out[i+1, :] = rungekutta4(f, x_out[i, :].T, ti, hi, ui).T
 
     if np.allclose(x_out, x):
         print('state is similar for both simulations')
