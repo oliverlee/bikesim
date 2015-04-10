@@ -138,7 +138,8 @@ if __name__ == "__main__":
         f = lambda t, y, u: sys.A*y + sys.B*u
         x_out = np.matrix(np.zeros(x.shape))
         h = np.diff(t)
-        for i, (ti, hi, ui) in enumerate(zip(t[:-1], h, u[:-1])):
+        h = np.insert(h, 0, h[0])
+        for i, (ti, hi, ui) in enumerate(zip(t, h, u)):
             if i == 0:
                 y = np.zeros((1, 4))
             else:
