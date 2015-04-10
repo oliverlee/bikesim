@@ -107,7 +107,7 @@ public class BicycleController : MonoBehaviour {
         State s = sim.GetState();
         using (FileStream fs = new FileStream(filename, FileMode.Append, FileAccess.Write))
         using (StreamWriter sw = new StreamWriter(fs)) {
-            sw.WriteLine("{0}\t{1}\t{2}\t{3}\t{3}\t{4}\t{5}",
+            sw.WriteLine("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}",
                          Time.time, wheelRate, steerTorque, s.leanRate,
                          s.steerRate, s.lean, s.steer);
         }
