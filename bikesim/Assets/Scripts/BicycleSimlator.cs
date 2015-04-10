@@ -148,19 +148,15 @@ public class BicycleSimulator {
     }
 
     private void IntegrateState() {
-        Vector<double> u = new DenseVector(new double[] {
-                0.0, sensor.steerTorque});
-
         IntegratorFunction f = delegate(double t, Vector<double> y) {
-            Vector<double> q = new DenseVector(new double[] {y[2], y[3]});
-            Vector<double> qd = new DenseVector(new double[] {y[0], y[1]});
-            Vector<double> qdd = MM.Solve(u - C(v)*qd - K(v)*q);
+            Vector<double> q = new DenseVector(new double[] {y[0], y[1], y[2], y[3]});
+            Vector<double> qd = A*q + B*sensor.steerTorque;
 
             return new DenseVector(new double[] {
-                    qdd[0],
-                    qdd[1],
                     qd[0],
                     qd[1],
+                    qd[2],
+                    qd[3],
                     v*y[3] + trail*y[1]*Math.Cos(steerAxisTilt)/wheelbase,
                     v*Math.Cos(y[4]),
                     v*Math.Sin(y[4]),
@@ -181,11 +177,10 @@ public class BicycleSimulator {
         }
     }
 
-    public Matrix<double> B {
+    public Vector<double> B {
         get {
-            Matrix<double> B0 = DenseMatrix.OfColumnVectors(-MM.Solve(new DenseVector(new double[] {0, 1})));
-            Matrix<double> B1 = new SparseMatrix(2, 1);
-            return B0.Stack(B1);
+            Vector<double> B0 = MM.Solve(new DenseVector(new double[] {0, 1}));
+            return new DenseVector(new double[] {B0[0], B0[1], 0, 0});
         }
     }
 }
