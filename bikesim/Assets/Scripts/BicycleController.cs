@@ -58,13 +58,16 @@ public class BicycleController : MonoBehaviour {
     // sensor measurements
     private float wheelRate; // rad/s
     private float steerTorque; // N-m
-    
+
     private VizState q;
     private BicycleSimulator sim;
     private string filename = "test_torque_pulse.txt";
+    private bool writeStateSpace;
 
     // Setup the Bicycle Configuration
     void Start () {
+        writeStateSpace = true; // matrices A, B will be written to file once
+
         // Set component sizes
         const float wheelWidth = 0.01f;
         const float frameWidth = 0.05f;
@@ -107,6 +110,16 @@ public class BicycleController : MonoBehaviour {
             sw.WriteLine("{0}\t{1}\t{2}\t{3}\t{3}\t{4}\t{5}",
                          Time.time, wheelRate, steerTorque, s.leanRate,
                          s.steerRate, s.lean, s.steer);
+        }
+
+        // write the state space matrices A, B when steer torque is first applied
+        if (steerTorque != 0 && writeStateSpace) {
+            using (FileStream fs = new FileStream("state_matrix.txt", FileMode.Create, FileAccess.Write))
+            using (StreamWriter sw = new StreamWriter(fs)) {
+                sw.WriteLine(sim.A);
+                sw.WriteLine(sim.B);
+            }
+            writeStateSpace = false;
         }
     }
 

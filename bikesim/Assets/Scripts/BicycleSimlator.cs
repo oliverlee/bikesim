@@ -94,7 +94,7 @@ public class BicycleSimulator {
         state = new State();
         feedbackTorque = 0.0;
 
-            // matrix construction uses column major order
+        // matrix construction uses column major order
         MM = new DenseMatrix(2, 2, new double[] {
             M_phiphi, M_deltaphi,
             M_phidelta, M_deltadelta,
@@ -148,15 +148,13 @@ public class BicycleSimulator {
     }
 
     private void IntegrateState() {
-        Matrix<double> Cv = C(v);
-        Matrix<double> Kv = K(v);
         Vector<double> u = new DenseVector(new double[] {
                 0.0, sensor.steerTorque});
 
         IntegratorFunction f = delegate(double t, Vector<double> y) {
             Vector<double> q = new DenseVector(new double[] {y[2], y[3]});
             Vector<double> qd = new DenseVector(new double[] {y[0], y[1]});
-            Vector<double> qdd = MM.Solve(u - Cv*qd - Kv*q);
+            Vector<double> qdd = MM.Solve(u - C(v)*qd - K(v)*q);
 
             return new DenseVector(new double[] {
                     qdd[0],
@@ -171,5 +169,23 @@ public class BicycleSimulator {
 
         state.vector = Integrator.RungeKutta4(f, state.vector, 0,
                 sensor.sampleTime);
+    }
+
+    public Matrix<double> A {
+        get {
+            Matrix<double> eye2 = SparseMatrix.CreateIdentity(2);
+            Matrix<double> z2 = new SparseMatrix(2);
+            Matrix<double> A1 = eye2.Append(z2);
+            Matrix<double> A0 = -MM.Solve(C(v).Append(K(v)));
+            return A0.Stack(A1);
+        }
+    }
+
+    public Matrix<double> B {
+        get {
+            Matrix<double> B0 = DenseMatrix.OfColumnVectors(-MM.Solve(new DenseVector(new double[] {0, 1})));
+            Matrix<double> B1 = new SparseMatrix(2, 1);
+            return B0.Stack(B1);
+        }
     }
 }

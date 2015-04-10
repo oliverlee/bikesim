@@ -169,3 +169,8 @@ if __name__ == "__main__":
     axe.set_frame_on(False)
 
     plt.show()
+    
+    print("A:")
+    print(sys.A)
+    print("B:")
+    print(sys.B)
