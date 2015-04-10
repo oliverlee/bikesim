@@ -15,6 +15,23 @@ import matplotlib.pyplot as plt
 
 
 REAR_RADIUS = 0.3 # benchmark bicycle rear wheel radius
+M = np.array([
+    [80.81722, 2.31941332208709],
+    [2.31941332208709, 0.29784188199686]
+])
+C1 = np.array([
+    [0, 33.86641391492494],
+    [-0.85035641456978, 1.68540397397560]
+])
+K0 = np.array([
+    [-80.95, -2.59951685249872],
+    [-2.59951685249872, -0.80329488458618]
+])
+K2 = np.array([
+    [0, 76.59734589573222],
+    [0, 2.65431523794604]
+])
+
 
 class SimData(object):
     radius = REAR_RADIUS    
@@ -76,24 +93,6 @@ def parse_input(path):
         
                 
 def create_system(data):
-    M = np.array([
-        [80.81722, 2.31941332208709],
-        [2.31941332208709, 0.29784188199686]
-    ])
-    C1 = np.array([
-        [0, 33.86641391492494],
-        [-0.85035641456978, 1.68540397397560]
-    ])
-    K0 = np.array([
-        [-80.95, -2.59951685249872],
-        [-2.59951685249872, -0.80329488458618]
-    ])
-    K2 = np.array([
-        [0, 76.59734589573222],
-        [0, 2.65431523794604]
-    ])
-    
-    data.v = 10
     C = data.v*C1
     K = data.g*K0 + data.v*data.v*K2
     
@@ -137,11 +136,14 @@ if __name__ == "__main__":
         y_out, t_out, x_out = ctrl.matlab.lsim(sys, u, t)
     elif integrate_type == 'rk4':
         f = lambda t, y, u: sys.A*y + sys.B*u
-        y = np.zeros((4, 1))
         x_out = np.matrix(np.zeros(x.shape))
         h = np.diff(t)
         for i, (ti, hi, ui) in enumerate(zip(t[:-1], h, u[:-1])):
-            x_out[i+1, :] = rungekutta4(f, x_out[i, :].T, ti, hi, ui).T
+            if i == 0:
+                y = np.zeros((1, 4))
+            else:
+                y = x_out[i-1, :]
+            x_out[i, :] = rungekutta4(f, y.T, ti, hi, ui).T
 
     if np.allclose(x_out, x):
         print('state is similar for both simulations')
