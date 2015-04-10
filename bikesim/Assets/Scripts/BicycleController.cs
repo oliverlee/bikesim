@@ -94,7 +94,7 @@ public class BicycleController : MonoBehaviour {
 		}
 	}
 
-	void FixedUpdate () {
+	void FixedUpdate() {
 		wheelRate -= Input.GetAxis("Vertical");
 		steerTorque = 10*Input.GetAxis("Horizontal");
 

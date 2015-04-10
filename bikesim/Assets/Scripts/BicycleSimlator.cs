@@ -2,7 +2,6 @@
 using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.LinearAlgebra.Double;
 
-
 public class Sensor {
     public double steerTorque, wheelRate, sampleTime;
     public Sensor() : this(0.0f, 0.0, 0.0f) { }
@@ -84,22 +83,40 @@ public class BicycleSimulator {
     private State state;
     private double feedbackTorque;
     private Matrix<double> MM;
-
+    private Matrix<double> C1;
+    private Matrix<double> K0;
+    private Matrix<double> K2;
+    private double v;
 
     public BicycleSimulator() {
         valid = true;
         sensor = new Sensor();
         state = new State();
         feedbackTorque = 0.0;
-        MM = new DenseMatrix(2, 2, new double[] { // column major
+
+            // matrix construction uses column major order
+        MM = new DenseMatrix(2, 2, new double[] {
             M_phiphi, M_deltaphi,
             M_phidelta, M_deltadelta,
+        });
+        C1 = new DenseMatrix(2, 2, new double[] {
+            C1_phiphi, C1_deltaphi,
+            C1_phidelta, C1_deltadelta,
+        });
+        K0 = new DenseMatrix(2, 2, new double[] {
+            K0_phiphi, K0_deltaphi,
+            K0_phidelta, K0_deltadelta,
+        });
+        K2 = new DenseMatrix(2, 2, new double[] {
+            K2_phiphi, K2_deltaphi,
+            K2_phidelta, K2_deltadelta,
         });
     }
 
     public void UpdateSteerTorqueWheelRate(
         float steerTorque, float wheelRate, float samplePeriod) {
         sensor.Update(steerTorque, wheelRate, samplePeriod);
+        v = -sensor.wheelRate * rR;
         valid = false;
     }
 
@@ -118,32 +135,19 @@ public class BicycleSimulator {
     }
 
     private void Simulate() {
-        double v = -sensor.wheelRate * rR;
-        IntegrateState(v);
+        IntegrateState();
         valid = true;
     }
 
     private Matrix<double> C(double v) {
-        return v*(new DenseMatrix(2, 2, new double[] { // column major
-                    C1_phiphi, C1_deltaphi,
-                    C1_phidelta, C1_deltadelta,
-                }));
+        return v*C1;
     }
 
     private Matrix<double> K(double v) {
-        // matrix construction uses column major order
-        Matrix<double> K0 = new DenseMatrix(2, 2, new double[] {
-                    K0_phiphi, K0_deltaphi,
-                    K0_phidelta, K0_deltadelta,
-                });
-        Matrix<double> K2 = new DenseMatrix(2, 2, new double[] {
-                    K2_phiphi, K2_deltaphi,
-                    K2_phidelta, K2_deltadelta,
-                });
         return g*K0 + v*v*K2;
     }
 
-    private void IntegrateState(double v) {
+    private void IntegrateState() {
         Matrix<double> Cv = C(v);
         Matrix<double> Kv = K(v);
         Vector<double> u = new DenseVector(new double[] {
@@ -157,8 +161,8 @@ public class BicycleSimulator {
             return new DenseVector(new double[] {
                     qdd[0],
                     qdd[1],
-                    y[0],
-                    y[1],
+                    qd[0],
+                    qd[1],
                     v*y[3] + trail*y[1]*Math.Cos(steerAxisTilt)/wheelbase,
                     v*Math.Cos(y[4]),
                     v*Math.Sin(y[4]),
