@@ -2,9 +2,11 @@
 using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.LinearAlgebra.Double;
 
+
 public class Sensor {
+#if STEER_TORQUE_INPUT
     public double steerTorque, wheelRate, sampleTime;
-    public Sensor() : this(0.0f, 0.0, 0.0f) { }
+    public Sensor() : this(0.0, 0.0, 0.0) { }
     public Sensor(double torque, double thetad, double dt) {
         steerTorque = torque;
         wheelRate = thetad;
@@ -15,6 +17,22 @@ public class Sensor {
         wheelRate = thetad;
         sampleTime = dt;
     }
+#else
+    public double steerAngle, steerRate, wheelRate, sampleTime;
+    public Sensor() : this(0.0, 0.0, 0.0, 0.0) { }
+    public Sensor(double delta, double deltad, double thetad, double dt) {
+        steerAngle = delta;
+        steerRate = deltad;
+        wheelRate = thetad;
+        sampleTime = dt;
+    }
+    public void Update(double delta, double deltad, double thetad, double dt) {
+        steerAngle = delta;
+        steerRate = deltad;
+        wheelRate = thetad;
+        sampleTime = dt;
+    }
+#endif // STEER_TORQUE_INPUT
 }
 
 public class State {
@@ -52,7 +70,6 @@ public class State {
 // This class implements the bicycle simulator equations of motion as described
 // in Schwab, Recuero 2013.
 public class BicycleSimulator {
-
     // parameters from Meijaard et al. 2007
     private const double g = 9.81;
     private const double M_phiphi = 80.81722;
@@ -86,7 +103,11 @@ public class BicycleSimulator {
     private Matrix<double> C1;
     private Matrix<double> K0;
     private Matrix<double> K2;
+
     private double v;
+    private Matrix<double> Cv;
+    private Matrix<double> Kv;
+    private Vector<double> qd;
 
     public BicycleSimulator() {
         valid = true;
@@ -113,10 +134,18 @@ public class BicycleSimulator {
         });
     }
 
+#if STEER_TORQUE_INPUT
     public void UpdateSteerTorqueWheelRate(
         float steerTorque, float wheelRate, float samplePeriod) {
         sensor.Update(steerTorque, wheelRate, samplePeriod);
+#else
+    public void UpdateSteerAngleRateWheelRate(float steerAngle,
+            float steerRate, float wheelRate, float samplePeriod) {
+        sensor.Update(steerAngle, steerRate, wheelRate, samplePeriod);
+#endif // STEER_TORQUE_INPUT
         v = -sensor.wheelRate * rR;
+        Kv = K(v);
+        Cv = C(v);
         valid = false;
     }
 
@@ -136,6 +165,9 @@ public class BicycleSimulator {
 
     private void Simulate() {
         IntegrateState();
+#if !STEER_TORQUE_INPUT
+        EstimateFeedbackTorque();
+#endif // !STEER_TORQUE_INPUT
         valid = true;
     }
 
@@ -149,22 +181,48 @@ public class BicycleSimulator {
 
     private void IntegrateState() {
         IntegratorFunction f = delegate(double t, Vector<double> y) {
-            Vector<double> q = new DenseVector(new double[] {y[0], y[1], y[2], y[3]});
-            Vector<double> qd = A*q + B*sensor.steerTorque;
+            Vector<double> q = new DenseVector(
+                    new double[] {y[0], y[1], y[2], y[3]});
+#if STEER_TORQUE_INPUT
+            qd = A*q + B*sensor.steerTorque;
+#else
+            qd = A*q;
+#endif // STEER_TORQUE_INPUT
 
             return new DenseVector(new double[] {
                     qd[0],
+#if STEER_TORQUE_INPUT
                     qd[1],
+#else
+                    0,
+#endif // STEER_TORQUE_INPUT
                     qd[2],
+#if STEER_TORQUE_INPUT
                     qd[3],
+#else
+                    0,
+#endif // STEER_TORQUE_INPUT
                     v*y[3] + trail*y[1]*Math.Cos(steerAxisTilt)/wheelbase,
                     v*Math.Cos(y[4]),
                     v*Math.Sin(y[4]),
                     sensor.wheelRate});
         };
 
+#if !STEER_TORQUE_INPUT
+        // Use the most recent measured handlebar steer angle and rate
+        state.steerRate = sensor.steerRate;
+        state.steer = sensor.steerAngle;
+#endif // !STEER_TORQUE_INPUT
         state.vector = Integrator.RungeKutta4(f, state.vector, 0,
                 sensor.sampleTime);
+    }
+
+    private void EstimateFeedbackTorque() {
+        feedbackTorque = -(MM[1, 0]*qd[0] +
+                           Cv[1, 0]*qd[2] +
+                           Cv[1, 1]*qd[3] +
+                           Kv[1, 0]*state.lean +
+                           Kv[1, 1]*state.steer);
     }
 
     public Matrix<double> A {
@@ -172,7 +230,7 @@ public class BicycleSimulator {
             Matrix<double> eye2 = SparseMatrix.CreateIdentity(2);
             Matrix<double> z2 = new SparseMatrix(2);
             Matrix<double> A1 = eye2.Append(z2);
-            Matrix<double> A0 = -MM.Solve(C(v).Append(K(v)));
+            Matrix<double> A0 = -MM.Solve(Cv.Append(Kv));
             return A0.Stack(A1);
         }
     }

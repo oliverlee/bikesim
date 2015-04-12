@@ -4,6 +4,7 @@ using System;
 using System.Collections;
 using System.IO;
 
+
 public class VizState {
     public float x, y, pitch, lean, yaw, wheelAngle, steer;
     public VizState(State q) {
@@ -58,15 +59,19 @@ public class BicycleController : MonoBehaviour {
     // sensor measurements
     private float wheelRate; // rad/s
     private float steerTorque; // N-m
+#if !STEER_TORQUE_INPUT
+    private float steerAngle; // rad/s
+    private float steerRate; // rad
+#endif // STEER_TORQUE_INPUT
 
     private VizState q;
     private BicycleSimulator sim;
     private string filename = "test_torque_pulse.txt";
-    private bool writeStateSpace;
+//    private bool writeStateSpace;
 
     // Setup the Bicycle Configuration
     void Start () {
-        writeStateSpace = true; // matrices A, B will be written to file once
+//        writeStateSpace = true; // matrices A, B will be written to file once
 
         // Set component sizes
         const float wheelWidth = 0.01f;
@@ -85,6 +90,11 @@ public class BicycleController : MonoBehaviour {
         // sensor measurements
         wheelRate = 0.0f;
         steerTorque = 0.0f;
+#if !STEER_TORQUE_INPUT
+        steerAngle = 0.0f;
+        steerRate = 0.0f;
+#endif // STEER_TORQUE_INPUT
+
 
         q = new VizState();
         q.pitch = headAngle;
@@ -99,28 +109,38 @@ public class BicycleController : MonoBehaviour {
 
     void FixedUpdate() {
         wheelRate -= Input.GetAxis("Vertical");
+#if STEER_TORQUE_INPUT
         steerTorque = 10*Input.GetAxis("Horizontal");
+#else
+        float prevAngle = steerAngle;
+        steerAngle = Input.GetAxis("Horizontal");
+        steerRate = (steerAngle - prevAngle)/Time.deltaTime;
+#endif // STEER_TORQUE_INPUT
 
+#if STEER_TORQUE_INPUT
         sim.UpdateSteerTorqueWheelRate(steerTorque, wheelRate, Time.deltaTime);
+#else
+        sim.UpdateSteerAngleRateWheelRate(steerAngle, steerRate, wheelRate, Time.deltaTime);
+#endif // STEER_TORQUE_INPUT
         double T_f = sim.GetFeedbackTorque();
 
         State s = sim.GetState();
         using (FileStream fs = new FileStream(filename, FileMode.Append, FileAccess.Write))
         using (StreamWriter sw = new StreamWriter(fs)) {
             sw.WriteLine("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}",
-                         Time.time, wheelRate, steerTorque, s.leanRate,
-                         s.steerRate, s.lean, s.steer);
+                         Time.time, wheelRate, steerTorque,
+                         s.leanRate, s.steerRate, s.lean, s.steer);
         }
 
-        // write the state space matrices A, B when steer torque is first applied
-        if (steerTorque != 0 && writeStateSpace) {
-            using (FileStream fs = new FileStream("state_matrix.txt", FileMode.Create, FileAccess.Write))
-            using (StreamWriter sw = new StreamWriter(fs)) {
-                sw.WriteLine(sim.A);
-                sw.WriteLine(sim.B);
-            }
-            writeStateSpace = false;
-        }
+//        // write the state space matrices A, B when steer torque is first applied
+//        if (steerTorque != 0 && writeStateSpace) {
+//            using (FileStream fs = new FileStream("state_matrix.txt", FileMode.Create, FileAccess.Write))
+//            using (StreamWriter sw = new StreamWriter(fs)) {
+//                sw.WriteLine(sim.A);
+//                sw.WriteLine(sim.B);
+//            }
+//            writeStateSpace = false;
+//        }
     }
 
     void Update() {
