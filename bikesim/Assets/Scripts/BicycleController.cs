@@ -149,6 +149,9 @@ public class BicycleController : MonoBehaviour {
     }
 
     void Update() {
+        if (Input.GetKeyDown(KeyCode.R)) {
+            Application.LoadLevel(Application.loadedLevel);
+        }
         if (stopSim) {
             return;
         }
