@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using System;
 using System.Collections;
 using System.IO;
+using XInputDotNetPure;
 
 
 public class VizState {
@@ -97,7 +98,6 @@ public class BicycleController : MonoBehaviour {
         steerRate = 0.0f;
 #endif // STEER_TORQUE_INPUT
 
-
         q = new VizState();
         q.pitch = headAngle;
         SetBicycleTransform(q);
@@ -110,16 +110,39 @@ public class BicycleController : MonoBehaviour {
     }
 
     void FixedUpdate() {
+        const float inputKeyRateIncrement = 0.1f;
+        const float inputSteerMultiplier = 0.005f;
+        const float inputTorqueMultiplier = 10.0f;
+
         if (stopSim) {
             return;
         }
-        wheelRate -= Input.GetAxis("Vertical");
+
+        GamePadState state = GamePad.GetState(PlayerIndex.One);
+        if (Input.GetKey(KeyCode.DownArrow)) {
+            wheelRate += inputKeyRateIncrement;
+        } else if (Input.GetKey(KeyCode.UpArrow)) {
+            wheelRate -= inputKeyRateIncrement;
+        }
+
+        float prev = wheelRate;
+        wheelRate += state.Triggers.Left; // brake
+        if (prev == wheelRate) {
+            wheelRate -= state.Triggers.Right; // accel
+        }
+        if (wheelRate > 0.0f) {
+            wheelRate = 0.0f;
+        }
+
 #if STEER_TORQUE_INPUT
-        steerTorque = 10*Input.GetAxis("Horizontal");
+        steerTorque = inputTorqueMultiplier*Input.GetAxis("Horizontal");
 #else
         float prevAngle = steerAngle;
-        steerAngle = Input.GetAxis("Horizontal");
-        steerRate = (steerAngle - prevAngle)/Time.deltaTime;
+//        steerAngle = inputSteerMultiplier*Input.GetAxis("Horizontal");
+//        steerRate = (steerAngle - prevAngle)/Time.deltaTime;
+        steerRate = inputSteerMultiplier*Input.GetAxis("Horizontal");
+        steerRate = inputSteerMultiplier*state.ThumbSticks.Left.X;
+        steerAngle += steerRate;
 #endif // STEER_TORQUE_INPUT
 
 #if STEER_TORQUE_INPUT
@@ -127,7 +150,18 @@ public class BicycleController : MonoBehaviour {
 #else
         sim.UpdateSteerAngleRateWheelRate(steerAngle, steerRate, wheelRate, Time.deltaTime);
 #endif // STEER_TORQUE_INPUT
-        double T_f = sim.GetFeedbackTorque();
+        float T_f = Convert.ToSingle(sim.GetFeedbackTorque())/10.0f;
+        float leftMotor = 0.0f;
+        float rightMotor = 0.0f;
+        if (T_f < 0.0) {
+            leftMotor = T_f;
+        } else {
+            rightMotor = T_f;
+        }
+
+
+        GamePad.SetVibration(PlayerIndex.One, leftMotor, rightMotor);
+        Debug.Log(String.Format("vibration {0} {1}", leftMotor, rightMotor));
 
         State s = sim.GetState();
         using (FileStream fs = new FileStream(filename, FileMode.Append, FileAccess.Write))
@@ -149,7 +183,8 @@ public class BicycleController : MonoBehaviour {
     }
 
     void Update() {
-        if (Input.GetKeyDown(KeyCode.R)) {
+        GamePadState state = GamePad.GetState(PlayerIndex.One);
+        if (Input.GetKeyDown(KeyCode.R) || state.Buttons.Back == ButtonState.Pressed) {
             Application.LoadLevel(Application.loadedLevel);
         }
         if (stopSim) {
@@ -161,6 +196,7 @@ public class BicycleController : MonoBehaviour {
         }
         catch (MathNet.Numerics.NonConvergenceException) {
             stopSim = true;
+            GamePad.SetVibration(PlayerIndex.One, 0.0f, 0.0f);
         }
         
         SetBicycleTransform(q);
