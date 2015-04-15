@@ -97,7 +97,6 @@ public class BicycleController : MonoBehaviour {
         steerRate = 0.0f;
 #endif // STEER_TORQUE_INPUT
 
-
         q = new VizState();
         q.pitch = headAngle;
         SetBicycleTransform(q);
@@ -113,13 +112,34 @@ public class BicycleController : MonoBehaviour {
         if (stopSim) {
             return;
         }
-        wheelRate -= Input.GetAxis("Vertical");
+
+        const float inputKeyRateIncrement = 0.1f;
+        const float inputSteerMultiplier = 0.003f;
+        const float inputTorqueMultiplier = 10.0f;
+
+        if (Input.GetKey(KeyCode.DownArrow)) {
+            wheelRate += inputKeyRateIncrement;
+        } else if (Input.GetKey(KeyCode.UpArrow)) {
+            wheelRate -= inputKeyRateIncrement;
+        }
+
+        float prev = wheelRate;
+        wheelRate += Input.GetAxis("XBOX360LeftTrigger"); // brake
+        if (prev == wheelRate) {
+            wheelRate -= Input.GetAxis("XBOX360RightTrigger"); // accel
+        }
+        if (wheelRate > 0.0f) {
+            wheelRate = 0.0f;
+        }
+
 #if STEER_TORQUE_INPUT
-        steerTorque = 10*Input.GetAxis("Horizontal");
+        steerTorque = inputTorqueMultiplier*Input.GetAxis("Horizontal");
 #else
         float prevAngle = steerAngle;
-        steerAngle = Input.GetAxis("Horizontal");
-        steerRate = (steerAngle - prevAngle)/Time.deltaTime;
+//        steerAngle = inputSteerMultiplier*Input.GetAxis("Horizontal");
+//        steerRate = (steerAngle - prevAngle)/Time.deltaTime;
+        steerRate = inputSteerMultiplier*Input.GetAxis("Horizontal");
+        steerAngle += steerRate;
 #endif // STEER_TORQUE_INPUT
 
 #if STEER_TORQUE_INPUT
@@ -149,7 +169,7 @@ public class BicycleController : MonoBehaviour {
     }
 
     void Update() {
-        if (Input.GetKeyDown(KeyCode.R)) {
+        if (Input.GetKeyDown(KeyCode.R) || Input.GetAxis("XBOX360Back") > 0.0f) {
             Application.LoadLevel(Application.loadedLevel);
         }
         if (stopSim) {
