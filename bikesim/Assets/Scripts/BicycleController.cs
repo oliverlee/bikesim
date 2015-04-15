@@ -159,7 +159,6 @@ public class BicycleController : MonoBehaviour {
             rightMotor = T_f;
         }
 
-
         GamePad.SetVibration(PlayerIndex.One, leftMotor, rightMotor);
         Debug.Log(String.Format("vibration {0} {1}", leftMotor, rightMotor));
 
@@ -170,17 +169,6 @@ public class BicycleController : MonoBehaviour {
                          Time.time, wheelRate, steerTorque,
                          s.leanRate, s.steerRate, s.lean, s.steer);
         }
-
-//        // write the state space matrices A, B when steer torque is first applied
-//        if (steerTorque != 0 && writeStateSpace) {
-//            using (FileStream fs = new FileStream("state_matrix.txt", FileMode.Create, FileAccess.Write))
-//            using (StreamWriter sw = new StreamWriter(fs)) {
-//                sw.WriteLine(sim.A);
-//                sw.WriteLine(sim.B);
-//            }
-//            writeStateSpace = false;
-//        }
-    }
 
     void Update() {
         GamePadState state = GamePad.GetState(PlayerIndex.One);

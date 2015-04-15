@@ -13,14 +13,3 @@ public class Integrator {
         return y0 + h/6*(k1 + 2*k2 + 2*k3 + k4);
     }
 }
-
-//public class Integrator {
-//    public static T RungeKutta4<S, T>(Func<S, T, T> f, S y0, T t0, T h)
-//    {
-//        T k1 = f(t0, y0);
-//        T k2 = f(t0 + h/2, y0 + h/2*k1);
-//        T k3 = f(t0 + h/2, y0 + h/2*k2);
-//        T k4 = f(t0 + h, y0 + h*k3);
-//        return y0 + h/6*(k1 + 2*k2 + 2*k3 + k4);
-//    }
-//}
