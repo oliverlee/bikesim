@@ -66,12 +66,14 @@ public class BicycleController : MonoBehaviour {
 
     private VizState q;
     private BicycleSimulator sim;
+    private bool stopSim;
     private string filename = "test_torque_pulse.txt";
 //    private bool writeStateSpace;
 
     // Setup the Bicycle Configuration
     void Start () {
 //        writeStateSpace = true; // matrices A, B will be written to file once
+        stopSim = false;
 
         // Set component sizes
         const float wheelWidth = 0.01f;
@@ -108,6 +110,9 @@ public class BicycleController : MonoBehaviour {
     }
 
     void FixedUpdate() {
+        if (stopSim) {
+            return;
+        }
         wheelRate -= Input.GetAxis("Vertical");
 #if STEER_TORQUE_INPUT
         steerTorque = 10*Input.GetAxis("Horizontal");
@@ -144,8 +149,19 @@ public class BicycleController : MonoBehaviour {
     }
 
     void Update() {
+        if (Input.GetKeyDown(KeyCode.R)) {
+            Application.LoadLevel(Application.loadedLevel);
+        }
+        if (stopSim) {
+            return;
+        }
         q.SetState(sim.GetState());
-        SetConstraintPitch(q);
+        try {
+            SetConstraintPitch(q);
+        }
+        catch (MathNet.Numerics.NonConvergenceException) {
+            stopSim = true;
+        }
         
         SetBicycleTransform(q);
         sensorInfo.text = System.String.Format(
