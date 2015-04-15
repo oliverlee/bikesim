@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using System;
 using System.Collections;
 using System.IO;
+using XInputDotNetPure;
 
 
 public class VizState {
@@ -109,14 +110,15 @@ public class BicycleController : MonoBehaviour {
     }
 
     void FixedUpdate() {
-        if (stopSim) {
-            return;
-        }
-
         const float inputKeyRateIncrement = 0.1f;
         const float inputSteerMultiplier = 0.003f;
         const float inputTorqueMultiplier = 10.0f;
 
+        if (stopSim) {
+            return;
+        }
+
+        GamePadState state = GamePad.GetState(PlayerIndex.One);
         if (Input.GetKey(KeyCode.DownArrow)) {
             wheelRate += inputKeyRateIncrement;
         } else if (Input.GetKey(KeyCode.UpArrow)) {
@@ -124,9 +126,9 @@ public class BicycleController : MonoBehaviour {
         }
 
         float prev = wheelRate;
-        wheelRate += Input.GetAxis("XBOX360LeftTrigger"); // brake
+        wheelRate += state.Triggers.Left; // brake
         if (prev == wheelRate) {
-            wheelRate -= Input.GetAxis("XBOX360RightTrigger"); // accel
+            wheelRate -= state.Triggers.Right; // accel
         }
         if (wheelRate > 0.0f) {
             wheelRate = 0.0f;
@@ -139,6 +141,7 @@ public class BicycleController : MonoBehaviour {
 //        steerAngle = inputSteerMultiplier*Input.GetAxis("Horizontal");
 //        steerRate = (steerAngle - prevAngle)/Time.deltaTime;
         steerRate = inputSteerMultiplier*Input.GetAxis("Horizontal");
+        steerRate = inputSteerMultiplier*state.ThumbSticks.Left.X;
         steerAngle += steerRate;
 #endif // STEER_TORQUE_INPUT
 
@@ -169,7 +172,8 @@ public class BicycleController : MonoBehaviour {
     }
 
     void Update() {
-        if (Input.GetKeyDown(KeyCode.R) || Input.GetAxis("XBOX360Back") > 0.0f) {
+        GamePadState state = GamePad.GetState(PlayerIndex.One);
+        if (Input.GetKeyDown(KeyCode.R) || state.Buttons.Back == ButtonState.Pressed) {
             Application.LoadLevel(Application.loadedLevel);
         }
         if (stopSim) {
