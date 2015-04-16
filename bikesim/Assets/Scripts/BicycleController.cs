@@ -286,4 +286,8 @@ public class BicycleController : MonoBehaviour {
         - Math.Pow(Math.Sin(pitch), 2)*Math.Pow(Math.Sin(steer), 2) +
         1))*Math.Cos(lean);
     }
+
+    public void OnApplicationQuit() {
+        GamePad.SetVibration(PlayerIndex.One, 0.0f, 0.0f);
+    }
 }
