@@ -1,6 +1,7 @@
 ﻿using System;
 using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.LinearAlgebra.Double;
+using UnityEngine;
 
 
 public class Sensor {
@@ -109,10 +110,14 @@ public class BicycleSimulator {
     private Matrix<double> Kv;
     private Vector<double> qd;
 
+    private UdpSensor uSensor;
+
     public BicycleSimulator() {
         valid = true;
         sensor = new Sensor();
         state = new State();
+        uSensor = new UdpSensor();
+        uSensor.Start();
         feedbackTorque = 0.0;
 
         // matrix construction uses column major order
@@ -141,6 +146,7 @@ public class BicycleSimulator {
 #else
     public void UpdateSteerAngleRateWheelRate(float steerAngle,
             float steerRate, float wheelRate, float samplePeriod) {
+        sensor = uSensor.sensor;
         sensor.Update(steerAngle, steerRate, wheelRate, samplePeriod);
 #endif // STEER_TORQUE_INPUT
         v = -sensor.wheelRate * rR;
