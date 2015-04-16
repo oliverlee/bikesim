@@ -169,6 +169,7 @@ public class BicycleController : MonoBehaviour {
                          Time.time, wheelRate, steerTorque,
                          s.leanRate, s.steerRate, s.lean, s.steer);
         }
+    }
 
     void Update() {
         GamePadState state = GamePad.GetState(PlayerIndex.One);
