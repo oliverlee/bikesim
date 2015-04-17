@@ -54,6 +54,7 @@ public class UdpSensor {
             _client.Close();
             _client = null;
         }
+        _thread.Abort();
         if (_thread.Join(_socketTimeout)) {
             _thread = null;
         }

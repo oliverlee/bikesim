@@ -139,6 +139,10 @@ public class BicycleSimulator {
         });
     }
 
+    public void Stop() {
+        uSensor.Stop();
+    }
+
 #if STEER_TORQUE_INPUT
     public void UpdateSteerTorqueWheelRate(
         float steerTorque, float wheelRate, float samplePeriod) {

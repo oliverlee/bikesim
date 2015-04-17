@@ -172,6 +172,7 @@ public class BicycleController : MonoBehaviour {
     void Update() {
         GamePadState state = GamePad.GetState(PlayerIndex.One);
         if (Input.GetKeyDown(KeyCode.R) || state.Buttons.Back == ButtonState.Pressed) {
+            sim.Stop();
             Application.LoadLevel(Application.loadedLevel);
         }
         if (stopSim) {
@@ -288,5 +289,6 @@ public class BicycleController : MonoBehaviour {
 
     public void OnApplicationQuit() {
         GamePad.SetVibration(PlayerIndex.One, 0.0f, 0.0f);
+        sim.Stop();
     }
 }
