@@ -158,9 +158,7 @@ public class BicycleController : MonoBehaviour {
         } else {
             rightMotor = T_f;
         }
-
         GamePad.SetVibration(PlayerIndex.One, leftMotor, rightMotor);
-        Debug.Log(String.Format("vibration {0} {1}", leftMotor, rightMotor));
 
         State s = sim.GetState();
         using (FileStream fs = new FileStream(filename, FileMode.Append, FileAccess.Write))
