@@ -3,7 +3,10 @@ using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using System.Text;
+using System.Xml;
+using System.IO;
 using UnityEngine;
+
 
 public class UdpSensor {
     private Thread _thread;
@@ -61,19 +64,18 @@ public class UdpSensor {
     }
 
     private void ReceiveData() {
-        Byte[] receiveBytes;
+        byte[] buffer;
         string data;
 
         _client = new UdpClient(_endpoint);
         while (_active) {
             try {
-                receiveBytes = _client.Receive(ref _endpoint);
+                buffer = _client.Receive(ref _endpoint);
             }
             catch (SocketException) {
                 break;
             }
-            data = Encoding.UTF8.GetString(receiveBytes);
-            Debug.Log(data);
+            data = Encoding.UTF8.GetString(buffer);
             UpdateSensor(data);
         }
         _client.Close();
@@ -89,7 +91,19 @@ public class UdpSensor {
     }
 
     private void UpdateSensor(string s) {
-        // TODO: Parse string and update sensor values
-        _sensor.sampleTime += 1.0;
+        using (XmlReader reader = XmlReader.Create(new StringReader(s))) {
+            if (reader.ReadToFollowing("delta")) {
+                _sensor.steerAngle = reader.ReadElementContentAsFloat();
+            }
+//            if (reader.ReadToFollowing ("deltad")) {
+//                _sensor.steerRate = reader.ReadElementContentAsFloat();
+//            }
+            if (reader.ReadToFollowing("cadence")) {
+                _sensor.wheelRate = reader.ReadElementContentAsFloat();
+            }
+//            if (reader.ReadToFollowing("dt")) {
+//                _sensor.sampleTime = reader.ReadElementContentAsFloat();
+//            }
+        }
     }
 }
