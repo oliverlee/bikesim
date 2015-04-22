@@ -1,4 +1,4 @@
-﻿/*
+/*
 	title:	BsgBikeSim2014
 	date:	18-12-2014
 	author: Thom van Beek, thom@fietsenmakers.net +31648254856
