@@ -264,7 +264,7 @@ void sendState () {
 	// Maybe at the delta as well.
 	interrupts();
 	// Send the serial data
-	Serial.println(printFloat(delta)+","+ printFloat(v)+","+ cadenceCopy +","+ brakeStateCopy);
+	Serial.println(printFloat(delta)+","+ printFloat(deltaDot)+","+ cadenceCopy +","+ brakeStateCopy);
 }
 void brakeSignalchangeISR () {
 	// Brake signal ISR handler which is called on pin change.
