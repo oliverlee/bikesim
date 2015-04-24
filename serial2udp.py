@@ -4,12 +4,16 @@
 Convert serial data in CSV format to XML and send via UDP.
 """
 import argparse
+import socket
+
 import serial
 from lxml import etree
 
 
 DEFAULT_BAUDRATE = 115200
 DEFAULT_ENCODING = 'utf-8'
+DEFAULT_UDPHOST = 'localhost'
+DEFAULT_UDPPORT = 9900
 
 
 class Sample(object):
@@ -46,10 +50,15 @@ if __name__ == "__main__":
                         default=DEFAULT_BAUDRATE, type=int)
     parser.add_argument('-e', '--encoding', help='serial data encoding type',
                         default=DEFAULT_ENCODING)
+    parser.add_argument('-H', '--udp_host', help='udp server host ip',
+                        default=DEFAULT_UDPHOST)
+    parser.add_argument('-P', '--udp_port', help='udp server port',
+                        default=DEFAULT_UDPPORT, type=int)
     args = parser.parse_args()
     
     ser = serial.Serial(args.port, args.baudrate)
-    
+    udp_addr = (args.udp_host, args.udp_port)
+    udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     while True:
         s = parse_csv(ser.readline().decode(args.encoding))
-        print(s.gen_xml())
+        udp.sendto(s.gen_xml(), udp_addr)
