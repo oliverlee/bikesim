@@ -93,18 +93,24 @@ public class UdpSensor {
 
     private void UpdateSensor(string s) {
         using (XmlReader reader = XmlReader.Create(new StringReader(s))) {
-            if (reader.ReadToFollowing("delta")) {
-                _sensor.steerAngle = reader.ReadElementContentAsFloat();
+            while (reader.Read()) {
+                if (reader.NodeType == XmlNodeType.Element) {
+                    if (reader.Name == "delta") {
+                        reader.Read(); // get next node with content
+                        _sensor.steerAngle = Convert.ToSingle(reader.Value);
+                    }
+                    if (reader.Name == "deltad") {
+                        reader.Read();
+                        _sensor.steerRate = Convert.ToSingle(reader.Value);
+                    }
+                    if (reader.Name == "cadence") {
+                        reader.Read();
+                        _sensor.wheelRate = Convert.ToSingle(reader.Value);
+                    }
+                    // TODO: incorporate brake signal
+                }
             }
-//            if (reader.ReadToFollowing ("deltad")) {
-//                _sensor.steerRate = reader.ReadElementContentAsFloat();
-//            }
-            if (reader.ReadToFollowing("cadence")) {
-                _sensor.wheelRate = reader.ReadElementContentAsFloat();
-            }
-//            if (reader.ReadToFollowing("dt")) {
-//                _sensor.sampleTime = reader.ReadElementContentAsFloat();
-//            }
+            Debug.Log(String.Format("sensor {0} {1}", _sensor.steerAngle, _sensor.wheelRate));
         }
     }
 }

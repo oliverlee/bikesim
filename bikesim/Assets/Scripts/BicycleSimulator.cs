@@ -150,9 +150,18 @@ public class BicycleSimulator {
 #else
     public void UpdateSteerAngleRateWheelRate(float steerAngle,
             float steerRate, float wheelRate, float samplePeriod) {
-        sensor = uSensor.sensor;
         sensor.Update(steerAngle, steerRate, wheelRate, samplePeriod);
 #endif // STEER_TORQUE_INPUT
+        UpdateVParameters();
+    }
+
+        public void UpdateNetworkSensor(float dt) {
+        sensor = uSensor.sensor;
+        sensor.sampleTime = dt;
+        UpdateVParameters();
+    }
+
+        private void UpdateVParameters() {
         v = -sensor.wheelRate * rR;
         Kv = K(v);
         Cv = C(v);
