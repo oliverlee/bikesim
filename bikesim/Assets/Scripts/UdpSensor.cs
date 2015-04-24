@@ -105,7 +105,7 @@ public class UdpSensor {
                     }
                     if (reader.Name == "cadence") {
                         reader.Read();
-                        _sensor.wheelRate = Convert.ToSingle(reader.Value);
+                        _sensor.wheelRate = -Convert.ToSingle(reader.Value);
                     }
                     // TODO: incorporate brake signal
                 }
