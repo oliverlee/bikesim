@@ -111,6 +111,7 @@ public class BicycleSimulator {
     private Vector<double> qd;
 
     private UdpSensor uSensor;
+    private UdpActuator uAcuator;
 
     public BicycleSimulator() {
         valid = true;
@@ -118,6 +119,8 @@ public class BicycleSimulator {
         state = new State();
         uSensor = new UdpSensor();
         uSensor.Start();
+        uActuator = new UdpActuator();
+        uActuator.Start();
         feedbackTorque = 0.0;
 
         // matrix construction uses column major order
@@ -141,6 +144,7 @@ public class BicycleSimulator {
 
     public void Stop() {
         uSensor.Stop();
+        uActuator.Stop();
     }
 
 #if STEER_TORQUE_INPUT
@@ -242,6 +246,7 @@ public class BicycleSimulator {
                            Cv[1, 1]*qd[3] +
                            Kv[1, 0]*state.lean +
                            Kv[1, 1]*state.steer);
+        uActuator.SetTorque(feedbackTorque);
     }
 
     public Matrix<double> A {
