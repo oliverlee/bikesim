@@ -5,6 +5,7 @@ Convert serial data in CSV format to XML and send via UDP.
 """
 import argparse
 import socket
+import socketserver
 
 import serial
 from lxml import etree
@@ -15,6 +16,22 @@ DEFAULT_ENCODING = 'utf-8'
 DEFAULT_UDPHOST = 'localhost'
 DEFAULT_UDPRXPORT = 9900
 DEFAULT_UDPRXPORT = 9901
+
+
+class UdpHandler(socketserver.BaseRequestHandler):
+    def handle(self):
+        data = self.request[0].strip()
+        root = etree.fromstring(data)
+        self.server.serial.write(root.find('torque').text)
+
+
+class UdpServer(socketserver.UDPServer):
+    def __init__(self, server_address, RequestHandlerClass,
+                 serial_port, encoding):
+        socketserver.UDPServer.__init__(self, server_address,
+                                        RequestHandlerClass)
+        self.serial = serial_port
+        self.encoding = encoding
 
 
 class Sample(object):
@@ -49,6 +66,7 @@ def sensor_thread_func(ser, enc, addr, udp):
         udp.sendto(s.gen_xml(), addr)
 
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=
             'Convert serial data in CSV format to XML and send via UDP.')
@@ -67,11 +85,19 @@ if __name__ == "__main__":
 
     ser = serial.Serial(args.port, args.baudrate)
     udp_tx_addr = (args.udp_host, args.udp_txport)
+    udp_rx_addr = (args.udp_host, args.udp_rxport)
     udp_tx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     sensor_thread = threading.Thread(target=sensor_thread_func,
             args=(ser, args.encoding, udp_tx_addr, udp_tx))
+    sersor_thread.daemon = True
+
+    server = UdpServer(udp_rx_addr, UdpHandler)
+    actuator_thread = threading.Thread(target=server.serve_forever)
+    actuator_thread.daemon = True
+
     sensor_thread.start()
+    actuator_thread.start()
 
     while True:
         try:
@@ -79,3 +105,4 @@ if __name__ == "__main__":
         except KeyboardInterrupt:
             break
     ser.close()
+    server.shutdown()
