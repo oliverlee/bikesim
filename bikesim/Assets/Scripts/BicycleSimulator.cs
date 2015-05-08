@@ -5,20 +5,6 @@ using UnityEngine;
 
 
 public class Sensor {
-#if STEER_TORQUE_INPUT
-    public double steerTorque, wheelRate, sampleTime;
-    public Sensor() : this(0.0, 0.0, 0.0) { }
-    public Sensor(double torque, double thetad, double dt) {
-        steerTorque = torque;
-        wheelRate = thetad;
-        sampleTime = dt;
-    }
-    public void Update(double tau, double thetad, double dt) {
-        steerTorque = tau;
-        wheelRate = thetad;
-        sampleTime = dt;
-    }
-#else
     public double steerAngle, steerRate, wheelRate, sampleTime;
     public Sensor() : this(0.0, 0.0, 0.0, 0.0) { }
     public Sensor(double delta, double deltad, double thetad, double dt) {
@@ -33,7 +19,6 @@ public class Sensor {
         wheelRate = thetad;
         sampleTime = dt;
     }
-#endif // STEER_TORQUE_INPUT
 }
 
 public class State {
@@ -143,15 +128,9 @@ public class BicycleSimulator {
         uSensor.Stop();
     }
 
-#if STEER_TORQUE_INPUT
-    public void UpdateSteerTorqueWheelRate(
-        float steerTorque, float wheelRate, float samplePeriod) {
-        sensor.Update(steerTorque, wheelRate, samplePeriod);
-#else
     public void UpdateSteerAngleRateWheelRate(float steerAngle,
             float steerRate, float wheelRate, float samplePeriod) {
         sensor.Update(steerAngle, steerRate, wheelRate, samplePeriod);
-#endif // STEER_TORQUE_INPUT
         UpdateVParameters();
     }
 
@@ -184,9 +163,7 @@ public class BicycleSimulator {
 
     private void Simulate() {
         IntegrateState();
-#if !STEER_TORQUE_INPUT
         EstimateFeedbackTorque();
-#endif // !STEER_TORQUE_INPUT
         valid = true;
     }
 
@@ -202,36 +179,22 @@ public class BicycleSimulator {
         IntegratorFunction f = delegate(double t, Vector<double> y) {
             Vector<double> q = new DenseVector(
                     new double[] {y[0], y[1], y[2], y[3]});
-#if STEER_TORQUE_INPUT
-            qd = A*q + B*sensor.steerTorque;
-#else
             qd = A*q;
-#endif // STEER_TORQUE_INPUT
 
             return new DenseVector(new double[] {
                     qd[0],
-#if STEER_TORQUE_INPUT
-                    qd[1],
-#else
                     0,
-#endif // STEER_TORQUE_INPUT
                     qd[2],
-#if STEER_TORQUE_INPUT
-                    qd[3],
-#else
                     0,
-#endif // STEER_TORQUE_INPUT
                     v*y[3] + trail*y[1]*Math.Cos(steerAxisTilt)/wheelbase,
                     v*Math.Cos(y[4]),
                     v*Math.Sin(y[4]),
                     sensor.wheelRate});
         };
 
-#if !STEER_TORQUE_INPUT
         // Use the most recent measured handlebar steer angle and rate
         state.steerRate = sensor.steerRate;
         state.steer = sensor.steerAngle;
-#endif // !STEER_TORQUE_INPUT
         state.vector = Integrator.RungeKutta4(f, state.vector, 0,
                 sensor.sampleTime);
     }

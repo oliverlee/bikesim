@@ -103,9 +103,11 @@ public class BicycleController : MonoBehaviour {
         SetBicycleTransform(q);
         sim = new BicycleSimulator();
 
-        using (FileStream fs = new FileStream(filename, FileMode.Create, FileAccess.Write))
+        using (FileStream fs = new FileStream(filename, FileMode.Create,
+                    FileAccess.Write))
         using (StreamWriter sw = new StreamWriter(fs)) {
-            sw.WriteLine("time\twheelrate\tsteertorque\tleanrate\tsteerrate\tlean\tsteer");
+            sw.WriteLine("time\twheelrate\tsteertorque\t" +
+                    "leanrate\tsteerrate\tlean\tsteer");
         }
     }
 
@@ -117,53 +119,13 @@ public class BicycleController : MonoBehaviour {
         if (stopSim) {
             return;
         }
-//
-//        GamePadState state = GamePad.GetState(PlayerIndex.One);
-//        if (Input.GetKey(KeyCode.DownArrow)) {
-//            wheelRate += inputKeyRateIncrement;
-//        } else if (Input.GetKey(KeyCode.UpArrow)) {
-//            wheelRate -= inputKeyRateIncrement;
-//        }
-//
-//        float prev = wheelRate;
-//        wheelRate += state.Triggers.Left; // brake
-//        if (prev == wheelRate) {
-//            wheelRate -= state.Triggers.Right; // accel
-//        }
-//        if (wheelRate > 0.0f) {
-//            wheelRate = 0.0f;
-//        }
-//
-//#if STEER_TORQUE_INPUT
-//        steerTorque = inputTorqueMultiplier*Input.GetAxis("Horizontal");
-//#else
-//        float prevAngle = steerAngle;
-////        steerAngle = inputSteerMultiplier*Input.GetAxis("Horizontal");
-////        steerRate = (steerAngle - prevAngle)/Time.deltaTime;
-//        steerRate = inputSteerMultiplier*Input.GetAxis("Horizontal");
-//        steerRate = inputSteerMultiplier*state.ThumbSticks.Left.X;
-//        steerAngle += steerRate;
-//#endif // STEER_TORQUE_INPUT
-//
-//#if STEER_TORQUE_INPUT
-//        sim.UpdateSteerTorqueWheelRate(steerTorque, wheelRate, Time.deltaTime);
-//#else
-//        sim.UpdateSteerAngleRateWheelRate(steerAngle, steerRate, wheelRate, Time.deltaTime);
-//#endif // STEER_TORQUE_INPUT
 
         sim.UpdateNetworkSensor(Time.deltaTime);
         float T_f = Convert.ToSingle(sim.GetFeedbackTorque())/10.0f;
-//        float leftMotor = 0.0f;
-//        float rightMotor = 0.0f;
-//        if (T_f < 0.0) {
-//            leftMotor = T_f;
-//        } else {
-//            rightMotor = T_f;
-//        }
-//        GamePad.SetVibration(PlayerIndex.One, leftMotor, rightMotor);
 
         State s = sim.GetState();
-        using (FileStream fs = new FileStream(filename, FileMode.Append, FileAccess.Write))
+        using (FileStream fs = new FileStream(filename, FileMode.Append,
+                    FileAccess.Write))
         using (StreamWriter sw = new StreamWriter(fs)) {
             sw.WriteLine("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}",
                          Time.time, wheelRate, steerTorque,
@@ -173,7 +135,8 @@ public class BicycleController : MonoBehaviour {
 
     void Update() {
         GamePadState state = GamePad.GetState(PlayerIndex.One);
-        if (Input.GetKeyDown(KeyCode.R) || state.Buttons.Back == ButtonState.Pressed) {
+        if (Input.GetKeyDown(KeyCode.R) ||
+                state.Buttons.Back == ButtonState.Pressed) {
             sim.Stop();
             Application.LoadLevel(Application.loadedLevel);
         }
@@ -188,7 +151,7 @@ public class BicycleController : MonoBehaviour {
             stopSim = true;
             GamePad.SetVibration(PlayerIndex.One, 0.0f, 0.0f);
         }
-        
+
         SetBicycleTransform(q);
         sensorInfo.text = System.String.Format(
             "wheelrate: {0}\nsteertorque: {1}",
@@ -199,44 +162,57 @@ public class BicycleController : MonoBehaviour {
     }
 
     void SetBicycleTransform(VizState q) {
-        // Update x and y positions of the rear wheel contact, yaw and lean of the rear frame
-        // by modifying the transform of root bicycle game object.
+        // Update x and y positions of the rear wheel contact, yaw and lean of
+        // the rear frame by modifying the transform of root bicycle game
+        // object.
         // Explictly apply the yaw and lean rotations.
-        transform.localPosition = new Vector3(q.x, 0.0f, -q.y); // y and z axes are switched
+
+        //    y and z axes are switched
+        transform.localPosition = new Vector3(q.x, 0.0f, -q.y);
         transform.localRotation = Quaternion.Euler(90.0f, 0, 0) *
             Quaternion.Euler(0.0f, 0.0f, -Mathf.Rad2Deg*q.yaw) *
             Quaternion.Euler(-Mathf.Rad2Deg*q.lean, 0.0f, 0.0f);
 
-        // All wheel and frame local transforms are with respect to the container game or lean frame
+        // All wheel and frame local transforms are with respect to the
+        // container game or lean frame
         //   Update rear wheel angle
-        rearWheel.transform.localRotation = Quaternion.Euler(0.0f, Mathf.Rad2Deg*q.wheelAngle, 0.0f);
+        rearWheel.transform.localRotation =
+            Quaternion.Euler(0.0f, Mathf.Rad2Deg*q.wheelAngle, 0.0f);
         rearWheel.transform.localPosition = new Vector3(0.0f, 0.0f, -rR);
 
         //   Update pitch of the rear frame
-        rearFrame.transform.localRotation = Quaternion.Euler(0.0f, Mathf.Rad2Deg*q.pitch, 0.0f);
-        //   Set rear frame origin at rear wheel position, then translate alone the frame axis
+        rearFrame.transform.localRotation =
+            Quaternion.Euler(0.0f, Mathf.Rad2Deg*q.pitch, 0.0f);
+        //   Set rear frame origin at rear wheel position, then translate alone
+        //   the frame axis
         rearFrame.transform.localPosition = rearWheel.transform.localPosition;
-        rearFrame.transform.Translate(new Vector3(cR/2, 0.0f, 0.0f), rearFrame.transform);
+        rearFrame.transform.Translate(new Vector3(cR/2, 0.0f, 0.0f),
+                rearFrame.transform);
 
         //   Update pitch and steer of the front frame
-        frontFrame.transform.localRotation = 
-            Quaternion.Euler(0.0f, Mathf.Rad2Deg*q.pitch, -Mathf.Rad2Deg*q.steer);
-        //   Set front frame origin at rear frame position, then translate alone the frame axes
+        frontFrame.transform.localRotation =
+            Quaternion.Euler(0.0f, Mathf.Rad2Deg*q.pitch,
+                    -Mathf.Rad2Deg*q.steer);
+        //   Set front frame origin at rear frame position, then translate
+        //   alone the frame axes
         frontFrame.transform.localPosition = rearFrame.transform.localPosition;
         frontFrame.transform.Translate(
             new Vector3(cR/2, 0.0f, ls/2), rearFrame.transform);
 
         //   Update front wheel angle
-        frontWheel.transform.localRotation = frontFrame.transform.localRotation*
+        frontWheel.transform.localRotation =
+            frontFrame.transform.localRotation *
             Quaternion.Euler(0.0f, Mathf.Rad2Deg*q.wheelAngle, 0.0f);
-        frontWheel.transform.localPosition = frontFrame.transform.localPosition;
+        frontWheel.transform.localPosition =
+            frontFrame.transform.localPosition;
         frontWheel.transform.Translate(
             new Vector3(cF, 0.0f, ls/2), frontFrame.transform);
     }
 
     private float CalculateNominalPitch() {
         float theta1 = Mathf.Atan(ls / (cR + cF));
-        float dropoutLength = Mathf.Sqrt(Mathf.Pow(cR + cF, 2) + Mathf.Pow(ls, 2));
+        float dropoutLength =
+            Mathf.Sqrt(Mathf.Pow(cR + cF, 2) + Mathf.Pow(ls, 2));
         float theta2 = Mathf.Asin((rR - rF) / dropoutLength);
         return theta1 - theta2;
     }
@@ -246,14 +222,13 @@ public class BicycleController : MonoBehaviour {
         Func<double, double> df0 = pitch => df(q.lean, pitch, q.steer);
 
         q.pitch = System.Convert.ToSingle(
-            MathNet.Numerics.RootFinding.NewtonRaphson.FindRootNearGuess(f0, df0,
-                q.pitch, 0, Math.PI/2, 1e-10, 100));
+            MathNet.Numerics.RootFinding.NewtonRaphson.FindRootNearGuess(f0,
+                df0, q.pitch, 0, Math.PI/2, 1e-10, 100));
     }
 
     // pitch angle configuration constraint
     private double f(double lean, double pitch, double steer) {
-        return (rF*Math.Pow(Math.Cos(lean),
-        2)*Math.Pow(Math.Cos(pitch), 2) +
+        return (rF*Math.Pow(Math.Cos(lean), 2)*Math.Pow(Math.Cos(pitch), 2) +
         (cF*Math.Sqrt(Math.Pow(Math.Sin(lean)*Math.Sin(steer) -
         Math.Sin(pitch)*Math.Cos(lean)*Math.Cos(steer), 2) +
         Math.Pow(Math.Cos(lean), 2)*Math.Pow(Math.Cos(pitch), 2)) +
