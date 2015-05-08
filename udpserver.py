@@ -3,20 +3,34 @@
 import sys
 import socketserver
 
-class UDPHandler(socketserver.BaseRequestHandler):
+from lxml import etree
+
+class UdpHandler(socketserver.BaseRequestHandler):
     def handle(self):
         data = self.request[0].strip()
-        socket = self.request[1]
         print("{} wrote:".format(self.client_address[0]))
         print(data)
-        socket.sendto(data.upper(), self.client_address)
+        self.server.decode_xml(data)
+
+class UdpServer(socketserver.UDPServer):
+    def __init__(self, server_address, RequestHandlerClass):
+        socketserver.UDPServer.__init__(self, server_address,
+                                        RequestHandlerClass)
+        self.a = 1
+
+    def decode_xml(self, xml):
+        root = etree.fromstring(xml)
+        print(root.find('delta').text)
+
+
 
 if __name__ == "__main__":
+<<<<<<< HEAD
     if len(sys.argv) > 1:
         port = int(sys.argv[1])
     else:
         port = 9900
     host = "localhost"
-    server = socketserver.UDPServer((host, port), UDPHandler)
     print("udp server listening on port {}".format(port))
+    server = UdpServer((host, port), UdpHandler)
     server.serve_forever()
