@@ -23,6 +23,10 @@ public class UdpSensor {
         _udp.Stop();
     }
 
+    public Int32 port {
+        get { return _udp.port; }
+    }
+
     public Sensor sensor {
         get { return _sensor; }
     }

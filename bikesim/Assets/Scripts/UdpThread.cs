@@ -12,11 +12,10 @@ public class UdpThread {
     private IPEndPoint _endpoint;
     private bool _active;
     private Int32 _socketTimeout = 200; // in ms
-
-    public Int32 port;
+    private Int32 _port;
 
     public UdpThread(Int32 port, string name = "") {
-        this.port = port;
+        _port = port;
         _thread = null;
         _client = null;
         _threadname = name;
@@ -33,10 +32,14 @@ public class UdpThread {
         }
     }
 
+    public Int32 port {
+        get { return _port; }
+    }
+
     public void Start() {
         _active = true;
         _client = null;
-        _endpoint = new IPEndPoint("localhost", port);
+        _endpoint = new IPEndPoint("localhost", _port);
         _thread = new Thread(new
                 ParameterizedThreadStart(ReceiveDataThreadFunc));
         _thread.Name = _threadname;
