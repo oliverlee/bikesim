@@ -1,6 +1,7 @@
 ﻿using System;
 using MathNet.Numerics.LinearAlgebra;
 using MathNet.Numerics.LinearAlgebra.Double;
+using UnityEngine;
 
 
 public class Sensor {
@@ -109,10 +110,14 @@ public class BicycleSimulator {
     private Matrix<double> Kv;
     private Vector<double> qd;
 
+    private UdpSensor uSensor;
+
     public BicycleSimulator() {
         valid = true;
         sensor = new Sensor();
         state = new State();
+        uSensor = new UdpSensor();
+        uSensor.Start();
         feedbackTorque = 0.0;
 
         // matrix construction uses column major order
@@ -134,6 +139,10 @@ public class BicycleSimulator {
         });
     }
 
+    public void Stop() {
+        uSensor.Stop();
+    }
+
 #if STEER_TORQUE_INPUT
     public void UpdateSteerTorqueWheelRate(
         float steerTorque, float wheelRate, float samplePeriod) {
@@ -143,6 +152,16 @@ public class BicycleSimulator {
             float steerRate, float wheelRate, float samplePeriod) {
         sensor.Update(steerAngle, steerRate, wheelRate, samplePeriod);
 #endif // STEER_TORQUE_INPUT
+        UpdateVParameters();
+    }
+
+        public void UpdateNetworkSensor(float dt) {
+        sensor = uSensor.sensor;
+        sensor.sampleTime = dt;
+        UpdateVParameters();
+    }
+
+        private void UpdateVParameters() {
         v = -sensor.wheelRate * rR;
         Kv = K(v);
         Cv = C(v);

@@ -117,50 +117,50 @@ public class BicycleController : MonoBehaviour {
         if (stopSim) {
             return;
         }
+//
+//        GamePadState state = GamePad.GetState(PlayerIndex.One);
+//        if (Input.GetKey(KeyCode.DownArrow)) {
+//            wheelRate += inputKeyRateIncrement;
+//        } else if (Input.GetKey(KeyCode.UpArrow)) {
+//            wheelRate -= inputKeyRateIncrement;
+//        }
+//
+//        float prev = wheelRate;
+//        wheelRate += state.Triggers.Left; // brake
+//        if (prev == wheelRate) {
+//            wheelRate -= state.Triggers.Right; // accel
+//        }
+//        if (wheelRate > 0.0f) {
+//            wheelRate = 0.0f;
+//        }
+//
+//#if STEER_TORQUE_INPUT
+//        steerTorque = inputTorqueMultiplier*Input.GetAxis("Horizontal");
+//#else
+//        float prevAngle = steerAngle;
+////        steerAngle = inputSteerMultiplier*Input.GetAxis("Horizontal");
+////        steerRate = (steerAngle - prevAngle)/Time.deltaTime;
+//        steerRate = inputSteerMultiplier*Input.GetAxis("Horizontal");
+//        steerRate = inputSteerMultiplier*state.ThumbSticks.Left.X;
+//        steerAngle += steerRate;
+//#endif // STEER_TORQUE_INPUT
+//
+//#if STEER_TORQUE_INPUT
+//        sim.UpdateSteerTorqueWheelRate(steerTorque, wheelRate, Time.deltaTime);
+//#else
+//        sim.UpdateSteerAngleRateWheelRate(steerAngle, steerRate, wheelRate, Time.deltaTime);
+//#endif // STEER_TORQUE_INPUT
 
-        GamePadState state = GamePad.GetState(PlayerIndex.One);
-        if (Input.GetKey(KeyCode.DownArrow)) {
-            wheelRate += inputKeyRateIncrement;
-        } else if (Input.GetKey(KeyCode.UpArrow)) {
-            wheelRate -= inputKeyRateIncrement;
-        }
-
-        float prev = wheelRate;
-        wheelRate += state.Triggers.Left; // brake
-        if (prev == wheelRate) {
-            wheelRate -= state.Triggers.Right; // accel
-        }
-        if (wheelRate > 0.0f) {
-            wheelRate = 0.0f;
-        }
-
-#if STEER_TORQUE_INPUT
-        steerTorque = inputTorqueMultiplier*Input.GetAxis("Horizontal");
-#else
-        float prevAngle = steerAngle;
-//        steerAngle = inputSteerMultiplier*Input.GetAxis("Horizontal");
-//        steerRate = (steerAngle - prevAngle)/Time.deltaTime;
-        steerRate = inputSteerMultiplier*Input.GetAxis("Horizontal");
-        steerRate = inputSteerMultiplier*state.ThumbSticks.Left.X;
-        steerAngle += steerRate;
-#endif // STEER_TORQUE_INPUT
-
-#if STEER_TORQUE_INPUT
-        sim.UpdateSteerTorqueWheelRate(steerTorque, wheelRate, Time.deltaTime);
-#else
-        sim.UpdateSteerAngleRateWheelRate(steerAngle, steerRate, wheelRate, Time.deltaTime);
-#endif // STEER_TORQUE_INPUT
+        sim.UpdateNetworkSensor(Time.deltaTime);
         float T_f = Convert.ToSingle(sim.GetFeedbackTorque())/10.0f;
-        float leftMotor = 0.0f;
-        float rightMotor = 0.0f;
-        if (T_f < 0.0) {
-            leftMotor = T_f;
-        } else {
-            rightMotor = T_f;
-        }
-
-        GamePad.SetVibration(PlayerIndex.One, leftMotor, rightMotor);
-        Debug.Log(String.Format("vibration {0} {1}", leftMotor, rightMotor));
+//        float leftMotor = 0.0f;
+//        float rightMotor = 0.0f;
+//        if (T_f < 0.0) {
+//            leftMotor = T_f;
+//        } else {
+//            rightMotor = T_f;
+//        }
+//        GamePad.SetVibration(PlayerIndex.One, leftMotor, rightMotor);
 
         State s = sim.GetState();
         using (FileStream fs = new FileStream(filename, FileMode.Append, FileAccess.Write))
@@ -174,6 +174,7 @@ public class BicycleController : MonoBehaviour {
     void Update() {
         GamePadState state = GamePad.GetState(PlayerIndex.One);
         if (Input.GetKeyDown(KeyCode.R) || state.Buttons.Back == ButtonState.Pressed) {
+            sim.Stop();
             Application.LoadLevel(Application.loadedLevel);
         }
         if (stopSim) {
@@ -290,5 +291,6 @@ public class BicycleController : MonoBehaviour {
 
     public void OnApplicationQuit() {
         GamePad.SetVibration(PlayerIndex.One, 0.0f, 0.0f);
+        sim.Stop();
     }
 }
