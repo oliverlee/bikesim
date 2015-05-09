@@ -111,7 +111,7 @@ public class BicycleSimulator {
     private Vector<double> qd;
 
     private UdpSensor uSensor;
-    private UdpActuator uAcuator;
+    private UdpActuator uActuator;
 
     public BicycleSimulator() {
         valid = true;
