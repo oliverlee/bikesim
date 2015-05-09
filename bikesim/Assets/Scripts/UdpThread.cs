@@ -82,13 +82,14 @@ public class UdpThread {
         StopClient();
     }
 
-    private void ReceiveDataThreadFunc(Action<string> receiveFunc) {
+    private void ReceiveDataThreadFunc(Object obj) {
         byte[] buffer;
 
         if (!_active) {
             return;
         }
 
+        Action<string> receiveFunc = (Action<string>)obj;
         if (_client == null) {
             _client = new UdpClient();
         }
