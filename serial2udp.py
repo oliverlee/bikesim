@@ -6,6 +6,7 @@ Convert serial data in CSV format to XML and send via UDP.
 import argparse
 import socket
 import socketserver
+import threading
 
 import serial
 from lxml import etree
@@ -14,7 +15,7 @@ from lxml import etree
 DEFAULT_BAUDRATE = 115200
 DEFAULT_ENCODING = 'utf-8'
 DEFAULT_UDPHOST = 'localhost'
-DEFAULT_UDPRXPORT = 9900
+DEFAULT_UDPTXPORT = 9900
 DEFAULT_UDPRXPORT = 9901
 
 
@@ -22,8 +23,11 @@ class UdpHandler(socketserver.BaseRequestHandler):
     def handle(self):
         data = self.request[0].strip()
         root = etree.fromstring(data)
-        self.server.serial.write(root.find('torque').text)
-
+        elem = root.find('torque')
+        if elem is not None:
+            torque = elem.text
+            #print('torque: {}'.format(torque))
+            self.server.serial.write(torque)
 
 class UdpServer(socketserver.UDPServer):
     def __init__(self, server_address, RequestHandlerClass,
@@ -92,7 +96,7 @@ if __name__ == "__main__":
             args=(ser, args.encoding, udp_tx_addr, udp_tx))
     sersor_thread.daemon = True
 
-    server = UdpServer(udp_rx_addr, UdpHandler)
+    server = UdpServer(udp_rx_addr, UdpHandler, ser, args.encoding)
     actuator_thread = threading.Thread(target=server.serve_forever)
     actuator_thread.daemon = True
 
