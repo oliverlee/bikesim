@@ -158,59 +158,17 @@ void refreshSensorReads () {// Refresh the sensor reads of the Delta and Deltado
     deltaDot = valToDeltaDot(analogRead(DELTADOTPIN));    // * deltaDot_toRadSec;
 }
 
-void checkSerial() {//check and parse the serial incoming stream
+void checkSerial() { //check and parse the serial incoming stream
     while (Serial.available()) {
-        // get the new byte:
         char inChar = (char)Serial.read();
-        // if the incoming character is a newline, set a flag so the next loop can do something about it:
+        // set torque after endline
         if (inChar == '\n') {
-          stringComplete = true;
-          break;
-        }
-        // add the read character to the inputString:
-        inputString += inChar;
-    }
-
-    /*    What to do when a complete line has been received:        */
-    if (stringComplete) {
-        /* First post process string that is received. (data type?)
-        Protocol is: CMD, ARGS*
-        All comma seperated and spaces can be removed. ARGS* will be kept as a remainder of the total string that is received.
-        */
-        String CMD = getNext(inputString);        // Get the requested ID from the message. First element.
-        String stateString;
-        boolean val;
-        String flag;
-        switch (CMD.toInt()) {
-        case QUIT:
-            // Stop the sampling
-            stopSampling();
-            break;
-
-        case RUN:
-            // Start sampling
-            startSampling();
-            break;
-
-        case APPLYOUTPUTTORQUE:
-            // Apply the steer output torque send by the game
-            digitalWrite(MCENABLEPIN, true);
-            break;
-
-        case QUITOUTPUTTORQUE:
-            // do not apply the steer torque anymore even if it is send by the game
-            digitalWrite(MCENABLEPIN, false);
-            //sendState();
-            break;
-        case SETOUTPUTTORQUE:
-            // Set the correct output torque value
-            String torqueAsString = getNext(inputString);
-            Td = strToFloat(torqueAsString);
+            Td = strToFloat(inputString);
             writeHandleBarTorque(Td);
+            inputString = "";
+        } else {
+            inputString += inChar;
         }
-    // clear the string for the next round.
-    inputString = "";
-    stringComplete = false;
     }
 }
 
