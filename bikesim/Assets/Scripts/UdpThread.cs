@@ -21,7 +21,7 @@ public class UdpThread {
         _threadname = name;
     }
 
-    ~UdpSensor() {
+    ~UdpThread() {
         if (_client != null) {
             _client.Close();
             _client = null;
@@ -74,7 +74,7 @@ public class UdpThread {
         _client.Send(buffer, buffer.Length, _endpoint);
     }
 
-    public void StartReceiveData(Func<string, void> receiveFunc) {
+    public void StartReceiveData(Action<string> receiveFunc) {
         _thread.Start(receiveFunc); // start thread and pass function argument
     }
 
@@ -82,7 +82,7 @@ public class UdpThread {
         StopClient();
     }
 
-    private void ReceiveDataThreadFunc(Func<string, void> receiveFunc) {
+    private void ReceiveDataThreadFunc(Action<string> receiveFunc) {
         byte[] buffer;
 
         if (!_active) {
@@ -101,7 +101,7 @@ public class UdpThread {
             catch (SocketException) {
                 break;
             }
-            processDataF(Encoding.UTF8.GetString(buffer));
+            receiveFunc(Encoding.UTF8.GetString(buffer));
         }
     }
 }
