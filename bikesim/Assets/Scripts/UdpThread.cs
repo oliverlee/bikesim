@@ -39,7 +39,7 @@ public class UdpThread {
     public void Start() {
         _active = true;
         _client = null;
-        _endpoint = new IPEndPoint("localhost", _port);
+        _endpoint = new IPEndPoint(IPAddress.Parse("127.0.0.1"), _port);
         _thread = new Thread(new
                 ParameterizedThreadStart(ReceiveDataThreadFunc));
         _thread.Name = _threadname;
