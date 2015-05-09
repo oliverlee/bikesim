@@ -1,10 +1,8 @@
 using System;
-using System.Net;
-using System.Net.Sockets;
-using System.Threading;
 using System.Xml;
 using System.Text;
 using System.IO;
+using UnityEngine;
 
 
 public class Actuator {
@@ -22,7 +20,7 @@ public class UdpActuator {
 
     public UdpActuator(Int32 port = 9901) {
         _actuator = new Actuator();
-        _udp(port);
+        _udp = new UdpThread(port);
     }
 
     public void Start() {

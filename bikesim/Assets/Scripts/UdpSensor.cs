@@ -10,16 +10,17 @@ public class UdpSensor {
 
     public UdpSensor(Int32 port = 9900) {
         _sensor = new Sensor();
-        _udp(port);
+        _udp = new UdpThread(port);
     }
 
     public void Start() {
         Debug.Log(String.Format("udp server listening on port {0}", port));
         _udp.Start();
-        _udp.ReceiveData(UpdateSensor);
+        _udp.StartReceiveData(UpdateSensor);
     }
 
     public void Stop() {
+        _udp.StopReceiveData();
         _udp.Stop();
     }
 
