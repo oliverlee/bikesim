@@ -47,11 +47,11 @@ public class UdpSensor {
                     if (reader.Name == "cadence") {
                         reader.Read();
                         _sensor.wheelRate = -Convert.ToSingle(reader.Value);
+                        _sensor.wheelRate = -20.0; // TODO: remove hardcoded wheel rate
                     }
                     // TODO: incorporate brake signal
                 }
             }
-            Debug.Log(String.Format("sensor {0} {1}", _sensor.steerAngle, _sensor.wheelRate));
         }
     }
 }
