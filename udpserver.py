@@ -1,5 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+import sys
 import socketserver
 
 class UDPHandler(socketserver.BaseRequestHandler):
@@ -11,6 +12,11 @@ class UDPHandler(socketserver.BaseRequestHandler):
         socket.sendto(data.upper(), self.client_address)
 
 if __name__ == "__main__":
-    host, port = "localhost", 9900
+    if len(sys.argv) > 1:
+        port = int(sys.argv[1])
+    else:
+        port = 9900
+    host = "localhost"
     server = socketserver.UDPServer((host, port), UDPHandler)
+    print("udp server listening on port {}".format(port))
     server.serve_forever()

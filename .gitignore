@@ -28,3 +28,6 @@ Thumbs.db
 
 # temporary files in monodevelop
 *~
+
+# vim swap files
+*.swp
