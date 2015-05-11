@@ -134,7 +134,7 @@ if __name__ == "__main__":
     t0 = time.time()
     qto = 0.01
     while True:
-        time.sleep(0.1)
+        time.sleep(0.05)
         t = time.time() - t0
         try:
             act = ACTQ.get(timeout=qto)
@@ -146,7 +146,7 @@ if __name__ == "__main__":
         except queue.Empty:
             sen = []
         #sen = SENQ.get(qto)
-        print('\t'.join(['{:.2}'.format(t)] + act + sen))
+        print('\t'.join(['{:.4}'.format(t)] + act + sen))
 
         try:
             pass
