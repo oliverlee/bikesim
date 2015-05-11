@@ -27,7 +27,7 @@ class UdpHandler(socketserver.BaseRequestHandler):
         if elem is not None:
             torque = elem.text
             #print('torque: {}'.format(torque))
-            self.server.serial.write(torque)
+            self.server.serial.write('{}\n'.format(torque).encode())
 
 class UdpServer(socketserver.UDPServer):
     def __init__(self, server_address, RequestHandlerClass,
