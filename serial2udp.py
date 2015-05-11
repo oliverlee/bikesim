@@ -94,7 +94,7 @@ if __name__ == "__main__":
 
     sensor_thread = threading.Thread(target=sensor_thread_func,
             args=(ser, args.encoding, udp_tx_addr, udp_tx))
-    sersor_thread.daemon = True
+    sensor_thread.daemon = True
 
     server = UdpServer(udp_rx_addr, UdpHandler, ser, args.encoding)
     actuator_thread = threading.Thread(target=server.serve_forever)
