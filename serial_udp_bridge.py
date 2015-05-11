@@ -73,18 +73,25 @@ def sensor_thread_func(ser, enc, addr, udp):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=
-            'Convert serial data in CSV format to XML and send via UDP.')
-    parser.add_argument('port', help='serial port for input data')
-    parser.add_argument('-b', '--baudrate', help='serial port baudrate',
-                        default=DEFAULT_BAUDRATE, type=int)
-    parser.add_argument('-e', '--encoding', help='serial data encoding type',
-                        default=DEFAULT_ENCODING)
-    parser.add_argument('-H', '--udp_host', help='udp remote host ip',
-                        default=DEFAULT_UDPHOST)
-    parser.add_argument('-P', '--udp_txport', help='udp tx port',
-                        default=DEFAULT_UDPTXPORT, type=int)
-    parser.add_argument('-p', '--udp_rxport', help='udp rx port',
-                        default=DEFAULT_UDPRXPORT, type=int)
+            'Convert serial data in CSV format to XML and send via UDP and '
+	    'vice versa.')
+    parser.add_argument('port',
+        help='serial port for communication with arduino')
+    parser.add_argument('-b', '--baudrate',
+        help='serial port baudrate ({})'.format(DEFAULT_BAUDRATE),
+        default=DEFAULT_BAUDRATE, type=int)
+    parser.add_argument('-e', '--encoding',
+        help='serial data encoding type ({})'.format(DEFAULT_ENCODING),
+        default=DEFAULT_ENCODING)
+    parser.add_argument('-H', '--udp_host',
+        help='udp remote host ip ({})'.format(DEFAULT_UDPHOST),
+        default=DEFAULT_UDPHOST)
+    parser.add_argument('-P', '--udp_txport',
+        help='udp tx port ({})'.format(DEFAULT_UDPTXPORT),
+        default=DEFAULT_UDPTXPORT, type=int)
+    parser.add_argument('-p', '--udp_rxport',
+        help='udp rx port ({})'.format(DEFAULT_UDPRXPORT),
+        default=DEFAULT_UDPRXPORT, type=int)
     args = parser.parse_args()
 
     ser = serial.Serial(args.port, args.baudrate)
