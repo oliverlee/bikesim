@@ -4,6 +4,7 @@
 Convert serial data in CSV format to XML and send via UDP.
 """
 import argparse
+import queue
 import socket
 import socketserver
 import threading
@@ -20,6 +21,10 @@ DEFAULT_UDPTXPORT = 9900
 DEFAULT_UDPRXPORT = 9901
 
 
+ACTQ = queue.Queue(1)
+SENQ = queue.Queue(1)
+
+
 class UdpHandler(socketserver.BaseRequestHandler):
     def handle(self):
         data = self.request[0].strip()
@@ -29,6 +34,11 @@ class UdpHandler(socketserver.BaseRequestHandler):
             torque = elem.text
             #print('torque: {}'.format(torque))
             self.server.serial.write('{}\n'.format(torque).encode())
+            try:
+                ACTQ.get_nowait()
+            except queue.Empty:
+                pass
+            ACTQ.put_nowait(['{}'.format(torque)])
 
 
 class UdpServer(socketserver.UDPServer):
@@ -68,8 +78,14 @@ def parse_csv(data):
 
 def sensor_thread_func(ser, enc, addr, udp):
     while True:
-        s = parse_csv(ser.readline().decode(enc))
+        dat = ser.readline().decode(enc)
+        s = parse_csv(dat)
         udp.sendto(s.gen_xml(), addr)
+        try:
+            SENQ.get_nowait()
+        except queue.Empty:
+            pass
+        SENQ.put_nowait(dat.strip().split(','))
 
 
 if __name__ == "__main__":
@@ -115,8 +131,23 @@ if __name__ == "__main__":
     print('transmitting UDP data on port {}'.format(args.udp_txport))
     print('receiving UDP data on port {}'.format(args.udp_rxport))
 
+    t0 = time.time()
+    qto = 0.01
     while True:
         time.sleep(0.1)
+        t = time.time() - t0
+        try:
+            act = ACTQ.get(timeout=qto)
+        except queue.Empty:
+            act = ['  -  ']
+
+        try:
+            sen = SENQ.get(timeout=qto)
+        except queue.Empty:
+            sen = []
+        #sen = SENQ.get(qto)
+        print('\t'.join(['{:.2}'.format(t)] + act + sen))
+
         try:
             pass
         except KeyboardInterrupt:
