@@ -7,6 +7,7 @@ import argparse
 import socket
 import socketserver
 import threading
+import time
 
 import serial
 from lxml import etree
@@ -115,6 +116,7 @@ if __name__ == "__main__":
     print('receiving UDP data on port {}'.format(args.udp_rxport))
 
     while True:
+        time.sleep(0.1)
         try:
             pass
         except KeyboardInterrupt:
