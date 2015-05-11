@@ -29,6 +29,7 @@ class UdpHandler(socketserver.BaseRequestHandler):
             #print('torque: {}'.format(torque))
             self.server.serial.write('{}\n'.format(torque).encode())
 
+
 class UdpServer(socketserver.UDPServer):
     def __init__(self, server_address, RequestHandlerClass,
                  serial_port, encoding):
@@ -70,11 +71,10 @@ def sensor_thread_func(ser, enc, addr, udp):
         udp.sendto(s.gen_xml(), addr)
 
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=
-            'Convert serial data in CSV format to XML and send via UDP and '
-	    'vice versa.')
+        'Convert serial data in CSV format to XML and send via UDP and '
+        'vice versa.')
     parser.add_argument('port',
         help='serial port for communication with arduino')
     parser.add_argument('-b', '--baudrate',
@@ -109,6 +109,10 @@ if __name__ == "__main__":
 
     sensor_thread.start()
     actuator_thread.start()
+    print('{} using serial port {} at {} baud'.format(
+        __file__, args.port, args.baudrate))
+    print('transmitting UDP data on port {}'.format(args.udp_txport))
+    print('receiving UDP data on port {}'.format(args.udp_rxport))
 
     while True:
         try:
