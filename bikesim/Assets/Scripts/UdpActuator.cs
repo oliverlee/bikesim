@@ -51,8 +51,8 @@ public class UdpActuator {
     }
 
     private string XmlDatagram(double tau) {
-        StringBuilder sb = new StringBuilder();
-        using (XmlWriter writer = XmlWriter.Create(sb)) {
+        MemoryStream ms = new MemoryStream();
+        using (XmlWriter writer = XmlWriter.Create(ms)) {
             writer.WriteStartDocument();
             writer.WriteStartElement("root");
             writer.WriteStartElement("torque");
@@ -62,6 +62,7 @@ public class UdpActuator {
             writer.WriteEndDocument();
             writer.Flush();
         }
-        return sb.ToString();
+        byte[] b = ms.ToArray();
+        return Encoding.UTF8.GetString(b);
     }
 }
