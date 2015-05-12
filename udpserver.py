@@ -25,7 +25,6 @@ class UdpServer(socketserver.UDPServer):
 
 
 if __name__ == "__main__":
-<<<<<<< HEAD
     if len(sys.argv) > 1:
         port = int(sys.argv[1])
     else:
