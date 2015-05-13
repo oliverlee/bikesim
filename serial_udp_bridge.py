@@ -31,7 +31,9 @@ class UdpHandler(socketserver.BaseRequestHandler):
         root = etree.fromstring(data)
         elem = root.find('torque')
         if elem is not None:
-            torque = elem.text
+            tau0 = elem.text
+            # rescale torque
+            torque = float(tau0) / 8.0
             self.server.serial.write('{}\n'.format(torque).encode())
             try:
                 ACTQ.get_nowait()
