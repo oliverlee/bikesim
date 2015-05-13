@@ -32,7 +32,6 @@ class UdpHandler(socketserver.BaseRequestHandler):
         elem = root.find('torque')
         if elem is not None:
             torque = elem.text
-            #print('torque: {}'.format(torque))
             self.server.serial.write('{}\n'.format(torque).encode())
             try:
                 ACTQ.get_nowait()
@@ -68,6 +67,8 @@ class Sample(object):
 
 def parse_csv(data):
     vals = data.strip().split(',')
+    if len(vals) != 4:
+        return None
     s = Sample()
     s.delta = float(vals[0])
     s.deltad = float(vals[1])
@@ -80,6 +81,8 @@ def sensor_thread_func(ser, enc, addr, udp):
     while True:
         dat = ser.readline().decode(enc)
         s = parse_csv(dat)
+        if s is None:
+            continue
         udp.sendto(s.gen_xml(), addr)
         try:
             SENQ.get_nowait()
@@ -132,12 +135,14 @@ if __name__ == "__main__":
     print('receiving UDP data on port {}'.format(args.udp_rxport))
 
     t0 = time.time()
-    qto = 0.01
+    qto = 0.005
     while True:
         time.sleep(0.05)
         t = time.time() - t0
         try:
             act = ACTQ.get(timeout=qto)
+            # change printing of act
+            act = ['{:.2f}'.format(float(f)) for f in act]
         except queue.Empty:
             act = ['  -  ']
 
@@ -145,12 +150,12 @@ if __name__ == "__main__":
             sen = SENQ.get(timeout=qto)
         except queue.Empty:
             sen = []
-        #sen = SENQ.get(qto)
+
         print('\t'.join(['{:.4}'.format(t)] + act + sen))
 
         try:
             pass
         except KeyboardInterrupt:
+            ser.close()
+            server.shutdown()
             break
-    ser.close()
-    server.shutdown()
