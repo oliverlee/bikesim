@@ -137,9 +137,9 @@ if __name__ == "__main__":
     print('receiving UDP data on port {}'.format(args.udp_rxport))
 
     t0 = time.time()
-    qto = 0.005
+    qto = 0.01
     while True:
-        time.sleep(0.05)
+        time.sleep(0.1)
         t = time.time() - t0
         try:
             act = ACTQ.get(timeout=qto)
