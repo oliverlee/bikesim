@@ -149,6 +149,7 @@ public class BicycleController : MonoBehaviour {
         }
         catch (MathNet.Numerics.NonConvergenceException) {
             stopSim = true;
+            sim.Stop();
             GamePad.SetVibration(PlayerIndex.One, 0.0f, 0.0f);
         }
 
