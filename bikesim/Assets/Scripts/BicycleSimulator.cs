@@ -138,13 +138,13 @@ public class BicycleSimulator {
         UpdateVParameters();
     }
 
-        public void UpdateNetworkSensor(float dt) {
+    public void UpdateNetworkSensor(float dt) {
         sensor = uSensor.sensor;
         sensor.sampleTime = dt;
         UpdateVParameters();
     }
 
-        private void UpdateVParameters() {
+    private void UpdateVParameters() {
         v = -sensor.wheelRate * rR;
         Kv = K(v);
         Cv = C(v);
@@ -156,6 +156,10 @@ public class BicycleSimulator {
             Simulate();
         }
         return feedbackTorque;
+    }
+
+    public double GetWheelRate() {
+        return sensor.wheelRate;
     }
 
     public State GetState() {
@@ -187,9 +191,9 @@ public class BicycleSimulator {
 
             return new DenseVector(new double[] {
                     qd[0],
-                    0,
+                    0, // set steer accel to zero
                     qd[2],
-                    0,
+                    0, // set steer rate to zero as we use the handlebar dynamics
                     v*y[3] + trail*y[1]*Math.Cos(steerAxisTilt)/wheelbase,
                     v*Math.Cos(y[4]),
                     v*Math.Sin(y[4]),
@@ -199,6 +203,7 @@ public class BicycleSimulator {
         // Use the most recent measured handlebar steer angle and rate
         state.steerRate = sensor.steerRate;
         state.steer = sensor.steerAngle;
+        // Since y[1], y[3] are set to zero, steer states do not change
         state.vector = Integrator.RungeKutta4(f, state.vector, 0,
                 sensor.sampleTime);
     }
@@ -206,7 +211,7 @@ public class BicycleSimulator {
     private void EstimateFeedbackTorque() {
         feedbackTorque = -(MM[1, 0]*qd[0] +
                            Cv[1, 0]*qd[2] +
-                           Cv[1, 1]*qd[3] +
+                           Cv[1, 1]*qd[3] + // TODO: use state steer rate?
                            Kv[1, 0]*state.lean +
                            Kv[1, 1]*state.steer);
         uActuator.SetTorque(feedbackTorque);
