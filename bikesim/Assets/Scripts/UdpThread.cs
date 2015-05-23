@@ -48,6 +48,10 @@ public class UdpThread {
 
     public void Stop() {
         _active = false;
+        if (_thread == null) {
+            return;
+        }
+
         StopClient();
         if ((_thread.ThreadState &
              (ThreadState.Stopped | ThreadState.Unstarted)) != 0) {

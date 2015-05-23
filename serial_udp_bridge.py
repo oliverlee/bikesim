@@ -4,9 +4,12 @@
 Convert serial data in CSV format to XML and send via UDP.
 """
 import argparse
+import math
 import queue
+import signal
 import socket
 import socketserver
+import sys
 import threading
 import time
 
@@ -21,6 +24,10 @@ DEFAULT_UDPTXPORT = 9900
 DEFAULT_UDPRXPORT = 9901
 
 
+TORQUE_SCALING_FACTOR = 1/5.5
+TORQUE_LIMIT = 10
+
+
 ACTQ = queue.Queue(1)
 SENQ = queue.Queue(1)
 
@@ -31,7 +38,11 @@ class UdpHandler(socketserver.BaseRequestHandler):
         root = etree.fromstring(data)
         elem = root.find('torque')
         if elem is not None:
-            torque = elem.text
+            tau0 = elem.text
+            # rescale and limit torque
+            torque = float(tau0) * TORQUE_SCALING_FACTOR
+            if abs(torque) > TORQUE_LIMIT:
+                torque = math.copysign(TORQUE_LIMIT, torque)
             self.server.serial.write('{}\n'.format(torque).encode())
             try:
                 ACTQ.get_nowait()
@@ -79,7 +90,10 @@ def parse_csv(data):
 
 def sensor_thread_func(ser, enc, addr, udp):
     while True:
-        dat = ser.readline().decode(enc)
+        try:
+            dat = ser.readline().decode(enc)
+        except BlockingIOError:
+            continue
         s = parse_csv(dat)
         if s is None:
             continue
@@ -135,27 +149,27 @@ if __name__ == "__main__":
     print('receiving UDP data on port {}'.format(args.udp_rxport))
 
     t0 = time.time()
-    qto = 0.005
-    while True:
-        time.sleep(0.05)
-        t = time.time() - t0
-        try:
-            act = ACTQ.get(timeout=qto)
-            # change printing of act
-            act = ['{:.2f}'.format(float(f)) for f in act]
-        except queue.Empty:
-            act = ['  -  ']
+    qto = 0.01
+    try:
+        while True:
+            time.sleep(0.1)
+            t = time.time() - t0
+            try:
+                act = ACTQ.get(timeout=qto)
+                # change printing of act
+                act = ['{:.6f}'.format(float(f)) for f in act]
+            except queue.Empty:
+                act = ['  -  ']
 
-        try:
-            sen = SENQ.get(timeout=qto)
-        except queue.Empty:
-            sen = []
+            try:
+                sen = SENQ.get(timeout=qto)
+            except queue.Empty:
+                sen = []
 
-        print('\t'.join(['{:.4}'.format(t)] + act + sen))
+            print('\t'.join(['{:.2}'.format(t)] + act + sen))
 
-        try:
-            pass
-        except KeyboardInterrupt:
-            ser.close()
-            server.shutdown()
-            break
+    except KeyboardInterrupt:
+       server.shutdown() # stop UdpServer and actuator command transmission
+       ser.write('0\n'.encode()) # send 0 value actuator torque
+       ser.close() # close serial port, terminating sensor thread
+       sys.exit(0)

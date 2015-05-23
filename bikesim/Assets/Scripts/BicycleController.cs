@@ -43,7 +43,7 @@ public class BicycleController : MonoBehaviour {
     public GameObject frontWheel;
     public Text sensorInfo;
     public Text stateInfo;
-    
+
     // visualization parameters
     // Values from Peterson dissertation
     private float rR = 0.3f; // m
@@ -60,10 +60,8 @@ public class BicycleController : MonoBehaviour {
     // sensor measurements
     private float wheelRate; // rad/s
     private float steerTorque; // N-m
-#if !STEER_TORQUE_INPUT
     private float steerAngle; // rad/s
     private float steerRate; // rad
-#endif // STEER_TORQUE_INPUT
 
     private VizState q;
     private BicycleSimulator sim;
@@ -93,10 +91,8 @@ public class BicycleController : MonoBehaviour {
         // sensor measurements
         wheelRate = 0.0f;
         steerTorque = 0.0f;
-#if !STEER_TORQUE_INPUT
         steerAngle = 0.0f;
         steerRate = 0.0f;
-#endif // STEER_TORQUE_INPUT
 
         q = new VizState();
         q.pitch = headAngle;
@@ -112,24 +108,22 @@ public class BicycleController : MonoBehaviour {
     }
 
     void FixedUpdate() {
-        const float inputKeyRateIncrement = 0.1f;
-        const float inputSteerMultiplier = 0.005f;
-        const float inputTorqueMultiplier = 10.0f;
-
         if (stopSim) {
             return;
         }
 
-        sim.UpdateNetworkSensor(Time.deltaTime);
-        float T_f = Convert.ToSingle(sim.GetFeedbackTorque())/10.0f;
+        float dt = Time.deltaTime;
+        sim.UpdateNetworkSensor(dt);
+        steerTorque = Convert.ToSingle(sim.GetFeedbackTorque());
+        wheelRate = Convert.ToSingle(sim.GetWheelRate());
 
         State s = sim.GetState();
         using (FileStream fs = new FileStream(filename, FileMode.Append,
                     FileAccess.Write))
         using (StreamWriter sw = new StreamWriter(fs)) {
-            sw.WriteLine("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}",
+            sw.WriteLine("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}",
                          Time.time, wheelRate, steerTorque,
-                         s.leanRate, s.steerRate, s.lean, s.steer);
+                         s.leanRate, s.steerRate, s.lean, s.steer, dt);
         }
     }
 
@@ -149,6 +143,7 @@ public class BicycleController : MonoBehaviour {
         }
         catch (MathNet.Numerics.NonConvergenceException) {
             stopSim = true;
+            sim.Stop();
             GamePad.SetVibration(PlayerIndex.One, 0.0f, 0.0f);
         }
 
