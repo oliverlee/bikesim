@@ -4,6 +4,7 @@
 Convert serial data in CSV format to XML and send via UDP.
 """
 import argparse
+import math
 import queue
 import socket
 import socketserver
@@ -21,6 +22,10 @@ DEFAULT_UDPTXPORT = 9900
 DEFAULT_UDPRXPORT = 9901
 
 
+TORQUE_SCALING_FACTOR = 1/5.5
+TORQUE_LIMIT = 10
+
+
 ACTQ = queue.Queue(1)
 SENQ = queue.Queue(1)
 
@@ -32,8 +37,10 @@ class UdpHandler(socketserver.BaseRequestHandler):
         elem = root.find('torque')
         if elem is not None:
             tau0 = elem.text
-            # rescale torque
-            torque = float(tau0) / 5.5
+            # rescale and limit torque
+            torque = float(tau0) * TORQUE_SCALING_FACTOR
+            if abs(torque) > TORQUE_LIMIT:
+                torque = math.copysign(TORQUE_LIMIT, torque)
             self.server.serial.write('{}\n'.format(torque).encode())
             try:
                 ACTQ.get_nowait()
@@ -81,7 +88,10 @@ def parse_csv(data):
 
 def sensor_thread_func(ser, enc, addr, udp):
     while True:
-        dat = ser.readline().decode(enc)
+        try:
+            dat = ser.readline().decode(enc)
+        except BlockingIOError:
+            continue
         s = parse_csv(dat)
         if s is None:
             continue
