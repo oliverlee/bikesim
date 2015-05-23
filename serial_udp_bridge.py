@@ -6,8 +6,10 @@ Convert serial data in CSV format to XML and send via UDP.
 import argparse
 import math
 import queue
+import signal
 import socket
 import socketserver
+import sys
 import threading
 import time
 
@@ -148,26 +150,26 @@ if __name__ == "__main__":
 
     t0 = time.time()
     qto = 0.01
-    while True:
-        time.sleep(0.1)
-        t = time.time() - t0
-        try:
-            act = ACTQ.get(timeout=qto)
-            # change printing of act
-            act = ['{:.2f}'.format(float(f)) for f in act]
-        except queue.Empty:
-            act = ['  -  ']
+    try:
+        while True:
+            time.sleep(0.1)
+            t = time.time() - t0
+            try:
+                act = ACTQ.get(timeout=qto)
+                # change printing of act
+                act = ['{:.6f}'.format(float(f)) for f in act]
+            except queue.Empty:
+                act = ['  -  ']
 
-        try:
-            sen = SENQ.get(timeout=qto)
-        except queue.Empty:
-            sen = []
+            try:
+                sen = SENQ.get(timeout=qto)
+            except queue.Empty:
+                sen = []
 
-        print('\t'.join(['{:.4}'.format(t)] + act + sen))
+            print('\t'.join(['{:.2}'.format(t)] + act + sen))
 
-        try:
-            pass
-        except KeyboardInterrupt:
-            ser.close()
-            server.shutdown()
-            break
+    except KeyboardInterrupt:
+       server.shutdown() # stop UdpServer and actuator command transmission
+       ser.write('0\n'.encode()) # send 0 value actuator torque
+       ser.close() # close serial port, terminating sensor thread
+       sys.exit(0)
