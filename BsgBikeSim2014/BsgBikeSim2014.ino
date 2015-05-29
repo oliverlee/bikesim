@@ -77,27 +77,20 @@ const float rr    = 0.3;        // [m] wheel radius rear
 #define FREQ 50        //frequency in [hz]. max 100!
 #define CYCLETIME 1.0/FREQ        //sample time in [s]
 
-// Define SERIAL parse commands
-#define SETOUTPUTTORQUE 4
-#define QUITOUTPUTTORQUE 3
-#define APPLYOUTPUTTORQUE 2
-#define RUN 1
-#define QUIT 0
-
 /*    Variables initialization for Serial communication*/
 String inputString = "";         // a string to hold incoming data
 boolean stringComplete = false;  // whether the string is complete
 
 //bicycle state variables
-float delta                = 0.0;
-float deltaDot            = 0.0;
-float v                    = 0.0;
-volatile unsigned int cadence            = 0;
-volatile boolean cadenceOverflowFlag    = false;
+float delta = 0.0;
+float deltaDot = 0.0;
+float v = 0.0;
+volatile unsigned int cadence = 0;
+volatile boolean cadenceOverflowFlag = false;
 
-float Td                = 0.0;
-boolean run                = true;
-boolean FeedbackMode    = true;
+float Td = 0.0;
+boolean run = true;
+boolean FeedbackMode = true;
 volatile int brakeState = LOW;
 volatile boolean sendFlag = false;
 
