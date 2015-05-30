@@ -115,7 +115,7 @@ Adafruit_MCP4725 dac;    // The Digital to Analog converter attached via i2c
 /* Utility functions */
 String printFloat(float var){    //print a floating point number
     char dtostrfbuffer[15];
-    return String(dtostrf(var, 4,2, dtostrfbuffer));
+    return String(dtostrf(var, 6, 4, dtostrfbuffer));
 }
 
 float valToDelta(int val){// transform measured value to radians
@@ -135,7 +135,7 @@ int torqueToDigitalOut (float torque) {
     // pwm needs to be negated, likely due to wiring
     int pwm = static_cast<int>(
             -max_pwm_int*act_torque/maxon_346970_max_torque_peak);
-    return pwm + pwm_zezo_offset;
+    return pwm + pwm_zero_offset;
 }
 
 String getNext(String& message){
