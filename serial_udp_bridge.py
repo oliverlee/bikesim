@@ -91,8 +91,9 @@ def parse_csv(data):
 
 def sensor_thread_func(ser, enc, addr, udp):
     utc_time_str = lambda: time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())
-    with open('sensor_data', 'w') as log:
-        log.write('sensor data log started at {}\n'.format(utc_time_str()))
+    utc_file_str = lambda: time.strftime('%y%m%d_%H%M%S', time.gmtime())
+    with open('sensor_data_{}'.format(utc_file_str()), 'w') as log:
+        log.write('sensor data log started at {} UTC\n'.format(utc_time_str()))
         while ser.isOpen():
             try:
                 dat = ser.readline().decode(enc)
@@ -118,7 +119,8 @@ def sensor_thread_func(ser, enc, addr, udp):
                 '{}'.format(s.brake)
             ]
             SENQ.put_nowait(datum)
-        log.write('sensor data log terminated at {}\n'.format(utc_time_str()))
+        log.write('sensor data log terminated at {} UTC\n'.format(
+            utc_time_str()))
 
 
 if __name__ == "__main__":
