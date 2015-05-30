@@ -32,6 +32,16 @@ ACTQ = queue.Queue(1)
 SENQ = queue.Queue(1)
 
 
+def info(type, value, tb):
+    if hasattr(sys, 'ps1') or not sys.stderr.isatty():
+        sys.__excepthook__(type, value, tb)
+    else:
+        import traceback, pdb
+        traceback.print_exception(type, value, tb)
+        print
+        pdb.pm()
+
+
 class UdpHandler(socketserver.BaseRequestHandler):
     def handle(self):
         data = self.request[0].strip()
@@ -106,6 +116,7 @@ def sensor_thread_func(ser, enc, addr, udp):
 
 
 if __name__ == "__main__":
+    sys.excepthook = info
     parser = argparse.ArgumentParser(description=
         'Convert serial data in CSV format to XML and send via UDP and '
         'vice versa.')
