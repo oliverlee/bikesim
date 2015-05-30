@@ -26,6 +26,7 @@ DEFAULT_UDPRXPORT = 9901
 
 TORQUE_SCALING_FACTOR = 1.0
 TORQUE_LIMIT = 30
+RAD_PER_DEG = 2*math.pi/360
 
 
 ACTQ = queue.Queue(1)
@@ -81,8 +82,8 @@ def parse_csv(data):
     if len(vals) != 4:
         return None
     s = Sample()
-    s.delta = float(vals[0])
-    s.deltad = float(vals[1])
+    s.delta = float(vals[0]) / RAD_PER_DEG
+    s.deltad = float(vals[1]) / RAD_PER_DEG
     s.cadence = int(vals[2])
     s.brake = bool(vals[3])
     return s
@@ -102,7 +103,14 @@ def sensor_thread_func(ser, enc, addr, udp):
             SENQ.get_nowait()
         except queue.Empty:
             pass
-        SENQ.put_nowait(dat.strip().split(','))
+        #SENQ.put_nowait(dat.strip().split(','))
+        datum = [
+            '{:+.4}'.format(s.delta),
+            '{:+.4}'.format(s.deltad),
+            '{}'.format(s.cadence),
+            '{}'.format(s.brake)
+        ]
+        SENQ.put_nowait(datum)
 
 
 if __name__ == "__main__":
