@@ -90,27 +90,35 @@ def parse_csv(data):
 
 
 def sensor_thread_func(ser, enc, addr, udp):
-    while True:
-        try:
-            dat = ser.readline().decode(enc)
-        except BlockingIOError:
-            continue
-        s = parse_csv(dat)
-        if s is None:
-            continue
-        udp.sendto(s.gen_xml(), addr)
-        try:
-            SENQ.get_nowait()
-        except queue.Empty:
-            pass
-        #SENQ.put_nowait(dat.strip().split(','))
-        datum = [
-            '{:+.4}'.format(s.delta),
-            '{:+.4}'.format(s.deltad),
-            '{}'.format(s.cadence),
-            '{}'.format(s.brake)
-        ]
-        SENQ.put_nowait(datum)
+    utc_time_str = lambda: time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())
+    with open('sensor_data', 'w') as log:
+        log.write('sensor data log started at {}\n'.format(utc_time_str()))
+        while ser.isOpen():
+            try:
+                dat = ser.readline().decode(enc)
+            except BlockingIOError:
+                continue
+            except TypeError:
+                # TypeError thrown by serialposix when serial port is closed
+                break
+            s = parse_csv(dat)
+            if s is None:
+                continue
+            log.write(dat.strip() + '\n')
+            udp.sendto(s.gen_xml(), addr)
+            try:
+                SENQ.get_nowait()
+            except queue.Empty:
+                pass
+            #SENQ.put_nowait(dat.strip().split(','))
+            datum = [
+                '{:+.4}'.format(s.delta),
+                '{:+.4}'.format(s.deltad),
+                '{}'.format(s.cadence),
+                '{}'.format(s.brake)
+            ]
+            SENQ.put_nowait(datum)
+        log.write('sensor data log terminated at {}\n'.format(utc_time_str()))
 
 
 if __name__ == "__main__":
@@ -180,4 +188,5 @@ if __name__ == "__main__":
        server.shutdown() # stop UdpServer and actuator command transmission
        ser.write('0\n'.encode()) # send 0 value actuator torque
        ser.close() # close serial port, terminating sensor thread
+       sensor_thread.join() # wait for sensor thread to terminate
        sys.exit(0)
