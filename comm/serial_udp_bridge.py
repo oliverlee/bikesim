@@ -82,8 +82,8 @@ def parse_csv(data):
     if len(vals) != 4:
         return None
     s = Sample()
-    s.delta = float(vals[0]) / RAD_PER_DEG
-    s.deltad = float(vals[1]) / RAD_PER_DEG
+    s.delta = float(vals[0])
+    s.deltad = float(vals[1])
     s.cadence = int(vals[2])
     s.brake = bool(vals[3])
     return s
@@ -113,8 +113,8 @@ def sensor_thread_func(ser, enc, addr, udp):
                 pass
             #SENQ.put_nowait(dat.strip().split(','))
             datum = [
-                '{:+.4}'.format(s.delta),
-                '{:+.4}'.format(s.deltad),
+                '{:+.4}'.format(s.delta / RAD_PER_DEG),
+                '{:+.4}'.format(s.deltad / RAD_PER_DEG),
                 '{}'.format(s.cadence),
                 '{}'.format(s.brake)
             ]
