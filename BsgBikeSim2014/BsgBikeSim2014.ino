@@ -21,19 +21,14 @@
         - in the Interrupt Service Routine (ISR) raise a flag
         - exit the ISR
 
-        TODO: AttachInterrupt on cadence sensor pin: (maybe not possible since we need to detect 0 speed as well. -> timeout)
-        - measure the time the interrupt is fired
-        - calculate the time since the last update
-        - calculate cadence in RPM
-        - update the cadence value variable
-
         In the Loop() routine:
         - if flag was raised:
             - set the noInterrupt flag (? should we?)
-            - update the analog input signals from the steer angle and steer rate sensors
+            - update the analog input signals from the steer angle and steer
+              rate sensors
             - update the digital input of the brake signal
-            - Send the sensory data (steer angle, steering rate, cadence, brake) over serial
-                communication as a CSV in fixed order
+            - Send the sensory data (steer angle, steering rate, cadence,
+              brake) over serial communication as a CSV in fixed order
         - if serial.available
             - add it to the serial input buffer until a full line is received
             - If full line received:
@@ -99,11 +94,10 @@ char inputString[30];
 char* currentInput = inputString;
 
 //bicycle state variables
-float delta = 0.0;
-float deltaDot = 0.0;
-float v = 0.0;
-volatile unsigned int cadence = 0;
-volatile boolean cadenceOverflowFlag = false;
+float delta = 0.0f;
+float deltaDot = 0.0f;
+float v = 0.0f;
+volatile float cadence = 0.0f;
 
 boolean run = true;
 boolean FeedbackMode = true;
@@ -190,66 +184,57 @@ void stopTimer () {
     TCNT3 = 0;
     interrupts();
 }
+
 void startCadenceCapture () {
     noInterrupts();
-    TCNT1 = 0;
-    TCCR1B |= ((1 << WGM12)|(1 << CS10)|(1 << CS12)|(1 << ICNC1)|(1 << ICES1));    // Start the timer in the CTC mode. 1024 prescaler, input capture noise canceler and triggers on rising edge.
-    TIFR1 |= ((1 << ICF1)|(1 << TOV1)|(1 << OCF1A)); //Clear the flag of the input capture and the overflow flag
+    TCNT1 = 0; // set counter to zero
+
+    // Timer Control Register A/B
+    //   Waveform Generation Mode - 0000: Normal
+    //   Input Capture Noise Canceler
+    //   Input Capture Edge Select - 1: rising edge trigger
+    //   Clock Select - 101: clk/1024 (from prescaler)
+    TCCR1A = 0;
+    TCCR1B = ((1 << ICNC1) | (1 << ICES1) | (1 << CS12) | (1 << CS10));
+
+    // Interupt Mask Register - Interrupt Enable:
+    //   Input Capture, Overflow
+    TIMSK1 = (1 << ICIE1) | (1 << TOIE1);
+
     interrupts();
 }
-void stopCadenceCapture () {
-    noInterrupts();
-    TCCR1B = 0;
-    TCNT1 = 0;
-    interrupts();
-}
+
 void writeHandleBarTorque (float t) {
     int val = constrain(torqueToDigitalOut(t), 0, 4095);
     dac.setVoltage(val, false); // set the torque. Flag when DAC not connected.
 }
+
 void sendState () {
-    // First make a temp variable of the cadence and brake because it could be changed while sending it.
-    noInterrupts();
-    unsigned int cadenceCopy = cadence;
-    boolean brakeStateCopy = brakeState;
-    // Maybe at the delta as well.
-    interrupts();
-    // Send the serial data
-    Serial.println(printFloat(delta)+","+ printFloat(deltaDot)+","+ cadenceCopy +","+ brakeStateCopy);
+    Serial.println(printFloat(delta) + "," + printFloat(deltaDot) + "," +
+            printFloat(cadence) + "," + brakeState);
 }
+
 void brakeSignalchangeISR () {
     // Brake signal ISR handler which is called on pin change.
     //Get the brake level by reading the pin:
     brakeState = !digitalRead(BRAKEINPUTPIN);
 }
-ISR(TIMER1_COMPA_vect) { // Timer3 compare match interrupt service routine
-    /*
-    This is the timer interrupt service routine that is run with the sampling frequency.
-    The analog inputs are read every cycle of the routine.
-    The simulator only when the run flag is enabled.
-    */
-    cadence = 0;
-    cadenceOverflowFlag = true;
+
+
+ISR(TIMER1_CAPT_vect) {
+//    // using timer 1 configured prescaler
+//    const uint16_t t1_freq = 16000000/1024; // clk/sec
+//    float c = 60.0f * t1_freq / ICR1; // rev/min
+//
+//    // if calculated cadence is reasonable, set value and reset counter
+//    if (c < 200.0f) {
+//        cadence = c;
+//        TCNT1 = 0;
+//    }
 }
-ISR(TIMER1_CAPT_vect){
-    if (cadenceOverflowFlag) {
-        cadenceOverflowFlag = false;
-        //cadence = 0;
-    } else {
-        unsigned long counter = ICR1;
-        if (counter > 3125) { // = 300 rpm
-            cadence = int(60*16000000/(1024*counter));
-        } else {
-            // If interrupt is too fast. Assume error
-            //cadence = 0;
-        }
-    }
-    // Reset the timer
-    TCNT1 = 0;
-    TIFR1 |= ((1 << ICF1)|(1 << TOV1)|(1 << OCF1A)); //Clear the flag of the input capture and the overflow flag
-}
-ISR(TIMER1_OVF_vect){
-    // Not used
+
+ISR(TIMER1_OVF_vect) {
+    cadence = 0.0f;
 }
 /*--------------------- SETUP ()-------------------------------------------------*/
 void setup()
@@ -260,7 +245,6 @@ void setup()
 
     // Pedal sensor pin
     pinMode(CADENCEPIN, INPUT_PULLUP); // should be input capture pin timer 1
-    //digitalWrite(CADENCEPIN, HIGH);
 
     // Initialise the brake interrupt 0 on pin 2:
     pinMode(BRAKEINPUTPIN, INPUT_PULLUP);
@@ -277,15 +261,7 @@ void setup()
     OCR3A    = 16000000/(8*FREQ)-1;    // Set the compare value. 16mhz(clock frequency)/8(prescaler)/frequency. ‐1 omdat ctc 1 tick duurt
     TIMSK3    = 0;
     TIMSK3    |= (1 << OCIE3A); //enable timer compare interrupts channel A on timer 1.
-    interrupts();
 
-    // Now the input capture counter of the cadence on Timer1
-    TCCR1A    =    0;
-    TCCR1B    =    0;
-    TCNT1    =    0;
-    OCR1A    =    65530; //Set the compare value. Almost the maximum to prevent the overflow from occuring. Should be around 14 RPM.
-    TIFR1    |=    ((1 << ICF1)|(1 << TOV1)|(1 << OCF1A)); //Clear the flags of the input capture, overflow and output compare A.
-    TIMSK1    |=    ((1 << ICIE1)|(1 << TOIE1)|(1 << OCIE1A)); //enable: Input capture, output compare A and timer overflow.
     interrupts();
 
     // pin modes:
