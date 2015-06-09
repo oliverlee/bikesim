@@ -108,26 +108,6 @@ public class BicycleController : MonoBehaviour {
         }
     }
 
-    void FixedUpdate() {
-        if (stopSim) {
-            return;
-        }
-
-        float dt = Time.deltaTime;
-        sim.UpdateNetworkSensor(dt);
-        steerTorque = Convert.ToSingle(sim.GetFeedbackTorque());
-        wheelRate = Convert.ToSingle(sim.GetWheelRate());
-
-        State s = sim.GetState();
-        using (FileStream fs = new FileStream(filename, FileMode.Append,
-                    FileAccess.Write))
-        using (StreamWriter sw = new StreamWriter(fs)) {
-            sw.WriteLine("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}",
-                         Time.time, wheelRate, steerTorque,
-                         s.leanRate, s.steerRate, s.lean, s.steer, dt);
-        }
-    }
-
     void Update() {
         GamePadState state = GamePad.GetState(PlayerIndex.One);
         if (Input.GetKeyDown(KeyCode.R) ||
@@ -138,7 +118,7 @@ public class BicycleController : MonoBehaviour {
         if (stopSim) {
             return;
         }
-        q.SetState(sim.GetState());
+        q.SetState(sim.state);
         try {
             SetConstraintPitch(q);
         }
