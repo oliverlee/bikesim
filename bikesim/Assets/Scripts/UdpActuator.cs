@@ -1,15 +1,17 @@
 using System;
+using System.Diagnostics;
 using System.Xml;
 using System.Text;
 using System.IO;
-using UnityEngine;
 
 
 public class Actuator {
     public double envTorque; // torque the "environment" returns to user
-    public Actuator() : this(0.0) { }
-    public Actuator(double tau) {
+    public long timestamp_ms;
+    public Actuator() : this(0.0, 0) { }
+    public Actuator(double tau, long ts) {
         envTorque = tau;
+        timestamp_ms = ts;
     }
 }
 
@@ -18,13 +20,14 @@ public class UdpActuator {
     private Actuator _actuator;
     private UdpThread _udp;
 
-    public UdpActuator(Int32 port = 9901) {
+    public UdpActuator(Stopwatch stopwatch, Int32 port = 9901) {
         _actuator = new Actuator();
-        _udp = new UdpThread(port);
+        _udp = new UdpThread(stopwatch, port);
     }
 
     public void Start() {
-        Debug.Log(String.Format("udp client broadcasting on port {0}", port));
+        UnityEngine.Debug.Log(String.Format(
+                    "udp client broadcasting on port {0}", port));
         _udp.Start();
     }
 
@@ -47,6 +50,7 @@ public class UdpActuator {
 
     public void SetTorque(double tau) {
         _actuator.envTorque = tau;
+        _actuator.timestamp_ms= _udp.ElapsedMilliseconds();
         _udp.TransmitData(XmlDatagram(tau));
     }
 

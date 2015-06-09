@@ -1,4 +1,5 @@
 using System;
+//using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -13,9 +14,12 @@ public class UdpThread {
     private bool _active;
     private Int32 _socketTimeout = 200; // in ms
     private Int32 _port;
+    private System.Diagnostics.Stopwatch _stopwatch;
 
-    public UdpThread(Int32 port, string name = "") {
+    public UdpThread(System.Diagnostics.Stopwatch watch,
+            Int32 port, string name = "") {
         _port = port;
+        _stopwatch = watch;
         _thread = null;
         _client = null;
         _threadname = name;
@@ -62,6 +66,10 @@ public class UdpThread {
         if (_thread.Join(_socketTimeout)) {
             _thread = null;
         }
+    }
+
+    public long ElapsedMilliseconds() {
+        return _stopwatch.ElapsedMilliseconds;
     }
 
     private void StopClient() {
