@@ -97,7 +97,8 @@ public class BicycleController : MonoBehaviour {
         q = new VizState();
         q.pitch = headAngle;
         SetBicycleTransform(q);
-        sim = new BicycleSimulator();
+        sim = new BicycleSimulator(new BenchmarkParam());
+        sim.Start();
 
         using (FileStream fs = new FileStream(filename, FileMode.Create,
                     FileAccess.Write))
