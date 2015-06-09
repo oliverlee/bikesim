@@ -57,12 +57,6 @@ public class BicycleController : MonoBehaviour {
     //private float trail; // m
     //private float wheelbase; // m
 
-    // sensor measurements
-    private float wheelRate; // rad/s
-    private float steerTorque; // N-m
-    private float steerAngle; // rad/s
-    private float steerRate; // rad
-
     private VizState q;
     private BicycleSimulator sim;
     private bool stopSim;
@@ -88,42 +82,17 @@ public class BicycleController : MonoBehaviour {
 
         headAngle = CalculateNominalPitch();
 
-        // sensor measurements
-        wheelRate = 0.0f;
-        steerTorque = 0.0f;
-        steerAngle = 0.0f;
-        steerRate = 0.0f;
-
         q = new VizState();
         q.pitch = headAngle;
         SetBicycleTransform(q);
-        sim = new BicycleSimulator();
+        sim = new BicycleSimulator(new BenchmarkParam());
+        sim.Start();
 
         using (FileStream fs = new FileStream(filename, FileMode.Create,
                     FileAccess.Write))
         using (StreamWriter sw = new StreamWriter(fs)) {
             sw.WriteLine("time\twheelrate\tsteertorque\t" +
                     "leanrate\tsteerrate\tlean\tsteer");
-        }
-    }
-
-    void FixedUpdate() {
-        if (stopSim) {
-            return;
-        }
-
-        float dt = Time.deltaTime;
-        sim.UpdateNetworkSensor(dt);
-        steerTorque = Convert.ToSingle(sim.GetFeedbackTorque());
-        wheelRate = Convert.ToSingle(sim.GetWheelRate());
-
-        State s = sim.GetState();
-        using (FileStream fs = new FileStream(filename, FileMode.Append,
-                    FileAccess.Write))
-        using (StreamWriter sw = new StreamWriter(fs)) {
-            sw.WriteLine("{0}\t{1}\t{2}\t{3}\t{4}\t{5}\t{6}\t{7}",
-                         Time.time, wheelRate, steerTorque,
-                         s.leanRate, s.steerRate, s.lean, s.steer, dt);
         }
     }
 
@@ -137,7 +106,7 @@ public class BicycleController : MonoBehaviour {
         if (stopSim) {
             return;
         }
-        q.SetState(sim.GetState());
+        q.SetState(sim.state);
         try {
             SetConstraintPitch(q);
         }
@@ -149,8 +118,8 @@ public class BicycleController : MonoBehaviour {
 
         SetBicycleTransform(q);
         sensorInfo.text = System.String.Format(
-            "wheelrate: {0}\nsteertorque: {1}",
-            wheelRate, steerTorque);
+            "wheelrate: {0}\nsteertorque: {1}\nsim time: {2}",
+            sim.wheelRate, sim.feedbackTorque, sim.elapsedMilliseconds/1000);
         stateInfo.text = System.String.Format(
             "x: {0}\ny: {1}\nlean: {2}\nyaw: {3}\nsteer: {4}",
             q.x, q.y, q.lean, q.yaw, q.steer);
