@@ -57,12 +57,6 @@ public class BicycleController : MonoBehaviour {
     //private float trail; // m
     //private float wheelbase; // m
 
-    // sensor measurements
-    private float wheelRate; // rad/s
-    private float steerTorque; // N-m
-    private float steerAngle; // rad/s
-    private float steerRate; // rad
-
     private VizState q;
     private BicycleSimulator sim;
     private bool stopSim;
@@ -87,12 +81,6 @@ public class BicycleController : MonoBehaviour {
         frontFrame.transform.localScale = v;
 
         headAngle = CalculateNominalPitch();
-
-        // sensor measurements
-        wheelRate = 0.0f;
-        steerTorque = 0.0f;
-        steerAngle = 0.0f;
-        steerRate = 0.0f;
 
         q = new VizState();
         q.pitch = headAngle;
@@ -130,8 +118,8 @@ public class BicycleController : MonoBehaviour {
 
         SetBicycleTransform(q);
         sensorInfo.text = System.String.Format(
-            "wheelrate: {0}\nsteertorque: {1}",
-            wheelRate, steerTorque);
+            "wheelrate: {0}\nsteertorque: {1}\nsim time: {2}",
+            sim.wheelRate, sim.feedbackTorque, sim.elapsedMilliseconds/1000);
         stateInfo.text = System.String.Format(
             "x: {0}\ny: {1}\nlean: {2}\nyaw: {3}\nsteer: {4}",
             q.x, q.y, q.lean, q.yaw, q.steer);

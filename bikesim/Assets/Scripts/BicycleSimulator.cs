@@ -103,6 +103,10 @@ public class BicycleSimulator {
         get { return _lastSensor.wheelRate; }
     }
 
+    public double elapsedMilliseconds {
+        get { return _timestamp_ms; }
+    }
+
     public State state {
         get { return _state; }
     }
@@ -161,7 +165,7 @@ public class BicycleSimulator {
     }
 
     private void IntegrateState() {
-        long prevTimestamp = _lastSensor.timestamp_ms;
+        _timestamp_ms = _lastSensor.timestamp_ms;
         _lastSensor = _sensor.sensor;
         _lastSensor.timestamp_ms = _stopwatch.ElapsedMilliseconds;
         UpdateVParameters(_lastSensor.wheelRate);
@@ -190,7 +194,7 @@ public class BicycleSimulator {
         // Since y[1], y[3] are set to zero, steer states do not change
         _state.vector = Integrator.RungeKutta4(f, _state.vector, 0,
                 Convert.ToDouble(
-                    _lastSensor.timestamp_ms - prevTimestamp)/1000);
+                    _lastSensor.timestamp_ms - _timestamp_ms)/1000);
     }
 
 
