@@ -160,16 +160,20 @@ public class BicycleSimulator {
     }
 
     private void Simulate() {
+        UpdateSensor();
         IntegrateState();
         _feedbackTorque = EstimateFeedbackTorque();
+        _actuator.SetTorque(_feedbackTorque);
     }
 
-    private void IntegrateState() {
+    private void UpdateSensor() {
         _timestamp_ms = _lastSensor.timestamp_ms;
         _lastSensor = _sensor.sensor;
         _lastSensor.timestamp_ms = _stopwatch.ElapsedMilliseconds;
         UpdateVParameters(_lastSensor.wheelRate);
+    }
 
+    private void IntegrateState() {
         IntegratorFunction f = delegate(double t, Vector<double> y) {
             Vector<double> q = new DenseVector(
                     new double[] {y[0], y[1], y[2], y[3]});
