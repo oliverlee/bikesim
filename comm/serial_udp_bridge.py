@@ -94,7 +94,7 @@ def parse_csv(data):
     s = Sample()
     s.delta = float(vals[0])
     s.deltad = float(vals[1])
-    s.cadence = int(vals[2])
+    s.cadence = float(vals[2])
     s.brake = bool(vals[3])
     return s
 
@@ -122,10 +122,11 @@ def sensor_thread_func(ser, enc, addr, udp):
             except queue.Empty:
                 pass
             #SENQ.put_nowait(dat.strip().split(','))
+            float_fmt = '{:= .4f}'
             datum = [
-                '{:+.4}'.format(s.delta / RAD_PER_DEG),
-                '{:+.4}'.format(s.deltad / RAD_PER_DEG),
-                '{}'.format(s.cadence),
+                float_fmt.format(s.delta / RAD_PER_DEG),
+                float_fmt.format(s.deltad / RAD_PER_DEG),
+                float_fmt.format(s.cadence),
                 '{}'.format(s.brake)
             ]
             SENQ.put_nowait(datum)
@@ -195,7 +196,7 @@ if __name__ == "__main__":
             except queue.Empty:
                 sen = []
 
-            print('\t'.join(['{:.2}'.format(t)] + act + sen))
+            print('\t'.join(['{:8.4f}'.format(t)] + act + sen))
 
     except KeyboardInterrupt:
        server.shutdown() # stop UdpServer and actuator command transmission
