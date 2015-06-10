@@ -14,4 +14,5 @@ This repository is forked from a project started by a Bachelor/Master student
 group at TU Delft.
 
 A number of people have contributed this project including:
-Jodi Kooijman, Thom van Beek, Guillermo Currás Lorenzo, and Tiago Pinto
+Marco Grottoli, Jodi Kooijman, Thom van Beek, Guillermo Currás Lorenzo, and
+Tiago Pinto

@@ -77,27 +77,35 @@ const float rr    = 0.3;        // [m] wheel radius rear
 #define FREQ 50        //frequency in [hz]. max 100!
 #define CYCLETIME 1.0/FREQ        //sample time in [s]
 
-// Define SERIAL parse commands
-#define SETOUTPUTTORQUE 4
-#define QUITOUTPUTTORQUE 3
-#define APPLYOUTPUTTORQUE 2
-#define RUN 1
-#define QUIT 0
+// Define constants for converstion from torque to motor PWM
+namespace {
+    const float maxon_346970_max_current_peak = 3.0f; // A
+    const float maxon_346970_max_current_cont = 1.780f; // A
+    const float maxon_346970_torque_constant = 0.217f; // Nm/A
+    const float maxon_346970_max_torque_peak =
+        maxon_346970_max_current_peak * maxon_346970_torque_constant; // Nm
+    const float maxon_346970_max_torque_cont =
+        maxon_346970_max_current_cont * maxon_346970_torque_constant; // Nm
+
+    // measured with calipers
+    const float gearwheel_mechanical_advantage = 11.0f/2.0f;
+} // namespace
+
 
 /*    Variables initialization for Serial communication*/
 String inputString = "";         // a string to hold incoming data
 boolean stringComplete = false;  // whether the string is complete
 
 //bicycle state variables
-float delta                = 0.0;
-float deltaDot            = 0.0;
-float v                    = 0.0;
-volatile unsigned int cadence            = 0;
-volatile boolean cadenceOverflowFlag    = false;
+float delta = 0.0;
+float deltaDot = 0.0;
+float v = 0.0;
+volatile unsigned int cadence = 0;
+volatile boolean cadenceOverflowFlag = false;
 
-float Td                = 0.0;
-boolean run                = true;
-boolean FeedbackMode    = true;
+float Td = 0.0;
+boolean run = true;
+boolean FeedbackMode = true;
 volatile int brakeState = LOW;
 volatile boolean sendFlag = false;
 
@@ -107,7 +115,7 @@ Adafruit_MCP4725 dac;    // The Digital to Analog converter attached via i2c
 /* Utility functions */
 String printFloat(float var){    //print a floating point number
     char dtostrfbuffer[15];
-    return String(dtostrf(var, 4,2, dtostrfbuffer));
+    return String(dtostrf(var, 6, 4, dtostrfbuffer));
 }
 
 float valToDelta(int val){// transform measured value to radians
@@ -121,9 +129,13 @@ float valToDeltaDot(int val){// transform measured deltadot value to radians per
 }
 
 int torqueToDigitalOut (float torque) {
-    //int val = int(409.5 * torque + 2048); // Lijkt veel te sterk
-    int val = int(-400 * torque + 2048); // Lijkt veel te sterk
-    return val;
+    const int pwm_zero_offset = 2048;
+    const int max_pwm_int = 2048;
+    float act_torque = torque / gearwheel_mechanical_advantage;
+    // pwm needs to be negated, likely due to wiring
+    int pwm = static_cast<int>(
+            -max_pwm_int*act_torque/maxon_346970_max_torque_peak);
+    return pwm + pwm_zero_offset;
 }
 
 String getNext(String& message){
@@ -200,7 +212,7 @@ void stopTimer () {
 void startCadenceCapture () {
     noInterrupts();
     TCNT1 = 0;
-    TCCR1B    |=    ((1 << WGM12)|(1 << CS10)|(1 << CS12)|(1 << ICNC1)|(1 << ICES1));    // Start the timer in the CTC mode. 1024 prescaler, input capture noise canceler and triggers on rising edge.
+    TCCR1B |= ((1 << WGM12)|(1 << CS10)|(1 << CS12)|(1 << ICNC1)|(1 << ICES1));    // Start the timer in the CTC mode. 1024 prescaler, input capture noise canceler and triggers on rising edge.
     TIFR1 |= ((1 << ICF1)|(1 << TOV1)|(1 << OCF1A)); //Clear the flag of the input capture and the overflow flag
     interrupts();
 }
@@ -210,9 +222,9 @@ void stopCadenceCapture () {
     TCNT1 = 0;
     interrupts();
 }
-void writeHandleBarTorque (float T) {
-    int val = constrain(torqueToDigitalOut(T),0, 4095);
-    dac.setVoltage(val, false);    // set the torque. Flag when DAC not connected.
+void writeHandleBarTorque (float t) {
+    int val = constrain(torqueToDigitalOut(t), 0, 4095);
+    dac.setVoltage(val, false); // set the torque. Flag when DAC not connected.
 }
 void sendState () {
     // First make a temp variable of the cadence and brake because it could be changed while sending it.
