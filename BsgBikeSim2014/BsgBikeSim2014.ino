@@ -93,8 +93,10 @@ namespace {
 
 
 /*    Variables initialization for Serial communication*/
-String inputString = "";         // a string to hold incoming data
-boolean stringComplete = false;  // whether the string is complete
+// IEEE double has at most 17 significant decimal digits precision
+// TODO: don't send characters but instead send bits
+char inputString[30];
+char* currentInput = inputString;
 
 //bicycle state variables
 float delta = 0.0;
@@ -103,7 +105,6 @@ float v = 0.0;
 volatile unsigned int cadence = 0;
 volatile boolean cadenceOverflowFlag = false;
 
-float Td = 0.0;
 boolean run = true;
 boolean FeedbackMode = true;
 volatile int brakeState = LOW;
@@ -138,28 +139,8 @@ int torqueToDigitalOut (float torque) {
     return pwm + pwm_zero_offset;
 }
 
-String getNext(String& message){
-    /*    Extract the next part of the csv input serial string. */
-    int firstIndex = message.indexOf(',');    // Index of First occurence of the ','
-    int len = message.length();            //Length of the curent inputString
-    if (firstIndex == -1){
-        // If no more commas:
-        firstIndex = len;
-    }
-    String next = message.substring(0,firstIndex);
-    message = message.substring(firstIndex + 1, len);
-    message.trim();
-    next.trim();
-    return next;
-}
-
-float strToFloat(String strVal) {
-    /*    Convert the given string value to a floating point value
-        2 decimals max.    */
-    char _strValChars[strVal.length()+1];
-    strVal.toCharArray(_strValChars, strVal.length()+1);
-    float myFloat = atof(_strValChars);
-    return myFloat;
+float strToFloat(String s) {
+    return atof(s.c_str());
 }
 
 void refreshSensorReads () {// Refresh the sensor reads of the Delta and Deltadot
@@ -172,14 +153,14 @@ void refreshSensorReads () {// Refresh the sensor reads of the Delta and Deltado
 
 void checkSerial() { //check and parse the serial incoming stream
     while (Serial.available()) {
-        char inChar = (char)Serial.read();
+        char c = (char)Serial.read();
         // set torque after endline
-        if (inChar == '\n') {
-            Td = strToFloat(inputString);
-            writeHandleBarTorque(Td);
-            inputString = "";
+        if (c == '\n') {
+            *currentInput = '\0';
+            writeHandleBarTorque(atof(inputString));
+            currentInput = inputString;
         } else {
-            inputString += inChar;
+            *currentInput++ = c;
         }
     }
 }
@@ -319,8 +300,6 @@ void setup()
     /*    Setup serial communication for external control and debugging purposes */
     Serial.begin(115200); //115200
     while (!Serial) {};                //Wait for the Serial to connect and do nothing. Needed for Leonardo only.
-    // reserve 200 bytes for the inputString:
-    inputString.reserve(200);
 
     // start the timed sending of state
     startTimer();
