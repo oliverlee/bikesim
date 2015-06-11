@@ -43,37 +43,37 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
-/*    Constants definitions */
-// Pin assignments:
-#define DELTAPIN A0
-#define DELTADOTPIN A1
-#define MCENABLEPIN 6    // Digital output pin enabling the motorcontroller
-#define CADENCEPIN 4    // Input trigger for the cadence counter timer interrupt on Timer1
-int BRAKEHANDLE_INT = 4;    // Input trigger for the brake signal. INT 4 is on pin 7 of Leonardo
-#define BRAKEINPUTPIN 7    // Input trigger pin for the brake signal. attach it to external interrupt. Pin 7 for INT 4.
-
-// Define conversion factor from measured analog signal to delta
-#define DELTAMAXLEFT -32.0
-#define DELTAMAXRIGHT 30.0
-#define VALMAXLEFT 289.0
-#define VALMAXRIGHT 680.0
-#define SLOPE_DELTA (DELTAMAXRIGHT-DELTAMAXLEFT)/(VALMAXRIGHT-VALMAXLEFT)
-#define C_DELTA DELTAMAXLEFT-SLOPE_DELTA*VALMAXLEFT
-const float rr    = 0.3;        // [m] wheel radius rear
-
-// Delta dot:
-#define SLOPE_DELTADOT -0.24438
-#define C_DELTADOT 125
-
-// conversion factor from degrees to radians
-#define DEGTORAD 3.14/180
-
-// Define the sampling frequency and sample time of the timer3
-#define FREQ 50        //frequency in [hz]. max 100!
-#define CYCLETIME 1.0/FREQ        //sample time in [s]
-
-// Define constants for converstion from torque to motor PWM
 namespace {
+    /*    Constants definitions */
+    // Pin assignments:
+    const int DELTAPIN = A0;
+    const int DELTADOTPIN = A1;
+    const int MCENABLEPIN = 6;  // Digital output pin enabling the motorcontroller
+    const int CADENCEPIN = 4; // Input trigger for the cadence counter timer interrupt on Timer1
+    const int BRAKEHANDLE_INT = 4; // Input trigger for the brake signal. INT 4 is on pin 7 of Leonardo
+    const int BRAKEINPUTPIN = 7; // Input trigger pin for the brake signal.
+                                 // attach it to external interrupt. Pin 7 for INT 4.
+
+    // Define conversion factor from measured analog signal to delta
+    const float DELTAMAXLEFT = -32.0f;
+    const float DELTAMAXRIGHT = 30.0f;
+    const float VALMAXLEFT = 289.0f;
+    const float VALMAXRIGHT = 680.0f;
+    const float SLOPE_DELTA = (DELTAMAXRIGHT - DELTAMAXLEFT)/
+        (VALMAXRIGHT - VALMAXLEFT);
+    const float C_DELTA = DELTAMAXLEFT - SLOPE_DELTA*VALMAXLEFT;
+
+    // Delta dot:
+    const float SLOPE_DELTADOT = -0.24438f;
+    const float C_DELTADOT = 125.0f;
+
+    // conversion factor from degrees to radians
+    const float DEGTORAD = 3.14/180;
+
+    // Define the sampling frequency and sample time of the timer3
+    const int FREQ = 50;        //frequency in [hz]. max 100!
+
+    // Define constants for converstion from torque to motor PWM
     const float maxon_346970_max_current_peak = 3.0f; // A
     const float maxon_346970_max_current_cont = 1.780f; // A
     const float maxon_346970_torque_constant = 0.217f; // Nm/A
@@ -84,28 +84,27 @@ namespace {
 
     // measured with calipers
     const float gearwheel_mechanical_advantage = 11.0f/2.0f;
+
+
+    /*    Variables initialization for Serial communication*/
+    // IEEE double has at most 17 significant decimal digits precision
+    // TODO: don't send characters but instead send bits
+    char inputString[30];
+    char* currentInput = inputString;
+
+    //bicycle state variables
+    float delta = 0.0f;
+    float deltaDot = 0.0f;
+    float v = 0.0f;
+    volatile float cadence = 0.0f;
+
+    boolean FeedbackMode = true;
+    volatile int brakeState = LOW;
+    volatile boolean sendFlag = false;
+
+    /*    Declare objects */
+    Adafruit_MCP4725 dac;    // The Digital to Analog converter attached via i2c
 } // namespace
-
-
-/*    Variables initialization for Serial communication*/
-// IEEE double has at most 17 significant decimal digits precision
-// TODO: don't send characters but instead send bits
-char inputString[30];
-char* currentInput = inputString;
-
-//bicycle state variables
-float delta = 0.0f;
-float deltaDot = 0.0f;
-float v = 0.0f;
-volatile float cadence = 0.0f;
-
-boolean run = true;
-boolean FeedbackMode = true;
-volatile int brakeState = LOW;
-volatile boolean sendFlag = false;
-
-/*    Declare objects */
-Adafruit_MCP4725 dac;    // The Digital to Analog converter attached via i2c
 
 /* Utility functions */
 String printFloat(float var){    //print a floating point number
