@@ -42,6 +42,7 @@
 #include <Adafruit_MCP4725.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include "butterlowpass.h"
 
 namespace {
     /*    Constants definitions */
@@ -95,6 +96,7 @@ namespace {
     //bicycle state variables
     float delta = 0.0f;
     float deltaDot = 0.0f;
+    ButterLowpass deltaDotFiltered;
     float v = 0.0f;
     volatile float cadence = 0.0f;
 
@@ -141,7 +143,7 @@ void refreshSensorReads () {// Refresh the sensor reads of the Delta and Deltado
     analogRead(DELTAPIN);                        // Read the value twice for stabalising
     delta = valToDelta(analogRead(DELTAPIN));    // * delta_toRad;
     analogRead(DELTADOTPIN);                    // Read twice for stabalising
-    deltaDot = valToDeltaDot(analogRead(DELTADOTPIN));    // * deltaDot_toRadSec;
+    deltaDot = deltaDotFiltered.filter(valToDeltaDot(analogRead(DELTADOTPIN)));
 }
 
 void checkSerial() { //check and parse the serial incoming stream
@@ -257,7 +259,7 @@ void setup()
     TCCR3A    = 0;
     TCCR3B    = 0;
     TCNT3    = 0;
-    OCR3A    = 16000000/(8*FREQ)-1;    // Set the compare value. 16mhz(clock frequency)/8(prescaler)/frequency. ‐1 omdat ctc 1 tick duurt
+    OCR3A    = 16000000/(8*FREQ)-1;    // Set the compare value. 16mhz(clock frequency)/8(prescaler)/frequency
     TIMSK3    = 0;
     TIMSK3    |= (1 << OCIE3A); //enable timer compare interrupts channel A on timer 1.
 
