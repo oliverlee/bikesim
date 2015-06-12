@@ -71,8 +71,11 @@ namespace {
     // conversion factor from degrees to radians
     const float DEGTORAD = 3.14/180;
 
-    // Define the sampling frequency and sample time of the timer3
-    const int SAMPLING_FREQ = 50; // frequency in [hz]. max 100!
+    // Define the sampling frequency serial tranmission frequency with TIMER3
+    //   Use no more than 100 Hz for serial transmission rate where
+    //   SERIAL_TX_FREQ = SAMPLING_FREQ/SERIAL_TX_PRE
+    const int SAMPLING_FREQ = 400;
+    const int SERIAL_TX_PRE = 4; // prescaler for serial transmission
 
     // Define constants for converstion from torque to motor PWM
     const float maxon_346970_max_current_peak = 3.0f; // A
@@ -101,7 +104,7 @@ namespace {
     volatile float cadence = 0.0f;
 
     volatile int brakeState = LOW;
-    volatile boolean sendFlag = false;
+    volatile int sampleCount = 0;
 
     /*    Declare objects */
     Adafruit_MCP4725 dac;    // The Digital to Analog converter attached via i2c
@@ -135,7 +138,10 @@ int torqueToDigitalOut (float torque) {
 
 void readSensors() {
     // Read analog sensor values for delta, deltadot
-    delta = valToDelta(analogRead(DELTAPIN));
+    if (++sampleCount == SERIAL_TX_PRE) {
+        // only sample once per transmission
+        delta = valToDelta(analogRead(DELTAPIN));
+    }
     // Perform filtering on deltadot
     deltaDot = deltaDotFiltered.filter(valToDeltaDot(analogRead(DELTADOTPIN)));
 }
@@ -228,11 +234,9 @@ void brakeSignalchangeISR () {
 
 ISR(TIMER3_COMPA_vect) {
     readSensors();
-    sendFlag = true;
 }
 
 void setup() {
-
     // configure input/output pins
     pinMode(CADENCEPIN, INPUT_PULLUP); // should be input capture pin timer 1
     pinMode(BRAKEINPUTPIN, INPUT_PULLUP);
@@ -259,9 +263,9 @@ void setup() {
 }
 
 void loop() {
-    if (sendFlag) {
+    if (sampleCount >= SERIAL_TX_PRE) {
         sendState();
-        sendFlag = false;
+        sampleCount = 0;
     }
 
     // Check if incoming serial commands are available and process them
