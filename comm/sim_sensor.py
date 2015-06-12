@@ -6,6 +6,7 @@ A virtual serial port can be created using socat with:
     $ socat -d -d pty,raw,echo=0 pty,raw,echo=0
 """
 import argparse
+import math
 import serial
 import sys
 import time
@@ -34,6 +35,8 @@ if __name__ == "__main__":
         while True:
             time.sleep(0.001) # period ~ 0.001 s -> 1000 Hz
             dt = time.time() - t0
+            data[0] = 2*math.sin(3*dt)
+            data[1] = 2*math.cos(4*dt)
             datastr = ','.join(str(d) for d in data)
             ser.write('{}\n'.format(datastr).encode())
             print('{:.4f} {}'.format(dt, datastr))
