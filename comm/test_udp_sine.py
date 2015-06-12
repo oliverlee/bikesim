@@ -13,7 +13,9 @@ try:
     while True:
         time.sleep(0.01)
         t = time.time()
-        y = 2*math.sin(2*(t - t0))
+        dt = t - t0
+        y = 2*math.sin(2*dt)
         send_udp.transmit_udp_xml(port, [str(y)]);
+        print('{:.4f}: {}'.format(dt, y))
 except KeyboardInterrupt:
     send_udp.transmit_udp_xml(port, ['0'])

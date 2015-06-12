@@ -28,10 +28,15 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     ser = serial.Serial(args.port, args.baudrate)
+    data = [0, 0, 0, 0]
+    t0 = time.time()
     try:
         while True:
             time.sleep(0.001) # period ~ 0.001 s -> 1000 Hz
-            ser.write('0, 0, 0, 0\n'.encode())
+            dt = time.time() - t0
+            datastr = ','.join(str(d) for d in data)
+            ser.write('{}\n'.format(datastr).encode())
+            print('{:.4f} {}'.format(dt, datastr))
     except KeyboardInterrupt:
         pass
     ser.close() # close serial port
