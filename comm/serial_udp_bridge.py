@@ -31,7 +31,10 @@ RAD_PER_DEG = 2*math.pi/360
 
 ACTQ = queue.Queue(1)
 SENQ = queue.Queue(1)
-
+WRITE_TIMEOUT = 0.05 # seconds
+READ_TIMEOUT = 0.01 # seconds, timeout for reading most recent value
+                    #          sensor/actuator queue in main thread
+PRINT_LOOP_PERIOD = 0.1 # seconds, approx print loop time period
 
 def info(type, value, tb):
     if hasattr(sys, 'ps1') or not sys.stderr.isatty():
@@ -59,7 +62,7 @@ class UdpHandler(socketserver.BaseRequestHandler):
                 ACTQ.get_nowait()
             except queue.Empty:
                 pass
-            ACTQ.put_nowait(['{}'.format(torque)])
+            ACTQ.put(['{}'.format(torque)])
 
 
 class UdpServer(socketserver.UDPServer):
@@ -142,7 +145,7 @@ def sensor_thread_func(ser, enc, addr, udp):
                 float_fmt.format(s.cadence),
                 '{}'.format(s.brake)
             ]
-            SENQ.put_nowait(datum)
+            SENQ.put(datum)
         log.write('sensor data log terminated at {} UTC\n'.format(
             utc_time_str()))
 
@@ -171,18 +174,18 @@ if __name__ == "__main__":
         default=DEFAULT_UDPRXPORT, type=int)
     args = parser.parse_args()
 
-    ser = serial.Serial(args.port, args.baudrate)
+    ser = serial.Serial(args.port, args.baudrate, writeTimeout=WRITE_TIMEOUT)
     udp_tx_addr = (args.udp_host, args.udp_txport)
     udp_rx_addr = (args.udp_host, args.udp_rxport)
     udp_tx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     sensor_thread = threading.Thread(target=sensor_thread_func,
             args=(ser, args.encoding, udp_tx_addr, udp_tx))
-    sensor_thread.daemon = True
+    #sensor_thread.daemon = True
 
     server = UdpServer(udp_rx_addr, UdpHandler, ser, args.encoding)
     actuator_thread = threading.Thread(target=server.serve_forever)
-    actuator_thread.daemon = True
+    #actuator_thread.daemon = True
 
     sensor_thread.start()
     actuator_thread.start()
@@ -192,20 +195,19 @@ if __name__ == "__main__":
     print('receiving UDP data on port {}'.format(args.udp_rxport))
 
     t0 = time.time()
-    qto = 0.01 # timeout to get most recent value from actuator/sensor queue
     try:
         while True:
-            time.sleep(0.1)
+            time.sleep(PRINT_LOOP_PERIOD)
             t = time.time() - t0
             try:
-                act = ACTQ.get(timeout=qto)
+                act = ACTQ.get(timeout=READ_TIMEOUT)
                 # change printing of act
                 act = ['{:.6f}'.format(float(f)) for f in act]
             except queue.Empty:
                 act = ['  -  ']
 
             try:
-                sen = SENQ.get(timeout=qto)
+                sen = SENQ.get(timeout=READ_TIMEOUT)
             except queue.Empty:
                 sen = []
 
