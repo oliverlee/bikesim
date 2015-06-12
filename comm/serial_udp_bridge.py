@@ -102,26 +102,39 @@ def parse_csv(data):
 def sensor_thread_func(ser, enc, addr, udp):
     utc_time_str = lambda: time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())
     utc_file_str = lambda: time.strftime('%y%m%d_%H%M%S', time.gmtime())
+
+    sample_q = queue.LifoQueue() # sample queue
+    sample_part = '' # incomplete part of a sample
+
     with open('sensor_data_{}'.format(utc_file_str()), 'w') as log:
         log.write('sensor data log started at {} UTC\n'.format(utc_time_str()))
         while ser.isOpen():
             try:
-                dat = ser.readline().decode(enc)
-            except BlockingIOError:
-                continue
+                while True:
+                    if not sample_q.empty():
+                        break
+                    num_bytes = ser.inWaiting()
+                    if num_bytes > 0:
+                        sample_part += ser.read(num_bytes).decode(enc)
+                        lines = sample_part.split('\n')
+                        if len(lines) > 1:
+                            for l in lines[:-1]:
+                                sample_q.put(l)
+                        sample_part = lines[-1]
+                    time.sleep(0) # yield thread
             except TypeError:
                 # TypeError thrown by serialposix when serial port is closed
                 break
-            s = parse_csv(dat)
+            data = sample_q.get()
+            s = parse_csv(data)
             if s is None:
                 continue
-            log.write(dat.strip() + '\n')
+            log.write(data.strip() + '\n')
             udp.sendto(s.gen_xml(), addr)
             try:
                 SENQ.get_nowait()
             except queue.Empty:
                 pass
-            #SENQ.put_nowait(dat.strip().split(','))
             float_fmt = '{:= .4f}'
             datum = [
                 float_fmt.format(s.delta / RAD_PER_DEG),
@@ -179,7 +192,7 @@ if __name__ == "__main__":
     print('receiving UDP data on port {}'.format(args.udp_rxport))
 
     t0 = time.time()
-    qto = 0.01
+    qto = 0.01 # timeout to get most recent value from actuator/sensor queue
     try:
         while True:
             time.sleep(0.1)
