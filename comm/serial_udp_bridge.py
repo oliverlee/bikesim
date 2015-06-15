@@ -7,7 +7,6 @@ import argparse
 import itertools
 import math
 import queue
-import signal
 import socket
 import socketserver
 import sys
@@ -17,6 +16,8 @@ import time
 import serial
 from lxml import etree
 
+#import hanging_threads
+
 
 DEFAULT_BAUDRATE = 115200
 DEFAULT_ENCODING = 'utf-8'
@@ -24,13 +25,11 @@ DEFAULT_UDPHOST = 'localhost'
 DEFAULT_UDPTXPORT = 9900
 DEFAULT_UDPRXPORT = 9901
 
-
 MAX_TORQUE_PEAK = 3.58
 MAX_TORQUE_CONT = 2.12
 TORQUE_SCALING_FACTOR = 1.0
 TORQUE_LIMIT = MAX_TORQUE_PEAK
 RAD_PER_DEG = 2*math.pi/360
-
 
 ACTQ = queue.Queue(1)
 SENQ = queue.Queue(1)
@@ -38,6 +37,7 @@ WRITE_TIMEOUT = 0.05 # seconds
 READ_TIMEOUT = 0.01 # seconds, timeout for reading most recent value
                     #          sensor/actuator queue in main thread
 PRINT_LOOP_PERIOD = 0.1 # seconds, approx print loop time period
+
 
 def info(type, value, tb):
     if hasattr(sys, 'ps1') or not sys.stderr.isatty():
@@ -159,9 +159,15 @@ def sensor_thread_func(ser, enc, addr, udp):
     with open('sensor_data_{}'.format(utc_file_str()), 'w') as log:
         log.write('sensor data log started at {} UTC\n'.format(utc_time_str()))
         while ser.isOpen():
-            if not receiver.receive():
-                time.sleep(0) # no data ready, yield thread
-                continue
+            try:
+                if not receiver.receive():
+                    time.sleep(0) # no data ready, yield thread
+                    continue
+            except OSError:
+                # serial port closed
+                log.flush()
+                break
+
             sample = receiver.q.get()
             udp.sendto(sample.print_xml(), addr)
             log.write(sample.print() + '\n')
@@ -207,11 +213,11 @@ if __name__ == "__main__":
 
     sensor_thread = threading.Thread(target=sensor_thread_func,
             args=(ser, args.encoding, udp_tx_addr, udp_tx))
-    #sensor_thread.daemon = True
+    sensor_thread.daemon = True
 
     server = UdpServer(udp_rx_addr, UdpHandler, ser, args.encoding)
     actuator_thread = threading.Thread(target=server.serve_forever)
-    #actuator_thread.daemon = True
+    actuator_thread.daemon = True
 
     sensor_thread.start()
     actuator_thread.start()
@@ -220,27 +226,30 @@ if __name__ == "__main__":
     print('transmitting UDP data on port {}'.format(args.udp_txport))
     print('receiving UDP data on port {}'.format(args.udp_rxport))
 
+    def print_states(start_time):
+       t = time.time() - t0
+       try:
+           act = ACTQ.get(timeout=READ_TIMEOUT)
+           # change printing of act
+           act = ['{:.6f}'.format(float(f)) for f in act]
+       except queue.Empty:
+           act = ['  -  ']
+       try:
+           sen = SENQ.get(timeout=READ_TIMEOUT).ff_list()
+       except queue.Empty:
+           sen = itertools.repeat(' - ', Sample.size())
+
+       print('\t'.join(itertools.chain(['{:8.4f}'.format(t)], act, sen)))
+
     t0 = time.time()
     try:
         while True:
             time.sleep(PRINT_LOOP_PERIOD)
-            t = time.time() - t0
-            try:
-                act = ACTQ.get(timeout=READ_TIMEOUT)
-                # change printing of act
-                act = ['{:.6f}'.format(float(f)) for f in act]
-            except queue.Empty:
-                act = ['  -  ']
-
-            try:
-                sen = SENQ.get(timeout=READ_TIMEOUT).ff_list()
-            except queue.Empty:
-                sen = itertools.repeat(' - ', Sample.size())
-
-            print('\t'.join(itertools.chain(['{:8.4f}'.format(t)], act, sen)))
-
+            print_states(t0)
     except KeyboardInterrupt:
-       server.shutdown() # stop UdpServer and actuator command transmission
+        print('Shutting down...')
+    finally:
+       server.shutdown() # stop UdpServer, actuator command transmission
        ser.write('0\n'.encode()) # send 0 value actuator torque
        ser.close() # close serial port, terminating sensor thread
        sensor_thread.join() # wait for sensor thread to terminate
