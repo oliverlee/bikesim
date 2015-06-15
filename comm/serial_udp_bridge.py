@@ -33,10 +33,12 @@ RAD_PER_DEG = 2*math.pi/360
 
 ACT_QUEUE = queue.Queue(1)
 SEN_QUEUE = queue.Queue(1)
-WRITE_TIMEOUT = 0.05 # seconds
-READ_TIMEOUT = 0.01 # seconds, timeout for reading most recent value
-                    #          sensor/actuator queue in main thread
+LOG_QUEUE = queue.Queue() # elements are (timestamp, 'log line')
+SERIAL_WRITE_TIMEOUT = 0.05 # seconds
+SERIAL_READ_TIMEOUT = 0.01 # seconds, timeout for reading most recent value
+                           #          sensor/actuator queue in main thread
 PRINT_LOOP_PERIOD = 0.1 # seconds, approx print loop time period
+LOG_FLUSH_PERIOD = 0.1 # seconds
 
 
 def info(type, value, tb):
@@ -56,12 +58,17 @@ class UdpHandler(socketserver.BaseRequestHandler):
         elem = root.find('torque')
         if elem is not None:
             tau0 = elem.text
+
             # rescale and limit torque
             torque = float(tau0) * TORQUE_SCALING_FACTOR
-            if abs(torque) > TORQUE_LIMIT:
-                torque = math.copysign(TORQUE_LIMIT, torque)
             if not math.isnan(torque):
+                if abs(torque) > TORQUE_LIMIT: # saturate torque
+                    torque = math.copysign(TORQUE_LIMIT, torque)
                 self.server.serial.write('{}\n'.format(torque).encode())
+
+            LOG_QUEUE.put((time.time(), tau0 + '\n'))
+
+            # provide most recent torque to main thread queue
             try:
                 ACT_QUEUE.get_nowait()
             except queue.Empty:
@@ -102,7 +109,7 @@ class Sample(object):
 
     def print(self, delim=','):
         return delim.join(str(val) for val in
-                [self.delta, self.deltad, self.cadence, self.brake])
+                [self.delta, self.deltad, self.cadence, int(self.brake)])
 
     def __str__(self):
         return self.print()
@@ -144,42 +151,75 @@ class Receiver(object):
                 for s in samples[:-1]:
                     try:
                         sample = Sample.create_from_data(s)
-                    except ValueError:
-                        continue # invalid input
+                    except ValueError: # invalid input
+                        continue
                     self.q.put(sample)
                 self.pieces = samples[-1]
         return not self.q.empty()
 
 
 def sensor_thread_func(ser, enc, addr, udp):
-    utc_time_str = lambda: time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())
-    utc_file_str = lambda: time.strftime('%y%m%d_%H%M%S', time.gmtime())
     receiver = Receiver(ser, enc=enc)
+    while ser.isOpen():
+        try:
+            if not receiver.receive():
+                time.sleep(0) # no data ready, yield thread
+                continue
+        except OSError: # serial port closed
+            break
 
-    with open('sensor_data_{}'.format(utc_file_str()), 'w') as log:
-        log.write('sensor data log started at {} UTC\n'.format(utc_time_str()))
-        while ser.isOpen():
-            try:
-                if not receiver.receive():
-                    time.sleep(0) # no data ready, yield thread
+        sample = receiver.q.get()
+        udp.sendto(sample.print_xml(), addr)
+        LOG_QUEUE.put((time.time(), '{}\n'.format(sample)))
+
+        # provide most recent sample to main thread queue
+        try:
+            SEN_QUEUE.get_nowait() # empty the queue
+        except queue.Empty:
+            pass
+        SEN_QUEUE.put(sample)
+
+def utc_time():
+    return time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())
+
+def utc_filename():
+    return time.strftime('%y%m%d_%H%M%S_UTC', time.gmtime())
+
+
+class Logger(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self, name='log thread')
+        self._terminate = threading.Event()
+
+    def run(self):
+        t0 = time.time()
+        last_flush = t0
+        timestamp = t0
+        filename = 'log_{}'.format(utc_filename())
+        print('Logging sensor/actuator data to {}'.format(filename))
+        with open(filename, 'w') as log:
+            log.write('Simulator log started at {} UTC\n'.format(utc_time()))
+            while not self._terminate.is_set():
+                try:
+                    timestamp, data = LOG_QUEUE.get_nowait()
+                except queue.Empty:
+                    # if nothing to write
+                    if timestamp - last_flush > LOG_FLUSH_PERIOD:
+                        last_flush = timestamp
+                        log.flush() # manually flush so we can see data
+                        time.sleep(LOG_FLUSH_PERIOD/4)
+                    else:
+                        time.sleep(0) # yield thread
                     continue
-            except OSError:
-                # serial port closed
-                log.flush()
-                break
+                log.write('{}: {}'.format(timestamp - t0, data))
+                time.sleep(0) # yield thread
+            log.write('Simulator log terminated at {} UTC\n'.format(
+                utc_time()))
+        print('Data logged to {}'.format(filename))
 
-            sample = receiver.q.get()
-            udp.sendto(sample.print_xml(), addr)
-            log.write(sample.print() + '\n')
-
-            # provide most recent version to main thread queue
-            try:
-                SEN_QUEUE.get_nowait() # empty the queue
-            except queue.Empty:
-                pass
-            SEN_QUEUE.put(sample)
-        log.write('sensor data log terminated at {} UTC\n'.format(
-            utc_time_str()))
+    def terminate(self):
+        """Request Logger object to stop."""
+        self._terminate.set()
 
 
 if __name__ == "__main__":
@@ -206,7 +246,8 @@ if __name__ == "__main__":
         default=DEFAULT_UDPRXPORT, type=int)
     args = parser.parse_args()
 
-    ser = serial.Serial(args.port, args.baudrate, writeTimeout=WRITE_TIMEOUT)
+    ser = serial.Serial(args.port, args.baudrate,
+                        writeTimeout=SERIAL_WRITE_TIMEOUT)
     udp_tx_addr = (args.udp_host, args.udp_txport)
     udp_rx_addr = (args.udp_host, args.udp_rxport)
     udp_tx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -219,8 +260,12 @@ if __name__ == "__main__":
     actuator_thread = threading.Thread(target=server.serve_forever)
     actuator_thread.daemon = True
 
+    log = Logger()
+
     sensor_thread.start()
     actuator_thread.start()
+    log.start()
+
     print('{} using serial port {} at {} baud'.format(
         __file__, args.port, args.baudrate))
     print('transmitting UDP data on port {}'.format(args.udp_txport))
@@ -229,13 +274,13 @@ if __name__ == "__main__":
     def print_states(start_time):
        t = time.time() - t0
        try:
-           act = ACT_QUEUE.get(timeout=READ_TIMEOUT)
+           act = ACT_QUEUE.get(timeout=SERIAL_READ_TIMEOUT)
            # change printing of act
            act = ['{:.6f}'.format(float(f)) for f in act]
        except queue.Empty:
            act = ['  -  ']
        try:
-           sen = SEN_QUEUE.get(timeout=READ_TIMEOUT).ff_list()
+           sen = SEN_QUEUE.get(timeout=SERIAL_READ_TIMEOUT).ff_list()
        except queue.Empty:
            sen = itertools.repeat(' - ', Sample.size())
 
@@ -249,8 +294,14 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         print('Shutting down...')
     finally:
+       log.terminate() # request logging thread terminate
        server.shutdown() # stop UdpServer, actuator command transmission
        ser.write('0\n'.encode()) # send 0 value actuator torque
        ser.close() # close serial port, terminating sensor thread
+
+       # wait for other threads to terminate
+       log.join() # wait for logging to complete
        sensor_thread.join() # wait for sensor thread to terminate
+       actuator_thread.join() # wait for actuator thread to terminate
+
        sys.exit(0)
