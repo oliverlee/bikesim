@@ -104,11 +104,12 @@ def parse_csv(data):
     return s
 
 
+
 def sensor_thread_func(ser, enc, addr, udp):
     utc_time_str = lambda: time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())
     utc_file_str = lambda: time.strftime('%y%m%d_%H%M%S', time.gmtime())
 
-    sample_q = queue.LifoQueue() # sample queue
+    sample_q = queue.Queue() # sample queue
     sample_part = '' # incomplete part of a sample
 
     with open('sensor_data_{}'.format(utc_file_str()), 'w') as log:
