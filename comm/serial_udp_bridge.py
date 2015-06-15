@@ -59,7 +59,8 @@ class UdpHandler(socketserver.BaseRequestHandler):
             torque = float(tau0) * TORQUE_SCALING_FACTOR
             if abs(torque) > TORQUE_LIMIT:
                 torque = math.copysign(TORQUE_LIMIT, torque)
-            self.server.serial.write('{}\n'.format(torque).encode())
+            if not math.isnan(torque):
+                self.server.serial.write('{}\n'.format(torque).encode())
             try:
                 ACTQ.get_nowait()
             except queue.Empty:
