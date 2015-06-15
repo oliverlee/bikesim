@@ -31,8 +31,8 @@ TORQUE_SCALING_FACTOR = 1.0
 TORQUE_LIMIT = MAX_TORQUE_PEAK
 RAD_PER_DEG = 2*math.pi/360
 
-ACTQ = queue.Queue(1)
-SENQ = queue.Queue(1)
+ACT_QUEUE = queue.Queue(1)
+SEN_QUEUE = queue.Queue(1)
 WRITE_TIMEOUT = 0.05 # seconds
 READ_TIMEOUT = 0.01 # seconds, timeout for reading most recent value
                     #          sensor/actuator queue in main thread
@@ -63,10 +63,10 @@ class UdpHandler(socketserver.BaseRequestHandler):
             if not math.isnan(torque):
                 self.server.serial.write('{}\n'.format(torque).encode())
             try:
-                ACTQ.get_nowait()
+                ACT_QUEUE.get_nowait()
             except queue.Empty:
                 pass
-            ACTQ.put(['{}'.format(torque)])
+            ACT_QUEUE.put(['{}'.format(torque)])
 
 
 class UdpServer(socketserver.UDPServer):
@@ -174,10 +174,10 @@ def sensor_thread_func(ser, enc, addr, udp):
 
             # provide most recent version to main thread queue
             try:
-                SENQ.get_nowait() # empty the queue
+                SEN_QUEUE.get_nowait() # empty the queue
             except queue.Empty:
                 pass
-            SENQ.put(sample)
+            SEN_QUEUE.put(sample)
         log.write('sensor data log terminated at {} UTC\n'.format(
             utc_time_str()))
 
@@ -229,13 +229,13 @@ if __name__ == "__main__":
     def print_states(start_time):
        t = time.time() - t0
        try:
-           act = ACTQ.get(timeout=READ_TIMEOUT)
+           act = ACT_QUEUE.get(timeout=READ_TIMEOUT)
            # change printing of act
            act = ['{:.6f}'.format(float(f)) for f in act]
        except queue.Empty:
            act = ['  -  ']
        try:
-           sen = SENQ.get(timeout=READ_TIMEOUT).ff_list()
+           sen = SEN_QUEUE.get(timeout=READ_TIMEOUT).ff_list()
        except queue.Empty:
            sen = itertools.repeat(' - ', Sample.size())
 
