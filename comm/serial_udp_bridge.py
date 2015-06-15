@@ -140,7 +140,7 @@ def sensor_thread_func(ser, enc, addr, udp):
                 SENQ.get_nowait()
             except queue.Empty:
                 pass
-            float_fmt = '{:= .4f}'
+            float_fmt = '{:= 8.4f}'
             datum = [
                 float_fmt.format(s.delta / RAD_PER_DEG),
                 float_fmt.format(s.deltad / RAD_PER_DEG),

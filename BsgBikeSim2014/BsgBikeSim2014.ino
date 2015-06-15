@@ -21,19 +21,14 @@
         - in the Interrupt Service Routine (ISR) raise a flag
         - exit the ISR
 
-        TODO: AttachInterrupt on cadence sensor pin: (maybe not possible since we need to detect 0 speed as well. -> timeout)
-        - measure the time the interrupt is fired
-        - calculate the time since the last update
-        - calculate cadence in RPM
-        - update the cadence value variable
-
         In the Loop() routine:
         - if flag was raised:
             - set the noInterrupt flag (? should we?)
-            - update the analog input signals from the steer angle and steer rate sensors
+            - update the analog input signals from the steer angle and steer
+              rate sensors
             - update the digital input of the brake signal
-            - Send the sensory data (steer angle, steering rate, cadence, brake) over serial
-                communication as a CSV in fixed order
+            - Send the sensory data (steer angle, steering rate, cadence,
+              brake) over serial communication as a CSV in fixed order
         - if serial.available
             - add it to the serial input buffer until a full line is received
             - If full line received:
@@ -47,38 +42,42 @@
 #include <Adafruit_MCP4725.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include "butterlowpass.h"
 
-/*    Constants definitions */
-// Pin assignments:
-#define DELTAPIN A0
-#define DELTADOTPIN A1
-#define MCENABLEPIN 6    // Digital output pin enabling the motorcontroller
-#define CADENCEPIN 4    // Input trigger for the cadence counter timer interrupt on Timer1
-int BRAKEHANDLE_INT = 4;    // Input trigger for the brake signal. INT 4 is on pin 7 of Leonardo
-#define BRAKEINPUTPIN 7    // Input trigger pin for the brake signal. attach it to external interrupt. Pin 7 for INT 4.
-
-// Define conversion factor from measured analog signal to delta
-#define DELTAMAXLEFT -32.0
-#define DELTAMAXRIGHT 30.0
-#define VALMAXLEFT 289.0
-#define VALMAXRIGHT 680.0
-#define SLOPE_DELTA (DELTAMAXRIGHT-DELTAMAXLEFT)/(VALMAXRIGHT-VALMAXLEFT)
-#define C_DELTA DELTAMAXLEFT-SLOPE_DELTA*VALMAXLEFT
-const float rr    = 0.3;        // [m] wheel radius rear
-
-// Delta dot:
-#define SLOPE_DELTADOT -0.24438
-#define C_DELTADOT 125
-
-// conversion factor from degrees to radians
-#define DEGTORAD 3.14/180
-
-// Define the sampling frequency and sample time of the timer3
-#define FREQ 50        //frequency in [hz]. max 100!
-#define CYCLETIME 1.0/FREQ        //sample time in [s]
-
-// Define constants for converstion from torque to motor PWM
 namespace {
+    /*    Constants definitions */
+    // Pin assignments:
+    const int DELTAPIN = A0;
+    const int DELTADOTPIN = A1;
+    const int MCENABLEPIN = 6;  // Digital output pin enabling the motorcontroller
+    const int CADENCEPIN = 4; // Input trigger for the cadence counter timer interrupt on Timer1
+    const int BRAKEHANDLE_INT = 4; // Input trigger for the brake signal. INT 4 is on pin 7 of Leonardo
+    const int BRAKEINPUTPIN = 7; // Input trigger pin for the brake signal.
+                                 // attach it to external interrupt. Pin 7 for INT 4.
+
+    // Define conversion factor from measured analog signal to delta
+    const float DELTAMAXLEFT = -32.0f;
+    const float DELTAMAXRIGHT = 30.0f;
+    const float VALMAXLEFT = 289.0f;
+    const float VALMAXRIGHT = 680.0f;
+    const float SLOPE_DELTA = (DELTAMAXRIGHT - DELTAMAXLEFT)/
+        (VALMAXRIGHT - VALMAXLEFT);
+    const float C_DELTA = DELTAMAXLEFT - SLOPE_DELTA*VALMAXLEFT;
+
+    // Delta dot:
+    const float SLOPE_DELTADOT = -0.24438f;
+    const float C_DELTADOT = 125.0f;
+
+    // conversion factor from degrees to radians
+    const float DEGTORAD = 3.14/180;
+
+    // Define the sampling frequency serial tranmission frequency with TIMER3
+    //   Use no more than 100 Hz for serial transmission rate where
+    //   SERIAL_TX_FREQ = SAMPLING_FREQ/SERIAL_TX_PRE
+    const int SAMPLING_FREQ = 400;
+    const int SERIAL_TX_PRE = 4; // prescaler for serial transmission
+
+    // Define constants for converstion from torque to motor PWM
     const float maxon_346970_max_current_peak = 3.0f; // A
     const float maxon_346970_max_current_cont = 1.780f; // A
     const float maxon_346970_torque_constant = 0.217f; // Nm/A
@@ -89,41 +88,40 @@ namespace {
 
     // measured with calipers
     const float gearwheel_mechanical_advantage = 11.0f/2.0f;
+
+
+    /*    Variables initialization for Serial communication*/
+    // IEEE double has at most 17 significant decimal digits precision
+    // TODO: don't send characters but instead send bits
+    char inputString[30];
+    char* currentInput = inputString;
+
+    //bicycle state variables
+    float delta = 0.0f;
+    float deltaDot = 0.0f;
+    ButterLowpass deltaDotFiltered;
+    float v = 0.0f;
+    volatile float cadence = 0.0f;
+
+    volatile int brakeState = LOW;
+    volatile int sampleCount = 0;
+
+    /*    Declare objects */
+    Adafruit_MCP4725 dac;    // The Digital to Analog converter attached via i2c
 } // namespace
 
-
-/*    Variables initialization for Serial communication*/
-String inputString = "";         // a string to hold incoming data
-boolean stringComplete = false;  // whether the string is complete
-
-//bicycle state variables
-float delta = 0.0;
-float deltaDot = 0.0;
-float v = 0.0;
-volatile unsigned int cadence = 0;
-volatile boolean cadenceOverflowFlag = false;
-
-float Td = 0.0;
-boolean run = true;
-boolean FeedbackMode = true;
-volatile int brakeState = LOW;
-volatile boolean sendFlag = false;
-
-/*    Declare objects */
-Adafruit_MCP4725 dac;    // The Digital to Analog converter attached via i2c
-
 /* Utility functions */
-String printFloat(float var){    //print a floating point number
+String printFloat(float var){ //print a floating point number
     char dtostrfbuffer[15];
     return String(dtostrf(var, 6, 4, dtostrfbuffer));
 }
 
-float valToDelta(int val){// transform measured value to radians
+float valToDelta(int val){ // bits to rad
     float myDelta = DEGTORAD*(SLOPE_DELTA * val + C_DELTA);
     return myDelta;
 }
 
-float valToDeltaDot(int val){// transform measured deltadot value to radians per second
+float valToDeltaDot(int val){ // bits to rad/s
     float myDelta = DEGTORAD*(SLOPE_DELTADOT * val + C_DELTADOT);
     return myDelta;
 }
@@ -138,218 +136,138 @@ int torqueToDigitalOut (float torque) {
     return pwm + pwm_zero_offset;
 }
 
-String getNext(String& message){
-    /*    Extract the next part of the csv input serial string. */
-    int firstIndex = message.indexOf(',');    // Index of First occurence of the ','
-    int len = message.length();            //Length of the curent inputString
-    if (firstIndex == -1){
-        // If no more commas:
-        firstIndex = len;
+void readSensors() {
+    // Read analog sensor values for delta, deltadot
+    if (++sampleCount == SERIAL_TX_PRE) {
+        // only sample once per transmission
+        delta = valToDelta(analogRead(DELTAPIN));
     }
-    String next = message.substring(0,firstIndex);
-    message = message.substring(firstIndex + 1, len);
-    message.trim();
-    next.trim();
-    return next;
-}
-
-float strToFloat(String strVal) {
-    /*    Convert the given string value to a floating point value
-        2 decimals max.    */
-    char _strValChars[strVal.length()+1];
-    strVal.toCharArray(_strValChars, strVal.length()+1);
-    float myFloat = atof(_strValChars);
-    return myFloat;
-}
-
-void refreshSensorReads () {// Refresh the sensor reads of the Delta and Deltadot
-    // Read the analog inputs.
-    analogRead(DELTAPIN);                        // Read the value twice for stabalising
-    delta = valToDelta(analogRead(DELTAPIN));    // * delta_toRad;
-    analogRead(DELTADOTPIN);                    // Read twice for stabalising
-    deltaDot = valToDeltaDot(analogRead(DELTADOTPIN));    // * deltaDot_toRadSec;
+    // Perform filtering on deltadot
+    deltaDot = deltaDotFiltered.filter(valToDeltaDot(analogRead(DELTADOTPIN)));
 }
 
 void checkSerial() { //check and parse the serial incoming stream
     while (Serial.available()) {
-        char inChar = (char)Serial.read();
+        char c = (char)Serial.read();
         // set torque after endline
-        if (inChar == '\n') {
-            Td = strToFloat(inputString);
-            writeHandleBarTorque(Td);
-            inputString = "";
+        if (c == '\n') {
+            *currentInput = '\0';
+            writeHandleBarTorque(atof(inputString));
+            currentInput = inputString;
         } else {
-            inputString += inChar;
+            *currentInput++ = c;
         }
     }
 }
 
-// Start the simulation (timers)
-void startSampling () {
-    // Read the sensors:
-    refreshSensorReads();    // Refresh the delta and deltadot with current values.
-    startTimer();
+
+void configSampleTimer () {
+    // NOTE: interrupts must be disabled when configuring timers
+    TCNT3 = 0; // set counter to zero
+
+    // Timer Control Register A/B
+    //   Waveform Generation Mode - 0100: Clear Time on Compare match (CTC)
+    //   Input Capture Edge Select - 1: rising edge trigger
+    //   Clock Select - 010: clk/8 (from prescaler)
+    TCCR3A = 0;
+    TCCR3B = ((1 << CS31)|(1 << WGM32));
+
+    // Interupt Mask Register - Interrupt Enable:
+    //   Output Compare A Match
+    TIMSK3 = (1 << OCIE3A); // enable timer compare interrupts channel A on timer 1.
+
+    // Output Compare Register
+    //   16 MHz/PRESCALER/SAMPLING_FREQ
+    OCR3A = 16000000/(8*SAMPLING_FREQ) - 1;
 }
 
-// Stop the simulation
-void stopSampling () {
-    stopTimer();
+void configCadenceTimer () {
+    // NOTE: interrupts must be disabled when configuring timers
+    TCNT1 = 0; // set counter to zero
+
+    // Timer Control Register A/B
+    //   Waveform Generation Mode - 0000: Normal
+    //   Input Capture Noise Canceler
+    //   Input Capture Edge Select - 1: rising edge trigger
+    //   Clock Select - 101: clk/1024 (from prescaler)
+    TCCR1A = 0;
+    TCCR1B = ((1 << ICNC1) | (1 << ICES1) | (1 << CS12) | (1 << CS10));
+
+    // Interupt Mask Register - Interrupt Enable:
+    //   Input Capture, Overflow
+    //TIMSK1 = (1 << ICIE1) | (1 << TOIE1);
 }
 
-void startTimer () {
-    noInterrupts();
-    TCNT3    =    0;
-    TCCR3B    |=    ((1 << CS31)|(1 << WGM32));        // 8 prescaler(CS31) and ctc (WGM32) mode
-    TIFR3    |=    (1 << OCF3A);                    // Clear the output compare flag by writing logic 1
-    interrupts();
-}
-void stopTimer () {
-    noInterrupts();
-    TCCR3B = 0;
-    TCNT3 = 0;
-    interrupts();
-}
-void startCadenceCapture () {
-    noInterrupts();
-    TCNT1 = 0;
-    TCCR1B |= ((1 << WGM12)|(1 << CS10)|(1 << CS12)|(1 << ICNC1)|(1 << ICES1));    // Start the timer in the CTC mode. 1024 prescaler, input capture noise canceler and triggers on rising edge.
-    TIFR1 |= ((1 << ICF1)|(1 << TOV1)|(1 << OCF1A)); //Clear the flag of the input capture and the overflow flag
-    interrupts();
-}
-void stopCadenceCapture () {
-    noInterrupts();
-    TCCR1B = 0;
-    TCNT1 = 0;
-    interrupts();
-}
 void writeHandleBarTorque (float t) {
     int val = constrain(torqueToDigitalOut(t), 0, 4095);
     dac.setVoltage(val, false); // set the torque. Flag when DAC not connected.
 }
+
 void sendState () {
-    // First make a temp variable of the cadence and brake because it could be changed while sending it.
-    noInterrupts();
-    unsigned int cadenceCopy = cadence;
-    boolean brakeStateCopy = brakeState;
-    // Maybe at the delta as well.
-    interrupts();
-    // Send the serial data
-    Serial.println(printFloat(delta)+","+ printFloat(deltaDot)+","+ cadenceCopy +","+ brakeStateCopy);
+    Serial.println(printFloat(delta) + "," + printFloat(deltaDot) + "," +
+            printFloat(cadence) + "," + brakeState);
 }
+
 void brakeSignalchangeISR () {
     // Brake signal ISR handler which is called on pin change.
     //Get the brake level by reading the pin:
     brakeState = !digitalRead(BRAKEINPUTPIN);
 }
-ISR(TIMER1_COMPA_vect) { // Timer3 compare match interrupt service routine
-    /*
-    This is the timer interrupt service routine that is run with the sampling frequency.
-    The analog inputs are read every cycle of the routine.
-    The simulator only when the run flag is enabled.
-    */
-    cadence = 0;
-    cadenceOverflowFlag = true;
-}
-ISR(TIMER1_CAPT_vect){
-    if (cadenceOverflowFlag) {
-        cadenceOverflowFlag = false;
-        //cadence = 0;
-    } else {
-        unsigned long counter = ICR1;
-        if (counter > 3125) { // = 300 rpm
-            cadence = int(60*16000000/(1024*counter));
-        } else {
-            // If interrupt is too fast. Assume error
-            //cadence = 0;
-        }
-    }
-    // Reset the timer
-    TCNT1 = 0;
-    TIFR1 |= ((1 << ICF1)|(1 << TOV1)|(1 << OCF1A)); //Clear the flag of the input capture and the overflow flag
-}
-ISR(TIMER1_OVF_vect){
-    // Not used
-}
-/*--------------------- SETUP ()-------------------------------------------------*/
-void setup()
-{
-    /*    Setup Timer3 for periodically calculating the simulator.
-        Each timer interrupt corresponds to one time step solved.
-    */
 
-    // Pedal sensor pin
+
+//FIXME cadence calculations
+//ISR(TIMER1_CAPT_vect) {
+//    // using timer 1 configured prescaler
+//    const uint16_t t1_freq = 16000000/1024; // clk/sec
+//    float c = 60.0f * t1_freq / ICR1; // rev/min
+//
+//    // if calculated cadence is reasonable, set value and reset counter
+//    if (c < 200.0f) {
+//        cadence = c;
+//        TCNT1 = 0;
+//    }
+//}
+
+//ISR(TIMER1_OVF_vect) {
+//    cadence = 0.0f;
+//}
+
+ISR(TIMER3_COMPA_vect) {
+    readSensors();
+}
+
+void setup() {
+    // configure input/output pins
     pinMode(CADENCEPIN, INPUT_PULLUP); // should be input capture pin timer 1
-    //digitalWrite(CADENCEPIN, HIGH);
-
-    // Initialise the brake interrupt 0 on pin 2:
     pinMode(BRAKEINPUTPIN, INPUT_PULLUP);
-    brakeSignalchangeISR();
-
-    // Attach the interrupts:
-    noInterrupts(); //disable all interrupts for the time being
-    attachInterrupt(BRAKEHANDLE_INT, brakeSignalchangeISR, CHANGE);    // External interrupt of the brake pin
-
-    // Setup the timer that raises a send state update flag with the prescribed frequency
-    TCCR3A    = 0;
-    TCCR3B    = 0;
-    TCNT3    = 0;
-    OCR3A    = 16000000/(8*FREQ)-1;    // Set the compare value. 16mhz(clock frequency)/8(prescaler)/frequency. ‐1 omdat ctc 1 tick duurt
-    TIMSK3    = 0;
-    TIMSK3    |= (1 << OCIE3A); //enable timer compare interrupts channel A on timer 1.
-    interrupts();
-
-    // Now the input capture counter of the cadence on Timer1
-    TCCR1A    =    0;
-    TCCR1B    =    0;
-    TCNT1    =    0;
-    OCR1A    =    65530; //Set the compare value. Almost the maximum to prevent the overflow from occuring. Should be around 14 RPM.
-    TIFR1    |=    ((1 << ICF1)|(1 << TOV1)|(1 << OCF1A)); //Clear the flags of the input capture, overflow and output compare A.
-    TIMSK1    |=    ((1 << ICIE1)|(1 << TOIE1)|(1 << OCIE1A)); //enable: Input capture, output compare A and timer overflow.
-    interrupts();
-
-    // pin modes:
     pinMode(MCENABLEPIN, OUTPUT);
-    digitalWrite(MCENABLEPIN, FeedbackMode);
+
+    // enable motor controller
+    digitalWrite(MCENABLEPIN, HIGH);
+
+    // Attach the interrupts and configure timers
+    noInterrupts();
+    attachInterrupt(BRAKEHANDLE_INT, brakeSignalchangeISR, CHANGE);
+    configSampleTimer(); // sample and serial transmission timer
+    configCadenceTimer();
+    interrupts();
 
     // For Adafruit MCP4725A1 the address is 0x62 (default) or 0x63 (ADDR pin tied to VCC)
     dac.begin(0x62);
     // Set the initial value of 2.5 volt. Flag when done. (0 Nm)
     dac.setVoltage(2048, true);
 
-    /*    Setup serial communication for external control and debugging purposes */
-    Serial.begin(115200); //115200
-    while (!Serial) {};                //Wait for the Serial to connect and do nothing. Needed for Leonardo only.
-    // reserve 200 bytes for the inputString:
-    inputString.reserve(200);
+    Serial.begin(115200);
+    while (!Serial); // wait for Serial to connect. Needed for Leonardo only.
 
-    // start the timed sending of state
-    startTimer();
-    // Start the cadence capture
-    startCadenceCapture();
 }
 
-ISR(TIMER3_COMPA_vect) {    //Timer3 compare match interrupt service routine
-    /*
-        This is the timer interrupt service routine that is run with the sampling frequency.
-
-        The analog inputs are read every cycle of the routine.
-        The simulator only when the run flag is enabled.
-    */
-    refreshSensorReads();    // Refresh the delta and deltadot with current values.
-    sendFlag = true;
-}
-
-void loop()
-{
-    /*    The main loop contains all communication and commands handling stuff.
-        Basically the non time critical elements of the program.
-        It starts with checking for serial messages received
-    */
-    if (sendFlag) {
-        // Send the state over Serial communication if the sendFlag has been raised by the interrupt service routine of the timer
-        sendState();    // Send the state of the hardware via Serial communication
-        sendFlag = false;    // reset the send flag.
+void loop() {
+    if (sampleCount >= SERIAL_TX_PRE) {
+        sendState();
+        sampleCount = 0;
     }
-    //Check here if incoming serial commands are available and process them accordingly
+
+    // Check if incoming serial commands are available and process them
     checkSerial();
 }
