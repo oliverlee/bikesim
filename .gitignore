@@ -31,3 +31,7 @@ Thumbs.db
 
 # vim swap files
 *.swp
+
+# python files
+*/__pycache__
+*/.ipynb_checkpoints
