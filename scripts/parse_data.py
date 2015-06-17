@@ -15,7 +15,7 @@ class Transducer(metaclass=abc.ABCMeta):
         for f in cls._fields:
             setattr(cls, f, prop(f))
         return super().__new__(cls)
-        #return super(Transducer, cls).__new__(cls, name)
+        #return super(Transducer, cls).__new__(cls)
 
     def __init__(self, name):
         self._name = name
