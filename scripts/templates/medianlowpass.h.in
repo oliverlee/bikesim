@@ -8,7 +8,7 @@
 
 class MedianLowpass {
 private:
-    static const int _size = 4 + 1;
+    static const int _size = {{ order }} + 1;
     double _x[_size]; // input
     int _n; // current array index
 
