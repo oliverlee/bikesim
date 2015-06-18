@@ -74,8 +74,8 @@ namespace {
     // Define the sampling frequency serial tranmission frequency with TIMER3
     //   Use no more than 100 Hz for serial transmission rate where
     //   SERIAL_TX_FREQ = SAMPLING_FREQ/SERIAL_TX_PRE
-    const int SAMPLING_FREQ = 400;
-    const int SERIAL_TX_PRE = 4; // prescaler for serial transmission
+    const int SAMPLING_FREQ = 100;
+    const int SERIAL_TX_PRE = 1; // prescaler for serial transmission
 
     // Define constants for converstion from torque to motor PWM
     const float maxon_346970_max_current_peak = 3.0f; // A
