@@ -47,6 +47,9 @@ SERIAL_END_CHAR = b'e'
 SERIAL_PAYLOAD_SIZE = 8 # 2 * sizeof(float)
 
 
+DEFAULT_FLOAT_FORMAT = ':= 8.4f'
+
+
 def info(type, value, tb):
     if hasattr(sys, 'ps1') or not sys.stderr.isatty():
         sys.__excepthook__(type, value, tb)
@@ -122,7 +125,7 @@ class Sample(object):
     def __str__(self):
         return self.print()
 
-    def ff_list(self, float_format=':= 8.4f'):
+    def ff_list(self, float_format=DEFAULT_FLOAT_FORMAT):
         l1 = ['{{{}}}'.format(float_format).format(v)
               for v in [self.delta/RAD_PER_DEG, self.deltad/RAD_PER_DEG,
                         self.cadence]]
@@ -295,7 +298,7 @@ if __name__ == "__main__":
        try:
            act = ACT_QUEUE.get(timeout=SERIAL_READ_TIMEOUT)
            # change printing of act
-           act = ['{:.6f}'.format(f) for f in act]
+           act = ['{{{}}}'.format(DEFAULT_FLOAT_FORMAT).format(f) for f in act]
        except queue.Empty:
            act = ['  -  ']
        try:
@@ -303,7 +306,8 @@ if __name__ == "__main__":
        except queue.Empty:
            sen = itertools.repeat(' - ', Sample.size())
 
-       print('\t'.join(itertools.chain(['{:8.4f}'.format(t)], act, sen)))
+       print('\t'.join(['{{{}}}'.format(DEFAULT_FLOAT_FORMAT).format(t)] +
+                        act + sen))
 
     t0 = time.time()
     try:
