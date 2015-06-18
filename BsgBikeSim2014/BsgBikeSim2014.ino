@@ -43,6 +43,9 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include "butterlowpass.h"
+#include "cheby1lowpass.h"
+#include "cheby2lowpass.h"
+#include "medianlowpass.h"
 
 namespace {
     /*    Constants definitions */
