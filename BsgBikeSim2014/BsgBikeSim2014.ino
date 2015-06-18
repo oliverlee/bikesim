@@ -77,7 +77,7 @@ namespace {
     // Define the sampling frequency serial tranmission frequency with TIMER3
     //   Use no more than 100 Hz for serial transmission rate where
     //   SERIAL_TX_FREQ = SAMPLING_FREQ/SERIAL_TX_PRE
-    const int SAMPLING_FREQ = 100;
+    const int SAMPLING_FREQ = 50;
     const int SERIAL_TX_PRE = 1; // prescaler for serial transmission
 
     // Define constants for converstion from torque to motor PWM
@@ -102,7 +102,7 @@ namespace {
     //bicycle state variables
     float delta = 0.0f;
     float deltaDot = 0.0f;
-    ButterLowpass deltaDotFiltered;
+    //ButterLowpass deltaDotFiltered;
     float v = 0.0f;
     volatile float cadence = 0.0f;
 
@@ -146,7 +146,8 @@ void readSensors() {
         delta = valToDelta(analogRead(DELTAPIN));
     }
     // Perform filtering on deltadot
-    deltaDot = deltaDotFiltered.filter(valToDeltaDot(analogRead(DELTADOTPIN)));
+    //deltaDot = deltaDotFiltered.filter(valToDeltaDot(analogRead(DELTADOTPIN)));
+    deltaDot = valToDeltaDot(analogRead(DELTADOTPIN));
 }
 
 void checkSerial() { //check and parse the serial incoming stream
@@ -274,3 +275,5 @@ void loop() {
     // Check if incoming serial commands are available and process them
     checkSerial();
 }
+
+
