@@ -79,7 +79,7 @@ class UdpHandler(socketserver.BaseRequestHandler):
                 ACT_QUEUE.get_nowait()
             except queue.Empty:
                 pass
-            ACT_QUEUE.put(['{}'.format(torque)])
+            ACT_QUEUE.put(torque)
 
 
 class UdpServer(socketserver.UDPServer):
@@ -295,7 +295,7 @@ if __name__ == "__main__":
        try:
            act = ACT_QUEUE.get(timeout=SERIAL_READ_TIMEOUT)
            # change printing of act
-           act = ['{:.6f}'.format(float(f)) for f in act]
+           act = ['{:.6f}'.format(f) for f in act]
        except queue.Empty:
            act = ['  -  ']
        try:
