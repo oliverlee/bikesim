@@ -8,12 +8,15 @@ A virtual serial port can be created using socat with:
 import argparse
 import math
 import serial
+import struct
 import sys
 import time
 
 
 DEFAULT_BAUDRATE = 115200
-DEFAULT_ENCODING = 'utf-8'
+SERIAL_START_CHAR = b's'
+SERIAL_END_CHAR = b'e'
+SEND_RATE = 50 # Hz
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=
@@ -23,23 +26,19 @@ if __name__ == "__main__":
     parser.add_argument('-b', '--baudrate',
         help='serial port baudrate ({})'.format(DEFAULT_BAUDRATE),
         default=DEFAULT_BAUDRATE, type=int)
-    parser.add_argument('-e', '--encoding',
-        help='serial data encoding type ({})'.format(DEFAULT_ENCODING),
-        default=DEFAULT_ENCODING)
     args = parser.parse_args()
 
     ser = serial.Serial(args.port, args.baudrate)
-    data = [0, 0, 0, 0]
     t0 = time.time()
     try:
         while True:
-            time.sleep(0.001) # period ~ 0.001 s -> 1000 Hz
+            time.sleep(1/SEND_RATE)
             dt = time.time() - t0
-            data[0] = 2*math.sin(3*dt)
-            data[1] = 2*math.cos(4*dt)
-            datastr = ','.join(str(d) for d in data)
-            ser.write('{}\n'.format(datastr).encode())
-            print('{:.4f} {}'.format(dt, datastr))
+            delta = 2*math.sin(3*dt)
+            deltad = 2*math.cos(4*dt)
+            packet = struct.pack('=cffc', SERIAL_START_CHAR, delta,
+                                 deltad, SERIAL_END_CHAR)
+            ser.write(packet)
     except KeyboardInterrupt:
         pass
     ser.close() # close serial port
