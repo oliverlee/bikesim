@@ -9,6 +9,7 @@ import math
 import queue
 import socket
 import socketserver
+import struct
 import sys
 import threading
 import time
@@ -39,6 +40,11 @@ SERIAL_READ_TIMEOUT = 0.01 # seconds, timeout for reading most recent value
                            #          sensor/actuator queue in main thread
 PRINT_LOOP_PERIOD = 0.1 # seconds, approx print loop time period
 LOG_FLUSH_PERIOD = 0.1 # seconds
+
+# TODO: Read these values from Arduino sources
+SERIAL_START_CHAR = b's'
+SERIAL_END_CHAR = b'e'
+SERIAL_PAYLOAD_SIZE = 8 # 2 * sizeof(float)
 
 
 def info(type, value, tb):
@@ -99,13 +105,15 @@ class Sample(object):
         return Sample._size
 
     @classmethod
-    def create_from_data(cls, data, delim=','):
-        vals = [v.strip() for v in data.split(delim)]
-        if len(vals) != cls._size:
-            raise ValueError(vals, "Invalid input for {}()".format(__class__))
-        s = Sample(float(vals[0]), float(vals[1]),
-                   float(vals[2]), bool(vals[3]))
-        return s
+    def decode(cls, data):
+        # TODO: Read struct format from Arduino sources
+        if data[0] != SERIAL_START_CHAR:
+            raise ValueError("Start character not detected in sample, len {}".format(len(data) - 1))
+        try:
+            delta, deltad = struct.unpack('ff', struct.pack('8c', *data[1:]))
+        except struct.error:
+            raise ValueError("Invalid struct size: {}".format(len(data) - 1))
+        return Sample(delta, deltad, 0, 0)
 
     def print(self, delim=','):
         return delim.join(str(val) for val in
@@ -125,15 +133,15 @@ class Sample(object):
         root = etree.Element('root')
         etree.SubElement(root, "delta").text = str(self.delta)
         etree.SubElement(root, "deltad").text = str(self.deltad)
-        etree.SubElement(root, "cadence").text = str(self.cadence)
-        etree.SubElement(root, "brake").text = str(self.brake)
+        etree.SubElement(root, "cadence").text = str(0)
+        etree.SubElement(root, "brake").text = str(0)
         return etree.tostring(root, encoding=enc)
 
 
 class Receiver(object):
     def __init__(self, serial_port, data_delim=',', enc=DEFAULT_ENCODING):
-        self.pieces = '' # incomplete sample
-        self.q = queue.Queue() # queue of complete samples
+        self.byte_q = [] # queue of bytes/incomplete samples
+        self.sample_q = queue.Queue() # queue of complete samples
         self.ser = serial_port
         self.delim = data_delim
         self.enc = enc
@@ -145,17 +153,28 @@ class Receiver(object):
         """
         num_bytes = self.ser.inWaiting()
         if num_bytes > 0:
-            self.pieces += self.ser.read(num_bytes).decode(self.enc)
-            samples = self.pieces.split('\n')
-            if len(samples) > 1:
-                for s in samples[:-1]:
-                    try:
-                        sample = Sample.create_from_data(s)
-                    except ValueError: # invalid input
+            byte_data = struct.unpack('{}c'.format(num_bytes),
+                                      self.ser.read(num_bytes))
+            for b in byte_data:
+                if b == SERIAL_END_CHAR:
+                    if len(self.byte_q) < (SERIAL_PAYLOAD_SIZE + 1):
+                        # this is part of the payload
+                        self.byte_q.append(b)
                         continue
-                    self.q.put(sample)
-                self.pieces = samples[-1]
-        return not self.q.empty()
+                    if len(self.byte_q) > (SERIAL_PAYLOAD_SIZE + 1):
+                        # last end char wasn't received
+                        sample_bytes = self.byte_q[-(SERIAL_PAYLOAD_SIZE + 1):]
+                    else:
+                        sample_bytes = self.byte_q
+                    self.byte_q = []
+                    try:
+                        sample = Sample.decode(sample_bytes)
+                        self.sample_q.put(sample)
+                    except ValueError as ex: #invalid input
+                        print('Invalid sample recevied: {}'.format(ex))
+                else:
+                    self.byte_q.append(b)
+        return not self.sample_q.empty()
 
 
 def sensor_thread_func(ser, enc, addr, udp):
@@ -168,7 +187,7 @@ def sensor_thread_func(ser, enc, addr, udp):
         except OSError: # serial port closed
             break
 
-        sample = receiver.q.get()
+        sample = receiver.sample_q.get()
         udp.sendto(sample.print_xml(), addr)
         LOG_QUEUE.put((time.time(), '{}\n'.format(sample)))
 
