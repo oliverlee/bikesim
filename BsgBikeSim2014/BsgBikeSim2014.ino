@@ -42,6 +42,8 @@
 #include <Adafruit_MCP4725.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
+#include "streamsend.h"
+#include "sample.h"
 #include "butterlowpass.h"
 #include "cheby1lowpass.h"
 #include "cheby2lowpass.h"
@@ -99,15 +101,9 @@ namespace {
     char inputString[30];
     char* currentInput = inputString;
 
-    //bicycle state variables
-    float delta = 0.0f;
-    float deltaDot = 0.0f;
-    //ButterLowpass deltaDotFiltered;
-    float v = 0.0f;
-    volatile float cadence = 0.0f;
-
-    volatile int brakeState = LOW;
-    volatile int sampleCount = 0;
+    //bicycle state struct
+    Sample sample;
+    int sampleCount = 0;
 
     /*    Declare objects */
     Adafruit_MCP4725 dac;    // The Digital to Analog converter attached via i2c
@@ -141,13 +137,9 @@ int torqueToDigitalOut (float torque) {
 
 void readSensors() {
     // Read analog sensor values for delta, deltadot
-    if (++sampleCount == SERIAL_TX_PRE) {
-        // only sample once per transmission
-        delta = valToDelta(analogRead(DELTAPIN));
-    }
-    // Perform filtering on deltadot
-    //deltaDot = deltaDotFiltered.filter(valToDeltaDot(analogRead(DELTADOTPIN)));
-    deltaDot = valToDeltaDot(analogRead(DELTADOTPIN));
+    sample.delta = valToDelta(analogRead(DELTAPIN));
+    sample.deltaDot = valToDeltaDot(analogRead(DELTADOTPIN));
+    ++sampleCount;
 }
 
 void checkSerial() { //check and parse the serial incoming stream
@@ -207,16 +199,11 @@ void writeHandleBarTorque (float t) {
     dac.setVoltage(val, false); // set the torque. Flag when DAC not connected.
 }
 
-void sendState () {
-    Serial.println(printFloat(delta) + "," + printFloat(deltaDot) + "," +
-            printFloat(cadence) + "," + brakeState);
-}
-
-void brakeSignalchangeISR () {
-    // Brake signal ISR handler which is called on pin change.
-    //Get the brake level by reading the pin:
-    brakeState = !digitalRead(BRAKEINPUTPIN);
-}
+//void brakeSignalchangeISR () {
+//    // Brake signal ISR handler which is called on pin change.
+//    //Get the brake level by reading the pin:
+//    ./brakeState = !digitalRead(BRAKEINPUTPIN);
+//}
 
 
 //FIXME cadence calculations
@@ -251,7 +238,7 @@ void setup() {
 
     // Attach the interrupts and configure timers
     noInterrupts();
-    attachInterrupt(BRAKEHANDLE_INT, brakeSignalchangeISR, CHANGE);
+    //attachInterrupt(BRAKEHANDLE_INT, brakeSignalchangeISR, CHANGE);
     configSampleTimer(); // sample and serial transmission timer
     configCadenceTimer();
     interrupts();
@@ -263,17 +250,15 @@ void setup() {
 
     Serial.begin(115200);
     while (!Serial); // wait for Serial to connect. Needed for Leonardo only.
-
 }
 
 void loop() {
     if (sampleCount >= SERIAL_TX_PRE) {
-        sendState();
+        StreamSend::sendObject(Serial, &sample, sizeof(sample), 's', 'e');
         sampleCount = 0;
+
     }
 
     // Check if incoming serial commands are available and process them
     checkSerial();
 }
-
-
