@@ -1,10 +1,15 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import abc
-import itertools
 import collections
+import pickle
+import time
 import numpy as np
 import matplotlib.pyplot as plt
+
+import sys
+sys.path.append('../comm')
+from serial_udp_bridge import Sample
 
 
 class Transducer(metaclass=abc.ABCMeta):
@@ -25,11 +30,13 @@ class Transducer(metaclass=abc.ABCMeta):
         self._time_str = ['0']
         self._time = np.zeros(0)
         self._data = np.zeros(0)
+        self._start_time = None
+        self._end_time = None
 
-    def put(self, time, data):
+    def put(self, timestamp, data):
         if len(data) != self._sample_size:
             raise ValueError
-        self._time_str.append(time)
+        self._time_str.append(timestamp)
         self._data_str.extend(data)
 
     def update(self):
@@ -53,6 +60,14 @@ class Transducer(metaclass=abc.ABCMeta):
     @property
     def filepath(self):
         return self._filename
+
+    @property
+    def start_time(self):
+        return self._start_time
+
+    @property
+    def end_time(self):
+        return self._end_time
 
     @property
     def shape(self):
@@ -97,16 +112,32 @@ class Actuator(Transducer):
 def parse_log(path):
     sensor = Sensor('sensor', path)
     actuator = Actuator('actuator', path)
-    with open(path) as f:
-        for line in f:
-            if line.startswith('Simulator log'):
-                continue
-            time, data = line.strip().split(':')
-            data = [d.strip() for d in data.split(',')]
-            if len(data) == 4:
-                sensor.put(time, data)
-            elif len(data) == 1:
-                actuator.put(time, data)
+    sample = Sample()
+    with open(path, 'rb') as f:
+        while True:
+            try:
+                p = pickle.load(f)
+            except EOFError:
+                break
+
+            if isinstance(p, time.struct_time):
+                if sensor.start_time is None:
+                    sensor._start_time = p
+                    actuator._start_time = p
+                elif sensor.end_time is None:
+                    sensor._end_time = p
+                    actuator._end_time = p
+                else:
+                    print('time.struct_time found but transducer start and '
+                          'end times already set.')
+            else:
+                timestamp, data = p
+                if isinstance(data, Sample):
+                    sensor.put(timestamp, data.to_list())
+                elif isinstance(data, float):
+                    actuator.put(timestamp, data)
+                else:
+                    print('Unpickled unexpected type: {}'.format(type(data)))
     sensor.update()
     actuator.update()
     return sensor, actuator

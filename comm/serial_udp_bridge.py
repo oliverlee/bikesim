@@ -4,6 +4,7 @@
 Convert serial data in CSV format to XML and send via UDP.
 """
 import argparse
+import pickle
 import math
 import queue
 import socket
@@ -38,7 +39,6 @@ SERIAL_WRITE_TIMEOUT = 0.05 # seconds
 SERIAL_READ_TIMEOUT = 0.01 # seconds, timeout for reading most recent value
                            #          sensor/actuator queue in main thread
 PRINT_LOOP_PERIOD = 0.1 # seconds, approx print loop time period
-LOG_FLUSH_PERIOD = 0.1 # seconds
 
 # TODO: Read these values from Arduino sources
 SERIAL_START_CHAR = b's'
@@ -77,7 +77,7 @@ class UdpHandler(socketserver.BaseRequestHandler):
                     torque = math.copysign(TORQUE_LIMIT, torque)
                 self.server.serial.write(encode_torque(torque))
 
-            LOG_QUEUE.put((time.time(), tau0 + '\n'))
+            LOG_QUEUE.put((time.time(), tau0))
 
             # provide most recent torque to main thread queue
             try:
@@ -195,7 +195,7 @@ def sensor_thread_func(ser, enc, addr, udp):
 
         sample = receiver.sample_q.get()
         udp.sendto(sample.print_xml(), addr)
-        LOG_QUEUE.put((time.time(), '{}\n'.format(sample)))
+        LOG_QUEUE.put((time.time(), sample))
 
         # provide most recent sample to main thread queue
         try:
@@ -204,8 +204,6 @@ def sensor_thread_func(ser, enc, addr, udp):
             pass
         SEN_QUEUE.put(sample)
 
-def utc_time():
-    return time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime())
 
 def utc_filename():
     return time.strftime('%y%m%d_%H%M%S_UTC', time.gmtime())
@@ -218,28 +216,22 @@ class Logger(threading.Thread):
 
     def run(self):
         t0 = time.time()
-        last_flush = t0
         timestamp = t0
         filename = 'log_{}'.format(utc_filename())
         print('Logging sensor/actuator data to {}'.format(filename))
-        with open(filename, 'w') as log:
-            log.write('Simulator log started at {} UTC\n'.format(utc_time()))
+        with open(filename, 'wb') as log:
+            pickle.dump(time.gmtime(), log, pickle.HIGHEST_PROTOCOL)
             while not self._terminate.is_set():
                 try:
                     timestamp, data = LOG_QUEUE.get_nowait()
                 except queue.Empty:
                     # if nothing to write
-                    if timestamp - last_flush > LOG_FLUSH_PERIOD:
-                        last_flush = timestamp
-                        log.flush() # manually flush so we can see data
-                        time.sleep(LOG_FLUSH_PERIOD/4)
-                    else:
-                        time.sleep(0) # yield thread
+                    time.sleep(0) # yield thread
                     continue
-                log.write('{}: {}'.format(timestamp - t0, data))
+                pickle.dump((timestamp - t0, data),
+                            log, pickle.HIGHEST_PROTOCOL)
                 time.sleep(0) # yield thread
-            log.write('Simulator log terminated at {} UTC\n'.format(
-                utc_time()))
+            pickle.dump(time.gmtime(), log, pickle.HIGHEST_PROTOCOL)
         print('Data logged to {}'.format(filename))
 
     def terminate(self):
