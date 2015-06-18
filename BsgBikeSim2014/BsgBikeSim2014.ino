@@ -94,12 +94,14 @@ namespace {
     // measured with calipers
     const float gearwheel_mechanical_advantage = 11.0f/2.0f;
 
+    /*    Variable initialization for Serial communication*/
+    const int rxBufferSize = 2*sizeof(float);
+    char rxBuffer[rxBufferSize]; // buffer to receive actuation torque
+    int rxBufferIndex = 0;
 
-    /*    Variables initialization for Serial communication*/
-    // IEEE double has at most 17 significant decimal digits precision
-    // TODO: don't send characters but instead send bits
-    char inputString[30];
-    char* currentInput = inputString;
+    // watchdog counter and limit to disable torque
+    int rxWatchDog = 0;
+    const int RX_WATCHDOG_LIMIT = 10;
 
     //bicycle state struct
     Sample sample;
@@ -140,18 +142,34 @@ void readSensors() {
     sample.delta = valToDelta(analogRead(DELTAPIN));
     sample.deltaDot = valToDeltaDot(analogRead(DELTADOTPIN));
     ++sampleCount;
+    if (++rxWatchDog > RX_WATCHDOG_LIMIT) {
+        writeHandleBarTorque(0.0f);
+    }
 }
 
-void checkSerial() { //check and parse the serial incoming stream
+void checkSerial() { // check and parse the serial data
     while (Serial.available()) {
-        char c = (char)Serial.read();
-        // set torque after endline
-        if (c == '\n') {
-            *currentInput = '\0';
-            writeHandleBarTorque(atof(inputString));
-            currentInput = inputString;
-        } else {
-            *currentInput++ = c;
+        char c = Serial.read();
+        if (rxBufferIndex >= rxBufferSize) {
+            rxBufferIndex = 0;
+        }
+
+        if (c != StreamSend::_suffixChar) {
+            rxBuffer[rxBufferIndex++] = c;
+            continue;
+        }
+
+        // if we have the suffix character
+        if (rxBufferIndex < (sizeof(float) + 1)) {
+            rxBuffer[rxBufferIndex++] = c;
+            continue;
+        }
+
+        int startIndex = rxBufferIndex - sizeof(float) - 1;
+        if (rxBuffer[startIndex] == StreamSend::_prefixChar) {
+            float torque;
+            memcpy(&torque, &rxBuffer[startIndex + 1], sizeof(float));
+            writeHandleBarTorque(torque);
         }
     }
 }
@@ -197,6 +215,7 @@ void configCadenceTimer () {
 void writeHandleBarTorque (float t) {
     int val = constrain(torqueToDigitalOut(t), 0, 4095);
     dac.setVoltage(val, false); // set the torque. Flag when DAC not connected.
+    rxWatchDog = 0;
 }
 
 //void brakeSignalchangeISR () {
@@ -254,9 +273,9 @@ void setup() {
 
 void loop() {
     if (sampleCount >= SERIAL_TX_PRE) {
-        StreamSend::sendObject(Serial, &sample, sizeof(sample), 's', 'e');
+        StreamSend::sendObject(Serial, &sample, sizeof(sample),
+                StreamSend::_prefixChar, StreamSend::_suffixChar);
         sampleCount = 0;
-
     }
 
     // Check if incoming serial commands are available and process them

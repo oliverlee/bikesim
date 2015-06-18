@@ -4,7 +4,6 @@
 Convert serial data in CSV format to XML and send via UDP.
 """
 import argparse
-import itertools
 import math
 import queue
 import socket
@@ -46,7 +45,6 @@ SERIAL_START_CHAR = b's'
 SERIAL_END_CHAR = b'e'
 SERIAL_PAYLOAD_SIZE = 8 # 2 * sizeof(float)
 
-
 DEFAULT_FLOAT_FORMAT = ':= 8.4f'
 
 
@@ -58,6 +56,10 @@ def info(type, value, tb):
         traceback.print_exception(type, value, tb)
         print
         pdb.pm()
+
+
+def encode_torque(torque):
+    return struct.pack('=cfc', SERIAL_START_CHAR, torque, SERIAL_END_CHAR)
 
 
 class UdpHandler(socketserver.BaseRequestHandler):
@@ -73,7 +75,7 @@ class UdpHandler(socketserver.BaseRequestHandler):
             if not math.isnan(torque):
                 if abs(torque) > TORQUE_LIMIT: # saturate torque
                     torque = math.copysign(TORQUE_LIMIT, torque)
-                self.server.serial.write('{}\n'.format(torque).encode())
+                self.server.serial.write(encode_torque(torque))
 
             LOG_QUEUE.put((time.time(), tau0 + '\n'))
 
@@ -111,9 +113,10 @@ class Sample(object):
     def decode(cls, data):
         # TODO: Read struct format from Arduino sources
         if data[0] != SERIAL_START_CHAR:
-            raise ValueError("Start character not detected in sample, len {}".format(len(data) - 1))
+            msg = "Start character not detected in sample, len {}"
+            raise ValueError(msg.format(len(data) - 1))
         try:
-            delta, deltad = struct.unpack('ff', struct.pack('8c', *data[1:]))
+            delta, deltad = struct.unpack('=ff', struct.pack('=8c', *data[1:]))
         except struct.error:
             raise ValueError("Invalid struct size: {}".format(len(data) - 1))
         return Sample(delta, deltad, 0, 0)
@@ -156,7 +159,7 @@ class Receiver(object):
         """
         num_bytes = self.ser.inWaiting()
         if num_bytes > 0:
-            byte_data = struct.unpack('{}c'.format(num_bytes),
+            byte_data = struct.unpack('={}c'.format(num_bytes),
                                       self.ser.read(num_bytes))
             for b in byte_data:
                 if b == SERIAL_END_CHAR:
@@ -304,7 +307,7 @@ if __name__ == "__main__":
        try:
            sen = SEN_QUEUE.get(timeout=SERIAL_READ_TIMEOUT).ff_list()
        except queue.Empty:
-           sen = itertools.repeat(' - ', Sample.size())
+           sen = Sample.size() * [' - ']
 
        print('\t'.join(['{{{}}}'.format(DEFAULT_FLOAT_FORMAT).format(t)] +
                         act + sen))
@@ -319,7 +322,7 @@ if __name__ == "__main__":
     finally:
        log.terminate() # request logging thread terminate
        server.shutdown() # stop UdpServer, actuator command transmission
-       ser.write('0\n'.encode()) # send 0 value actuator torque
+       ser.write(encode_torque(0)) # send 0 value actuator torque
        ser.close() # close serial port, terminating sensor thread
 
        # wait for other threads to terminate
