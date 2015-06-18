@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 class Transducer(metaclass=abc.ABCMeta):
 
-    def __new__(cls, name):
+    def __new__(cls, name, filepath):
         def prop(x):
             return property(lambda self: self.get_field(x))
         for f in cls._fields:
@@ -17,8 +17,9 @@ class Transducer(metaclass=abc.ABCMeta):
         return super().__new__(cls)
         #return super(Transducer, cls).__new__(cls)
 
-    def __init__(self, name):
+    def __init__(self, name, filepath=''):
         self._name = name
+        self._filename = filepath
         self._sample_size = len(self.__class__._fields)
         self._data_str = self._sample_size * ['0']
         self._time_str = ['0']
@@ -48,6 +49,10 @@ class Transducer(metaclass=abc.ABCMeta):
     @property
     def name(self):
         return self._name
+
+    @property
+    def filepath(self):
+        return self._filename
 
     @property
     def shape(self):
@@ -90,8 +95,8 @@ class Actuator(Transducer):
 
 
 def parse_log(path):
-    sensor = Sensor('sensor')
-    actuator = Actuator('actuator')
+    sensor = Sensor('sensor', path)
+    actuator = Actuator('actuator', path)
     with open(path) as f:
         for line in f:
             if line.startswith('Simulator log'):
@@ -133,7 +138,8 @@ def plot_timeinfo(transducer, max_dt=None):
     l2 = ax[0].plot(t[[0, -1]], 2*[med], 'r-',
                     t[[0, -1]], 2*[med + 2*std], 'r--',
                     t[[0, -1]], 2*[med - 2*std], 'r--')
-    plt.figlegend((l1[0], l2[0]), (name, 'median'), loc='upper center')
+    plt.figlegend((l1[0], l2[0]), (name, 'median'), loc='upper left')
+    fig.suptitle('{} - {}'.format(transducer.filepath, name))
 
     # plot histogram of dt
     y, bin_edges = np.histogram(dt)
