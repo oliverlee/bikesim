@@ -1,15 +1,20 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import abc
-import itertools
 import collections
+import pickle
+import time
 import numpy as np
 import matplotlib.pyplot as plt
+
+import sys
+sys.path.append('../comm')
+from serial_udp_bridge import Sample
 
 
 class Transducer(metaclass=abc.ABCMeta):
 
-    def __new__(cls, name):
+    def __new__(cls, name, filepath):
         def prop(x):
             return property(lambda self: self.get_field(x))
         for f in cls._fields:
@@ -17,18 +22,21 @@ class Transducer(metaclass=abc.ABCMeta):
         return super().__new__(cls)
         #return super(Transducer, cls).__new__(cls)
 
-    def __init__(self, name):
+    def __init__(self, name, filepath=''):
         self._name = name
+        self._filename = filepath
         self._sample_size = len(self.__class__._fields)
         self._data_str = self._sample_size * ['0']
         self._time_str = ['0']
         self._time = np.zeros(0)
         self._data = np.zeros(0)
+        self._start_time = None
+        self._end_time = None
 
-    def put(self, time, data):
+    def put(self, timestamp, data):
         if len(data) != self._sample_size:
             raise ValueError
-        self._time_str.append(time)
+        self._time_str.append(timestamp)
         self._data_str.extend(data)
 
     def update(self):
@@ -48,6 +56,18 @@ class Transducer(metaclass=abc.ABCMeta):
     @property
     def name(self):
         return self._name
+
+    @property
+    def filepath(self):
+        return self._filename
+
+    @property
+    def start_time(self):
+        return self._start_time
+
+    @property
+    def end_time(self):
+        return self._end_time
 
     @property
     def shape(self):
@@ -90,18 +110,34 @@ class Actuator(Transducer):
 
 
 def parse_log(path):
-    sensor = Sensor('sensor')
-    actuator = Actuator('actuator')
-    with open(path) as f:
-        for line in f:
-            if line.startswith('Simulator log'):
-                continue
-            time, data = line.strip().split(':')
-            data = [d.strip() for d in data.split(',')]
-            if len(data) == 4:
-                sensor.put(time, data)
-            elif len(data) == 1:
-                actuator.put(time, data)
+    sensor = Sensor('sensor', path)
+    actuator = Actuator('actuator', path)
+    sample = Sample()
+    with open(path, 'rb') as f:
+        while True:
+            try:
+                p = pickle.load(f)
+            except EOFError:
+                break
+
+            if isinstance(p, time.struct_time):
+                if sensor.start_time is None:
+                    sensor._start_time = p
+                    actuator._start_time = p
+                elif sensor.end_time is None:
+                    sensor._end_time = p
+                    actuator._end_time = p
+                else:
+                    print('time.struct_time found but transducer start and '
+                          'end times already set.')
+            else:
+                timestamp, data = p
+                if isinstance(data, Sample):
+                    sensor.put(timestamp, data.to_list())
+                elif isinstance(data, float):
+                    actuator.put(timestamp, data)
+                else:
+                    print('Unpickled unexpected type: {}'.format(type(data)))
     sensor.update()
     actuator.update()
     return sensor, actuator
@@ -117,9 +153,9 @@ def plot_timeinfo(transducer, max_dt=None):
         dt = dt[subset]
         t = t[subset]
     std = np.std(dt)
-    med = np.median(dt)
-    print('{} time median = {:0.6f} s, std = {:0.6f}'.format(name, med, std))
-    if np.isnan(med) or np.isnan(std):
+    avg = np.mean(dt)
+    print('{} time mean = {:0.6f} s, std = {:0.6f}'.format(name, avg, std))
+    if np.isnan(avg) or np.isnan(std):
         print('No data to plot')
         return None
     fig, ax = plt.subplots(1, 2)
@@ -127,13 +163,14 @@ def plot_timeinfo(transducer, max_dt=None):
     # plot dt vs time
     ax[0].set_xlabel('time [s]')
     ax[0].set_ylabel('dt [s]')
-    ax[0].set_ylim([min(0, dt.min()), max(med*1.5, dt.max())])
+    ax[0].set_ylim([min(0, dt.min()), max(avg*1.5, dt.max())])
     ax[0].set_xlim([t[0], t[-1]])
     l1 = ax[0].plot(t, dt)
-    l2 = ax[0].plot(t[[0, -1]], 2*[med], 'r-',
-                    t[[0, -1]], 2*[med + 2*std], 'r--',
-                    t[[0, -1]], 2*[med - 2*std], 'r--')
-    plt.figlegend((l1[0], l2[0]), (name, 'median'), loc='upper center')
+    l2 = ax[0].plot(t[[0, -1]], 2*[avg], 'r-',
+                    t[[0, -1]], 2*[avg + 2*std], 'r--',
+                    t[[0, -1]], 2*[avg - 2*std], 'r--')
+    plt.figlegend((l1[0], l2[0]), (name, 'mean'), loc='upper left')
+    fig.suptitle('{} - {}'.format(transducer.filepath, name))
 
     # plot histogram of dt
     y, bin_edges = np.histogram(dt)
