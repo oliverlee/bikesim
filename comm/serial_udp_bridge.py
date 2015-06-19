@@ -67,14 +67,12 @@ class UdpHandler(socketserver.BaseRequestHandler):
         elem = root.find('torque')
         if elem is not None:
             tau0 = float(elem.text)
-
             # rescale and limit torque
             self.torque = tau0 * TORQUE_SCALING_FACTOR
             if not math.isnan(self.torque):
                 if abs(self.torque) > TORQUE_LIMIT: # saturate torque
                     self.torque = math.copysign(TORQUE_LIMIT, self.torque)
-                self.actuator.serial.write(encode_torque(self.torque))
-
+                serial_write(self.actuator.serial, encode_torque(self.torque))
             g_log_queue.put((time.time(), tau0))
 
 
@@ -232,6 +230,17 @@ class Logger(threading.Thread):
         self._terminate.set()
 
 
+def serial_write(ser, msg):
+    """Windows will throw a SerialException with the message:
+    WindowsError(0, 'The operation completed successfully')
+    """
+    try:
+       ser.write(msg)
+    except serial.SerialException as e:
+        if 'The operation completed successfully' not in e.args[0]:
+            raise
+
+
 if __name__ == "__main__":
     #sys.excepthook = info
     parser = argparse.ArgumentParser(description=
@@ -303,7 +312,7 @@ if __name__ == "__main__":
     finally:
        log.terminate() # request logging thread terminate
        actuator.shutdown() # stop UdpServer, actuator command transmission
-       ser.write(encode_torque(0)) # send 0 value actuator torque
+       serial_write(ser, encode_torque(0)) # send 0 value actuator torque
        ser.close() # close serial port, terminating sensor thread
 
        # wait for other threads to terminate
