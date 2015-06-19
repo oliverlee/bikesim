@@ -100,8 +100,8 @@ namespace {
     int rxBufferIndex = 0;
 
     // watchdog counter and limit to disable torque
-    int rxWatchDog = 0;
-    const int RX_WATCHDOG_LIMIT = 10;
+    int torqueWatchDog = 0;
+    const int TORQUE_WATCHDOG_LIMIT = 10;
 
     //bicycle state struct
     Sample sample;
@@ -142,9 +142,6 @@ void readSensors() {
     sample.delta = valToDelta(analogRead(DELTAPIN));
     sample.deltaDot = valToDeltaDot(analogRead(DELTADOTPIN));
     ++sampleCount;
-    if (++rxWatchDog > RX_WATCHDOG_LIMIT) {
-        writeHandleBarTorque(0.0f);
-    }
 }
 
 void checkSerial() { // check and parse the serial data
@@ -215,7 +212,9 @@ void configCadenceTimer () {
 void writeHandleBarTorque (float t) {
     int val = constrain(torqueToDigitalOut(t), 0, 4095);
     dac.setVoltage(val, false); // set the torque. Flag when DAC not connected.
-    rxWatchDog = 0;
+    if (t != 0.0f) {
+        torqueWatchDog = TORQUE_WATCHDOG_LIMIT;
+    }
 }
 
 //void brakeSignalchangeISR () {
@@ -280,4 +279,7 @@ void loop() {
 
     // Check if incoming serial commands are available and process them
     checkSerial();
+    if ((torqueWatchDog > 0) && (--torqueWatchDog == 0)) {
+        writeHandleBarTorque(0);
+    }
 }
