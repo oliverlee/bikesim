@@ -45,9 +45,9 @@
 #include "streamsend.h"
 #include "sample.h"
 #include "butterlowpass.h"
-#include "cheby1lowpass.h"
-#include "cheby2lowpass.h"
-#include "medianlowpass.h"
+
+#define SERIAL_PREFIX_CHAR 's'
+#define SERIAL_SUFFIX_CHAR 'e'
 
 namespace {
     /*    Constants definitions */
@@ -100,8 +100,8 @@ namespace {
     int rxBufferIndex = 0;
 
     // watchdog counter and limit to disable torque
-    int rxWatchDog = 0;
-    const int RX_WATCHDOG_LIMIT = 10;
+    int torqueWatchDog = 0;
+    const int TORQUE_WATCHDOG_LIMIT = 10;
 
     //bicycle state struct
     Sample sample;
@@ -142,9 +142,6 @@ void readSensors() {
     sample.delta = valToDelta(analogRead(DELTAPIN));
     sample.deltaDot = valToDeltaDot(analogRead(DELTADOTPIN));
     ++sampleCount;
-    if (++rxWatchDog > RX_WATCHDOG_LIMIT) {
-        writeHandleBarTorque(0.0f);
-    }
 }
 
 void checkSerial() { // check and parse the serial data
@@ -154,7 +151,7 @@ void checkSerial() { // check and parse the serial data
             rxBufferIndex = 0;
         }
 
-        if (c != StreamSend::_suffixChar) {
+        if (c != SERIAL_SUFFIX_CHAR) {
             rxBuffer[rxBufferIndex++] = c;
             continue;
         }
@@ -166,7 +163,7 @@ void checkSerial() { // check and parse the serial data
         }
 
         int startIndex = rxBufferIndex - sizeof(float) - 1;
-        if (rxBuffer[startIndex] == StreamSend::_prefixChar) {
+        if (rxBuffer[startIndex] == SERIAL_PREFIX_CHAR) {
             float torque;
             memcpy(&torque, &rxBuffer[startIndex + 1], sizeof(float));
             writeHandleBarTorque(torque);
@@ -215,7 +212,9 @@ void configCadenceTimer () {
 void writeHandleBarTorque (float t) {
     int val = constrain(torqueToDigitalOut(t), 0, 4095);
     dac.setVoltage(val, false); // set the torque. Flag when DAC not connected.
-    rxWatchDog = 0;
+    if (t != 0.0f) {
+        torqueWatchDog = TORQUE_WATCHDOG_LIMIT;
+    }
 }
 
 //void brakeSignalchangeISR () {
@@ -274,10 +273,13 @@ void setup() {
 void loop() {
     if (sampleCount >= SERIAL_TX_PRE) {
         StreamSend::sendObject(Serial, &sample, sizeof(sample),
-                StreamSend::_prefixChar, StreamSend::_suffixChar);
+                SERIAL_PREFIX_CHAR, SERIAL_SUFFIX_CHAR);
         sampleCount = 0;
     }
 
     // Check if incoming serial commands are available and process them
     checkSerial();
+    if ((torqueWatchDog > 0) && (--torqueWatchDog == 0)) {
+        writeHandleBarTorque(0);
+    }
 }
