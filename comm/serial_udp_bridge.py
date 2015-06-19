@@ -32,11 +32,9 @@ TORQUE_SCALING_FACTOR = 1.0
 TORQUE_LIMIT = MAX_TORQUE_PEAK
 RAD_PER_DEG = 2*math.pi/360
 
-ACT_QUEUE = queue.Queue(1)
-SEN_QUEUE = queue.Queue(1)
-LOG_QUEUE = queue.Queue() # elements are (timestamp, 'log line')
-SERIAL_WRITE_TIMEOUT = 0.05 # seconds
-SERIAL_READ_TIMEOUT = 0.01 # seconds, timeout for reading most recent value
+g_log_queue = queue.Queue() # elements are (timestamp, 'log line')
+SERIAL_WRITE_TIMEOUT = 0.005 # seconds
+SERIAL_READ_TIMEOUT = 0.001 # seconds, timeout for reading most recent value
                            #          sensor/actuator queue in main thread
 PRINT_LOOP_PERIOD = 0.1 # seconds, approx print loop time period
 
@@ -48,14 +46,14 @@ SERIAL_PAYLOAD_SIZE = 8 # 2 * sizeof(float)
 DEFAULT_FLOAT_FORMAT = ':= 8.4f'
 
 
-def info(type, value, tb):
-    if hasattr(sys, 'ps1') or not sys.stderr.isatty():
-        sys.__excepthook__(type, value, tb)
-    else:
-        import traceback, pdb
-        traceback.print_exception(type, value, tb)
-        print
-        pdb.pm()
+#def info(type, value, tb):
+#    if hasattr(sys, 'ps1') or not sys.stderr.isatty():
+#        sys.__excepthook__(type, value, tb)
+#    else:
+#        import traceback, pdb
+#        traceback.print_exception(type, value, tb)
+#        print
+#        pdb.pm()
 
 
 def encode_torque(torque):
@@ -68,23 +66,16 @@ class UdpHandler(socketserver.BaseRequestHandler):
         root = etree.fromstring(data)
         elem = root.find('torque')
         if elem is not None:
-            tau0 = elem.text
+            tau0 = float(elem.text)
 
             # rescale and limit torque
-            torque = float(tau0) * TORQUE_SCALING_FACTOR
-            if not math.isnan(torque):
-                if abs(torque) > TORQUE_LIMIT: # saturate torque
-                    torque = math.copysign(TORQUE_LIMIT, torque)
-                self.server.serial.write(encode_torque(torque))
+            self.torque = tau0 * TORQUE_SCALING_FACTOR
+            if not math.isnan(self.torque):
+                if abs(self.torque) > TORQUE_LIMIT: # saturate torque
+                    self.torque = math.copysign(TORQUE_LIMIT, self.torque)
+                self.actuator.serial.write(encode_torque(self.torque))
 
-            LOG_QUEUE.put((time.time(), tau0))
-
-            # provide most recent torque to main thread queue
-            try:
-                ACT_QUEUE.get_nowait()
-            except queue.Empty:
-                pass
-            ACT_QUEUE.put(torque)
+            g_log_queue.put((time.time(), tau0))
 
 
 class UdpServer(socketserver.UDPServer):
@@ -94,6 +85,7 @@ class UdpServer(socketserver.UDPServer):
                                         RequestHandlerClass)
         self.serial = serial_port
         self.encoding = encoding
+        self.torque = None
 
 
 class Sample(object):
@@ -123,7 +115,8 @@ class Sample(object):
 
     def print(self, delim=','):
         return delim.join(str(val) for val in
-                [self.delta, self.deltad, self.cadence, int(self.brake)])
+                [self.delta, self.deltad])
+                #[self.delta, self.deltad, self.cadence, int(self.brake)])
 
     def __str__(self):
         return self.print()
@@ -145,12 +138,10 @@ class Sample(object):
 
 
 class Receiver(object):
-    def __init__(self, serial_port, data_delim=',', enc=DEFAULT_ENCODING):
+    def __init__(self, serial_port):
         self.byte_q = [] # queue of bytes/incomplete samples
         self.sample_q = queue.Queue() # queue of complete samples
         self.ser = serial_port
-        self.delim = data_delim
-        self.enc = enc
 
     def receive(self):
         """Receives any data available to be read on the serial port and
@@ -183,26 +174,28 @@ class Receiver(object):
         return not self.sample_q.empty()
 
 
-def sensor_thread_func(ser, enc, addr, udp):
-    receiver = Receiver(ser, enc=enc)
-    while ser.isOpen():
-        try:
-            if not receiver.receive():
-                time.sleep(0) # no data ready, yield thread
-                continue
-        except OSError: # serial port closed
-            break
+class SensorListener(threading.Thread):
+    def __init__(self, serial_port, udp, addr):
+        threading.Thread.__init__(self, name='sensor thread')
+        self.ser = serial_port
+        self.udp = udp
+        self.addr = addr
+        self.sample = None
 
-        sample = receiver.sample_q.get()
-        udp.sendto(sample.print_xml(), addr)
-        LOG_QUEUE.put((time.time(), sample))
-
-        # provide most recent sample to main thread queue
-        try:
-            SEN_QUEUE.get_nowait() # empty the queue
-        except queue.Empty:
-            pass
-        SEN_QUEUE.put(sample)
+    def run(self):
+        receiver = Receiver(ser)
+        while self.ser.isOpen():
+            try:
+                if not receiver.receive():
+                    time.sleep(0) # no data ready, yield thread
+                    continue
+            except OSError: # serial port closed
+                break
+            self.sample = receiver.sample_q.get()
+            self.udp.sendto(self.sample.print_xml(), self.addr)
+            #self.udp.sendto(struct.pack('=cffc', SERIAL_START_CHAR, 1.1, 1.2,
+            #    SERIAL_END_CHAR), self.addr)
+            g_log_queue.put((time.time(), self.sample))
 
 
 def utc_filename():
@@ -223,7 +216,7 @@ class Logger(threading.Thread):
             pickle.dump(time.gmtime(), log, pickle.HIGHEST_PROTOCOL)
             while not self._terminate.is_set():
                 try:
-                    timestamp, data = LOG_QUEUE.get_nowait()
+                    timestamp, data = g_log_queue.get_nowait()
                 except queue.Empty:
                     # if nothing to write
                     time.sleep(0) # yield thread
@@ -240,7 +233,7 @@ class Logger(threading.Thread):
 
 
 if __name__ == "__main__":
-    sys.excepthook = info
+    #sys.excepthook = info
     parser = argparse.ArgumentParser(description=
         'Convert serial data in CSV format to XML and send via UDP and '
         'vice versa.')
@@ -269,17 +262,15 @@ if __name__ == "__main__":
     udp_rx_addr = (args.udp_host, args.udp_rxport)
     udp_tx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    sensor_thread = threading.Thread(target=sensor_thread_func,
-            args=(ser, args.encoding, udp_tx_addr, udp_tx))
-    sensor_thread.daemon = True
-
-    server = UdpServer(udp_rx_addr, UdpHandler, ser, args.encoding)
-    actuator_thread = threading.Thread(target=server.serve_forever)
+    actuator = UdpServer(udp_rx_addr, UdpHandler, ser, args.encoding)
+    actuator_thread = threading.Thread(target=actuator.serve_forever)
     actuator_thread.daemon = True
+
+    sensor = SensorListener(ser, udp_tx, udp_tx_addr)
 
     log = Logger()
 
-    sensor_thread.start()
+    sensor.start()
     actuator_thread.start()
     log.start()
 
@@ -289,19 +280,17 @@ if __name__ == "__main__":
     print('receiving UDP data on port {}'.format(args.udp_rxport))
 
     def print_states(start_time):
-       t = time.time() - t0
-       try:
-           act = ACT_QUEUE.get(timeout=SERIAL_READ_TIMEOUT)
-           # change printing of act
-           act = ['{{{}}}'.format(DEFAULT_FLOAT_FORMAT).format(f) for f in act]
-       except queue.Empty:
-           act = ['  -  ']
-       try:
-           sen = SEN_QUEUE.get(timeout=SERIAL_READ_TIMEOUT).ff_list()
-       except queue.Empty:
-           sen = Sample.size() * [' - ']
+        t = time.time() - t0
+        if actuator.torque is not None:
+            act = ['{{{}}}'.format(DEFAULT_FLOAT_FORMAT).format(actuator.torque)]
+        else:
+            act = [' - ']
 
-       print('\t'.join(['{{{}}}'.format(DEFAULT_FLOAT_FORMAT).format(t)] +
+        if sensor.sample is not None:
+            sen = sensor.sample.ff_list()
+        else:
+            sen = Sample.size() * [' - ']
+        print('\t'.join(['{{{}}}'.format(DEFAULT_FLOAT_FORMAT).format(t)] +
                         act + sen))
 
     t0 = time.time()
@@ -313,13 +302,13 @@ if __name__ == "__main__":
         print('Shutting down...')
     finally:
        log.terminate() # request logging thread terminate
-       server.shutdown() # stop UdpServer, actuator command transmission
+       actuator.shutdown() # stop UdpServer, actuator command transmission
        ser.write(encode_torque(0)) # send 0 value actuator torque
        ser.close() # close serial port, terminating sensor thread
 
        # wait for other threads to terminate
        log.join() # wait for logging to complete
-       sensor_thread.join() # wait for sensor thread to terminate
+       sensor.join() # wait for sensor thread to terminate
        actuator_thread.join() # wait for actuator thread to terminate
 
        sys.exit(0)
