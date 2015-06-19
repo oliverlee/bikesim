@@ -267,7 +267,7 @@ void setup() {
     // Set the initial value of 2.5 volt. Flag when done. (0 Nm)
     dac.setVoltage(2048, true);
 
-    Serial.begin(115200);
+    Serial.begin(2000000);
     while (!Serial); // wait for Serial to connect. Needed for Leonardo only.
 }
 

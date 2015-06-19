@@ -20,7 +20,7 @@ from lxml import etree
 #import hanging_threads
 
 
-DEFAULT_BAUDRATE = 115200
+DEFAULT_BAUDRATE = 2000000 # 115200
 DEFAULT_ENCODING = 'utf-8'
 DEFAULT_UDPHOST = 'localhost'
 DEFAULT_UDPTXPORT = 9900
