@@ -15,7 +15,7 @@ class Transducer(metaclass=abc.ABCMeta):
         for f in cls._fields:
             setattr(cls, f, prop(f))
         return super().__new__(cls)
-        #return super(Transducer, cls).__new__(cls, name)
+        #return super(Transducer, cls).__new__(cls)
 
     def __init__(self, name):
         self._name = name
@@ -119,6 +119,9 @@ def plot_timeinfo(transducer, max_dt=None):
     std = np.std(dt)
     med = np.median(dt)
     print('{} time median = {:0.6f} s, std = {:0.6f}'.format(name, med, std))
+    if np.isnan(med) or np.isnan(std):
+        print('No data to plot')
+        return None
     fig, ax = plt.subplots(1, 2)
 
     # plot dt vs time
