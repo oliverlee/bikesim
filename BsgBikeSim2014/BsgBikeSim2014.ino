@@ -45,9 +45,9 @@
 #include "streamsend.h"
 #include "sample.h"
 #include "butterlowpass.h"
-#include "cheby1lowpass.h"
-#include "cheby2lowpass.h"
-#include "medianlowpass.h"
+
+#define SERIAL_PREFIX_CHAR 's'
+#define SERIAL_SUFFIX_CHAR 'e'
 
 namespace {
     /*    Constants definitions */
@@ -154,7 +154,7 @@ void checkSerial() { // check and parse the serial data
             rxBufferIndex = 0;
         }
 
-        if (c != StreamSend::_suffixChar) {
+        if (c != SERIAL_SUFFIX_CHAR) {
             rxBuffer[rxBufferIndex++] = c;
             continue;
         }
@@ -166,7 +166,7 @@ void checkSerial() { // check and parse the serial data
         }
 
         int startIndex = rxBufferIndex - sizeof(float) - 1;
-        if (rxBuffer[startIndex] == StreamSend::_prefixChar) {
+        if (rxBuffer[startIndex] == SERIAL_PREFIX_CHAR) {
             float torque;
             memcpy(&torque, &rxBuffer[startIndex + 1], sizeof(float));
             writeHandleBarTorque(torque);
@@ -274,7 +274,7 @@ void setup() {
 void loop() {
     if (sampleCount >= SERIAL_TX_PRE) {
         StreamSend::sendObject(Serial, &sample, sizeof(sample),
-                StreamSend::_prefixChar, StreamSend::_suffixChar);
+                SERIAL_PREFIX_CHAR, SERIAL_SUFFIX_CHAR);
         sampleCount = 0;
     }
 
