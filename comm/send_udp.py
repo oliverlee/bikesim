@@ -4,29 +4,27 @@
 import os
 import sys
 import socket
-from lxml import etree
+import struct
 
+SERIAL_START_CHAR = b's'
+SERIAL_END_CHAR = b'e'
 
 def transmit_udp_xml(port, args):
-    root = etree.Element("root")
-    if len(args) == 1:
-        etree.SubElement(root, "torque").text = str(float(args[0]))
-    else:
-        etree.SubElement(root, "delta").text = str(float(args[1]))
-        etree.SubElement(root, "deltad").text = str(float(args[2]))
-        etree.SubElement(root, "cadence").text = str(float(args[3]))
-    message = etree.tostring(root, encoding='utf-8')
-
+    num_args = len(args)
+    args = [float(a) for a in args]
+    args.append(SERIAL_END_CHAR)
+    packet = struct.pack('=c{}fc'.format(num_args),
+                         SERIAL_START_CHAR, *args)
+    print(len(packet), packet)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.sendto(message, ("localhost", port))
+    sock.sendto(packet, ("localhost", port))
 
 
 if __name__ == "__main__":
-    #usage = "{0} <port> <message>".format(__file__)
-    usage = ("{0} <port> <delta> <deltad> <cadence>".format(__file__) +
+    usage = ("{0} <port> <delta> <deltad>".format(__file__) +
              "\nor\n{0} <port> <torque>".format(__file__))
 
-    if len(sys.argv) != 3 and len(sys.argv) != 5:
+    if len(sys.argv) != 3 and len(sys.argv) != 4:
         print(len(sys.argv))
         print(usage)
         sys.exit(1)
