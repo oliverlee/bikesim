@@ -153,9 +153,9 @@ def plot_timeinfo(transducer, max_dt=None):
         dt = dt[subset]
         t = t[subset]
     std = np.std(dt)
-    med = np.median(dt)
-    print('{} time median = {:0.6f} s, std = {:0.6f}'.format(name, med, std))
-    if np.isnan(med) or np.isnan(std):
+    avg = np.mean(dt)
+    print('{} time mean = {:0.6f} s, std = {:0.6f}'.format(name, avg, std))
+    if np.isnan(avg) or np.isnan(std):
         print('No data to plot')
         return None
     fig, ax = plt.subplots(1, 2)
@@ -163,13 +163,13 @@ def plot_timeinfo(transducer, max_dt=None):
     # plot dt vs time
     ax[0].set_xlabel('time [s]')
     ax[0].set_ylabel('dt [s]')
-    ax[0].set_ylim([min(0, dt.min()), max(med*1.5, dt.max())])
+    ax[0].set_ylim([min(0, dt.min()), max(avg*1.5, dt.max())])
     ax[0].set_xlim([t[0], t[-1]])
     l1 = ax[0].plot(t, dt)
-    l2 = ax[0].plot(t[[0, -1]], 2*[med], 'r-',
-                    t[[0, -1]], 2*[med + 2*std], 'r--',
-                    t[[0, -1]], 2*[med - 2*std], 'r--')
-    plt.figlegend((l1[0], l2[0]), (name, 'median'), loc='upper left')
+    l2 = ax[0].plot(t[[0, -1]], 2*[avg], 'r-',
+                    t[[0, -1]], 2*[avg + 2*std], 'r--',
+                    t[[0, -1]], 2*[avg - 2*std], 'r--')
+    plt.figlegend((l1[0], l2[0]), (name, 'mean'), loc='upper left')
     fig.suptitle('{} - {}'.format(transducer.filepath, name))
 
     # plot histogram of dt
