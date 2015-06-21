@@ -111,12 +111,6 @@ namespace {
     Adafruit_MCP4725 dac;    // The Digital to Analog converter attached via i2c
 } // namespace
 
-/* Utility functions */
-String printFloat(float var){ //print a floating point number
-    char dtostrfbuffer[15];
-    return String(dtostrf(var, 6, 4, dtostrfbuffer));
-}
-
 float valToDelta(int val){ // bits to rad
     float myDelta = DEGTORAD*(SLOPE_DELTA * val + C_DELTA);
     return myDelta;
@@ -174,7 +168,6 @@ void readTorque() { // read and apply torque from serial input
         rxBufferIndex %= RX_BUFFER_SIZE;
     }
 }
-
 
 void configSampleTimer () {
     // NOTE: interrupts must be disabled when configuring timers
