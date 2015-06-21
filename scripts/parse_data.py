@@ -145,7 +145,7 @@ def parse_log(path):
 
 def plot_timeinfo(transducer, max_dt=None):
     name = transducer.name
-    dt = transducer.dt
+    dt = transducer.dt * 1000
     t = transducer.time[1:] # remove the first element to match dt.shape
     if max_dt is not None:
         # set a threshold for maximum dt to consider
@@ -162,7 +162,7 @@ def plot_timeinfo(transducer, max_dt=None):
 
     # plot dt vs time
     ax[0].set_xlabel('time [s]')
-    ax[0].set_ylabel('dt [s]')
+    ax[0].set_ylabel('dt [ms]')
     ax[0].set_ylim([min(0, dt.min()), max(avg*1.5, dt.max())])
     ax[0].set_xlim([t[0], t[-1]])
     l1 = ax[0].plot(t, dt)
@@ -173,11 +173,11 @@ def plot_timeinfo(transducer, max_dt=None):
     fig.suptitle('{} - {}'.format(transducer.filepath, name))
 
     # plot histogram of dt
-    y, bin_edges = np.histogram(dt)
+    y, bin_edges = np.histogram(dt, 50)
     bin_centers = 0.5*(bin_edges[1:] + bin_edges[:-1])
     bin_widths = 0.8*(bin_edges[1:] - bin_edges[:-1])
     rects = ax[1].bar(bin_centers, y, bin_widths, align='center')
-    ax[1].set_xlabel('dt [s]')
+    ax[1].set_xlabel('dt [ms]')
     ax[1].set_ylabel('count')
 
     #register callbacks
