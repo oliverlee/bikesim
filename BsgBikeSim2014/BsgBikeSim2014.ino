@@ -95,8 +95,8 @@ namespace {
     const float gearwheel_mechanical_advantage = 11.0f/2.0f;
 
     /*    Variable initialization for Serial communication*/
-    const int rxBufferSize = 2*sizeof(float);
-    char rxBuffer[rxBufferSize]; // buffer to receive actuation torque
+    const int RX_BUFFER_SIZE = 16;
+    char rxBuffer[RX_BUFFER_SIZE] = {}; // buffer to receive actuation torque
     int rxBufferIndex = 0;
 
     // watchdog counter and limit to disable torque
@@ -144,30 +144,34 @@ void readSensors() {
     ++sampleCount;
 }
 
-void checkSerial() { // check and parse the serial data
-    while (Serial.available()) {
-        char c = Serial.read();
-        if (rxBufferIndex >= rxBufferSize) {
-            rxBufferIndex = 0;
-        }
+void readTorque() { // read and apply torque from serial input
+    // read all bytes available into receive buffer
+    // USB_Recv takes the minimum of input argument 'len' and size of receive
+    // FIFO so we simply provide the largest value we can fit in the buffer.
+    int bytes_read;
+    // As we use a circular buffer, if rxBufferIndex is at the end of the
+    // buffer, provide the beginning of the buffer and RX_BUFFER_SIZE as the
+    // length.
+    if (rxBufferIndex < (RX_BUFFER_SIZE - 1)) {
+        bytes_read = USB_Recv(CDC_RX, &rxBuffer[rxBufferIndex],
+                RX_BUFFER_SIZE - rxBufferIndex);
+    } else {
+        bytes_read = USB_Recv(CDC_RX, &rxBuffer[0], RX_BUFFER_SIZE);
+    }
 
-        if (c != SERIAL_SUFFIX_CHAR) {
-            rxBuffer[rxBufferIndex++] = c;
-            continue;
+    for (int i = 0; i < bytes_read; ++i) {
+        if (rxBuffer[rxBufferIndex++] == SERIAL_SUFFIX_CHAR) {
+            rxBufferIndex %= RX_BUFFER_SIZE;
+            int prefixIndex = (rxBufferIndex - 2 - sizeof(float) +
+                    RX_BUFFER_SIZE) % RX_BUFFER_SIZE;
+            if (rxBuffer[prefixIndex++] == SERIAL_PREFIX_CHAR) {
+                float torque;
+                memcpy(&torque, &rxBuffer[prefixIndex % RX_BUFFER_SIZE],
+                        sizeof(float));
+                writeHandleBarTorque(torque);
+            }
         }
-
-        // if we have the suffix character
-        if (rxBufferIndex < (sizeof(float) + 1)) {
-            rxBuffer[rxBufferIndex++] = c;
-            continue;
-        }
-
-        int startIndex = rxBufferIndex - sizeof(float) - 1;
-        if (rxBuffer[startIndex] == SERIAL_PREFIX_CHAR) {
-            float torque;
-            memcpy(&torque, &rxBuffer[startIndex + 1], sizeof(float));
-            writeHandleBarTorque(torque);
-        }
+        rxBufferIndex %= RX_BUFFER_SIZE;
     }
 }
 
@@ -278,7 +282,7 @@ void loop() {
     }
 
     // Check if incoming serial commands are available and process them
-    checkSerial();
+    readTorque();
     if ((torqueWatchDog > 0) && (--torqueWatchDog == 0)) {
         writeHandleBarTorque(0);
     }
