@@ -142,6 +142,16 @@ void readSensors() {
     sample.deltaDot = valToDeltaDot(analogRead(DELTADOTPIN));
     sample.prefix = SERIAL_PREFIX_CHAR;
     sample.suffix = SERIAL_SUFFIX_CHAR;
+
+//    char* data = (char*)&sample;
+//    for (int i = 0; i < sizeof(sample); ++i) {
+//    while ( !( UCSR1A & (1<<UDRE1)) );
+//        /* Put data into buffer, sends the data */
+//        UDR1 = *data++;
+//    }
+
+    // directly call USB send function, blocking
+    USB_Send(CDC_TX, &sample, sizeof(sample));
 }
 
 void checkSerial() { // check and parse the serial data
