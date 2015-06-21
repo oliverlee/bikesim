@@ -3,6 +3,7 @@
 import abc
 import collections
 import pickle
+import marshal
 import time
 import numpy as np
 import matplotlib.pyplot as plt
@@ -116,11 +117,13 @@ def parse_log(path):
     with open(path, 'rb') as f:
         while True:
             try:
-                p = pickle.load(f)
+                #p = pickle.load(f)
+                p = marshal.load(f)
             except EOFError:
                 break
 
-            if isinstance(p, time.struct_time):
+            if isinstance(p, int): #time.struct_time):
+                p = time.gmtime(p)
                 if sensor.start_time is None:
                     sensor._start_time = p
                     actuator._start_time = p
@@ -132,10 +135,10 @@ def parse_log(path):
                           'end times already set.')
             else:
                 timestamp, data = p
-                if isinstance(data, Sample):
-                    sensor.put(timestamp, data.to_list())
+                if isinstance(data, list):
+                    sensor.put(timestamp, data)
                 elif isinstance(data, float):
-                    actuator.put(timestamp, data)
+                    actuator.put(timestamp, (data,))
                 else:
                     print('Unpickled unexpected type: {}'.format(type(data)))
     sensor.update()
