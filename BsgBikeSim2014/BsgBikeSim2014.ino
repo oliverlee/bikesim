@@ -60,6 +60,10 @@ namespace {
                                  // attach it to external interrupt. Pin 7 for INT 4.
 
     // Define conversion factor from measured analog signal to delta
+    // 12 bit ADC -> 4096 values
+    // with 5V range, 1.22 mV / bit
+    // Using values below: (62 degrees)/(680 - 289 bits) = 0.159 degrees/bit
+    // 0.130 degrees / mV
     const float DELTAMAXLEFT = -32.0f;
     const float DELTAMAXRIGHT = 30.0f;
     const float VALMAXLEFT = 289.0f;
@@ -69,6 +73,8 @@ namespace {
     const float C_DELTA = DELTAMAXLEFT - SLOPE_DELTA*VALMAXLEFT;
 
     // Delta dot:
+    // From datasheet: 20 mV/(deg/s)
+    // (1 (deg/s)) / (20 mV) * 1.22mV/bit = 0.061 (deg/s)/bit
     const float SLOPE_DELTADOT = -0.24438f;
     const float C_DELTADOT = 125.0f;
 
@@ -79,7 +85,8 @@ namespace {
     //   Use no more than 100 Hz for serial transmission rate where
     //   SERIAL_TX_FREQ = SAMPLING_FREQ/SERIAL_TX_PRE
     const int SAMPLING_FREQ = 50;
-    const int SERIAL_TX_PRE = 1; // prescaler for serial transmission
+    const int SERIAL_TX_PRE = 4; // prescaler for serial transmission
+    int txCount = 0;
 
     // Define constants for converstion from torque to motor PWM
     const float maxon_346970_max_current_peak = 3.0f; // A
@@ -104,7 +111,10 @@ namespace {
 
     //bicycle state struct
     Sample sample;
+    float prevDelta = 0.0f;
     int sampleCount = 0;
+    ButterLowpass deltaFilter = ButterLowpass();
+    ButterLowpass deltaDotFilter = ButterLowpass();
 
     /*    Declare objects */
     Adafruit_MCP4725 dac;    // The Digital to Analog converter attached via i2c
@@ -132,20 +142,13 @@ int torqueToDigitalOut (float torque) {
 
 void readSensors() {
     // Read analog sensor values for delta, deltadot
-    sample.delta = valToDelta(analogRead(DELTAPIN));
-    sample.deltaDot = valToDeltaDot(analogRead(DELTADOTPIN));
-    sample.prefix = SERIAL_PREFIX_CHAR;
-    sample.suffix = SERIAL_SUFFIX_CHAR;
-
-//    char* data = (char*)&sample;
-//    for (int i = 0; i < sizeof(sample); ++i) {
-//    while ( !( UCSR1A & (1<<UDRE1)) );
-//        /* Put data into buffer, sends the data */
-//        UDR1 = *data++;
-//    }
-
+    sample.delta = deltaFilter.filter(valToDelta(analogRead(DELTAPIN)));
+    //sample.delta = valToDelta(analogRead(DELTAPIN));
+    sample.deltaDot = (sample.delta - prevDelta)*SAMPLING_FREQ;
+    prevDelta = sample.delta;
     // directly call USB send function, blocking
     USB_Send(CDC_TX, &sample, sizeof(sample));
+
 }
 
 void readTorque() { // read and apply torque from serial input
@@ -273,6 +276,8 @@ void setup() {
     // Set the initial value of 2.5 volt. Flag when done. (0 Nm)
     dac.setVoltage(2048, true);
 
+    sample.prefix = SERIAL_PREFIX_CHAR;
+    sample.suffix = SERIAL_SUFFIX_CHAR;
     Serial.begin(2000000);
     while (!Serial); // wait for Serial to connect. Needed for Leonardo only.
 }

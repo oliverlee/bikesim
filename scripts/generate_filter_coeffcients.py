@@ -9,8 +9,8 @@ from scipy.signal import butter, cheby1, cheby2
 def lowpass_coeffs(filter_type, cutoff, fs, order):
     nyq = 0.5*fs
     normal_cutoff = cutoff/nyq
-    a, b = butter(order, normal_cutoff, btype='low', analog=False)
-    return a, b
+    b, a = butter(order, normal_cutoff, btype='low', analog=False)
+    return b, a
 
 
 def generate_source(filename_base, ext, template_dict):
@@ -52,11 +52,11 @@ if __name__ == "__main__":
         'sample_freq': sample_freq,
         'order': order
     }
-    generate_source('median', '.h', template_dict)
+    #generate_source('median', '.h', template_dict)
 
-    for filter_type, filter_name in zip((butter, cheby1, cheby2),
-                                        ('butter', 'cheby1', 'cheby2')):
-        a, b = lowpass_coeffs(filter_type, cutoff_freq, sample_freq, order)
+    for filter_type, filter_name in zip((butter,),
+                                        ('butter',)):
+        b, a = lowpass_coeffs(filter_type, cutoff_freq, sample_freq, order)
         template_dict['filter_name'] = filter_name.title()
         template_dict['a'] = ','.join(map(str, a))
         template_dict['b'] = ','.join(map(str, b))
