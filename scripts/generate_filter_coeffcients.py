@@ -54,8 +54,8 @@ if __name__ == "__main__":
     }
     #generate_source('median', '.h', template_dict)
 
-    for filter_type, filter_name in zip((butter, cheby1, cheby2),
-                                        ('butter', 'cheby1', 'cheby2')):
+    for filter_type, filter_name in zip((butter,),
+                                        ('butter',)):
         a, b = lowpass_coeffs(filter_type, cutoff_freq, sample_freq, order)
         template_dict['filter_name'] = filter_name.title()
         template_dict['a'] = ','.join(map(str, a))
