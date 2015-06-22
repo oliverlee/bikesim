@@ -60,6 +60,10 @@ namespace {
                                  // attach it to external interrupt. Pin 7 for INT 4.
 
     // Define conversion factor from measured analog signal to delta
+    // 12 bit ADC -> 4096 values
+    // with 5V range, 1.22 mV / bit
+    // Using values below: (62 degrees)/(680 - 289 bits) = 0.159 degrees/bit
+    // 0.130 degrees / mV
     const float DELTAMAXLEFT = -32.0f;
     const float DELTAMAXRIGHT = 30.0f;
     const float VALMAXLEFT = 289.0f;
@@ -69,6 +73,8 @@ namespace {
     const float C_DELTA = DELTAMAXLEFT - SLOPE_DELTA*VALMAXLEFT;
 
     // Delta dot:
+    // From datasheet: 20 mV/(deg/s)
+    // (1 (deg/s)) / (20 mV) * 1.22mV/bit = 0.061 (deg/s)/bit
     const float SLOPE_DELTADOT = -0.24438f;
     const float C_DELTADOT = 125.0f;
 
