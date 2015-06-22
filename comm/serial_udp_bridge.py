@@ -75,12 +75,12 @@ class UdpHandler(socketserver.BaseRequestHandler):
         if torque is None:
             return
 
-        self.torque = torque * TORQUE_SCALING_FACTOR
-        if not math.isnan(self.torque):
-            if abs(self.torque) > TORQUE_LIMIT: # saturate torque
-                self.torque = math.copysign(TORQUE_LIMIT,
-                                                   self.torque)
-            serial_write(self.server.serial, encode_torque(self.torque))
+        self.server.torque = torque * TORQUE_SCALING_FACTOR
+        if not math.isnan(self.server.torque):
+            if abs(self.server.torque) > TORQUE_LIMIT: # saturate torque
+                self.server.torque = math.copysign(TORQUE_LIMIT,
+                                                   self.server.torque)
+            serial_write(self.server.serial, encode_torque(self.server.torque))
         d = marshal.dumps((time.time() - self.server.start_time, torque),
                           MARSHAL_VERSION)
         g_log_queue.put(d)
