@@ -60,7 +60,6 @@ public class BicycleController : MonoBehaviour {
     private VizState q;
     private BicycleSimulator sim;
     private bool stopSim;
-    private string filename = "test_torque_pulse.txt";
 //    private bool writeStateSpace;
 
     // Setup the Bicycle Configuration
@@ -88,18 +87,13 @@ public class BicycleController : MonoBehaviour {
         sim = new BicycleSimulator(new BenchmarkParam());
         sim.Start();
 
-        using (FileStream fs = new FileStream(filename, FileMode.Create,
-                    FileAccess.Write))
-        using (StreamWriter sw = new StreamWriter(fs)) {
-            sw.WriteLine("time\twheelrate\tsteertorque\t" +
-                    "leanrate\tsteerrate\tlean\tsteer");
-        }
     }
 
     void Update() {
-        GamePadState state = GamePad.GetState(PlayerIndex.One);
-        if (Input.GetKeyDown(KeyCode.R) ||
-                state.Buttons.Back == ButtonState.Pressed) {
+        //GamePadState state = GamePad.GetState(PlayerIndex.One);
+        //if (Input.GetKeyDown(KeyCode.R) ||
+        //        state.Buttons.Back == ButtonState.Pressed) {
+        if (Input.GetKeyDown(KeyCode.R)) {
             sim.Stop();
             Application.LoadLevel(Application.loadedLevel);
         }
@@ -113,7 +107,7 @@ public class BicycleController : MonoBehaviour {
         catch (MathNet.Numerics.NonConvergenceException) {
             stopSim = true;
             sim.Stop();
-            GamePad.SetVibration(PlayerIndex.One, 0.0f, 0.0f);
+            //GamePad.SetVibration(PlayerIndex.One, 0.0f, 0.0f);
         }
 
         SetBicycleTransform(q);
@@ -229,7 +223,7 @@ public class BicycleController : MonoBehaviour {
     }
 
     public void OnApplicationQuit() {
-        GamePad.SetVibration(PlayerIndex.One, 0.0f, 0.0f);
+        //GamePad.SetVibration(PlayerIndex.One, 0.0f, 0.0f);
         sim.Stop();
     }
 }
