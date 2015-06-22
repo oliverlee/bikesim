@@ -52,7 +52,7 @@ if __name__ == "__main__":
         'sample_freq': sample_freq,
         'order': order
     }
-    generate_source('median', '.h', template_dict)
+    #generate_source('median', '.h', template_dict)
 
     for filter_type, filter_name in zip((butter, cheby1, cheby2),
                                         ('butter', 'cheby1', 'cheby2')):
