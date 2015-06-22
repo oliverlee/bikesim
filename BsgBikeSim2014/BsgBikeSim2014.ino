@@ -42,7 +42,6 @@
 #include <Adafruit_MCP4725.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include "streamsend.h"
 #include "sample.h"
 #include "butterlowpass.h"
 
@@ -141,7 +140,18 @@ void readSensors() {
     // Read analog sensor values for delta, deltadot
     sample.delta = valToDelta(analogRead(DELTAPIN));
     sample.deltaDot = valToDeltaDot(analogRead(DELTADOTPIN));
-    ++sampleCount;
+    sample.prefix = SERIAL_PREFIX_CHAR;
+    sample.suffix = SERIAL_SUFFIX_CHAR;
+
+//    char* data = (char*)&sample;
+//    for (int i = 0; i < sizeof(sample); ++i) {
+//    while ( !( UCSR1A & (1<<UDRE1)) );
+//        /* Put data into buffer, sends the data */
+//        UDR1 = *data++;
+//    }
+
+    // directly call USB send function, blocking
+    USB_Send(CDC_TX, &sample, sizeof(sample));
 }
 
 void checkSerial() { // check and parse the serial data
@@ -271,12 +281,7 @@ void setup() {
 }
 
 void loop() {
-    if (sampleCount >= SERIAL_TX_PRE) {
-        StreamSend::sendObject(Serial, &sample, sizeof(sample),
-                SERIAL_PREFIX_CHAR, SERIAL_SUFFIX_CHAR);
-        sampleCount = 0;
-    }
-
+    delay(10);
     // Check if incoming serial commands are available and process them
     checkSerial();
     if ((torqueWatchDog > 0) && (--torqueWatchDog == 0)) {
