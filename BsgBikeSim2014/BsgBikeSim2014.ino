@@ -105,6 +105,7 @@ namespace {
     //bicycle state struct
     Sample sample;
     int sampleCount = 0;
+    ButterLowpass filter = ButterLowpass();
 
     /*    Declare objects */
     Adafruit_MCP4725 dac;    // The Digital to Analog converter attached via i2c
@@ -133,16 +134,9 @@ int torqueToDigitalOut (float torque) {
 void readSensors() {
     // Read analog sensor values for delta, deltadot
     sample.delta = valToDelta(analogRead(DELTAPIN));
-    sample.deltaDot = valToDeltaDot(analogRead(DELTADOTPIN));
+    sample.deltaDot = filter.filter(valToDeltaDot(analogRead(DELTADOTPIN)));
     sample.prefix = SERIAL_PREFIX_CHAR;
     sample.suffix = SERIAL_SUFFIX_CHAR;
-
-//    char* data = (char*)&sample;
-//    for (int i = 0; i < sizeof(sample); ++i) {
-//    while ( !( UCSR1A & (1<<UDRE1)) );
-//        /* Put data into buffer, sends the data */
-//        UDR1 = *data++;
-//    }
 
     // directly call USB send function, blocking
     USB_Send(CDC_TX, &sample, sizeof(sample));
