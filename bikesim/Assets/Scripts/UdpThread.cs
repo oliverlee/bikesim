@@ -15,6 +15,10 @@ public class UdpThread {
     private Int32 _socketTimeout = 200; // in ms
     private Int32 _port;
     private System.Diagnostics.Stopwatch _stopwatch;
+    //protected const byte _packetPrefix = Convert.ToByte('s');
+    //protected const byte _packetSuffix = Convert.ToByte('e');
+    public const byte packetPrefix = (byte)'s';
+    public const byte packetSuffix = (byte)'e';
 
     public UdpThread(System.Diagnostics.Stopwatch watch,
             Int32 port, string name = "") {
@@ -79,7 +83,7 @@ public class UdpThread {
         }
     }
 
-    public void TransmitData(string data) {
+    public void TransmitData(byte[] data) {
         if (!_active) {
             return;
         }
@@ -87,11 +91,10 @@ public class UdpThread {
             _client = new UdpClient();
         }
 
-        byte[] buffer = Encoding.UTF8.GetBytes(data);
-        _client.Send(buffer, buffer.Length, _endpoint);
+        _client.Send(data, data.Length, _endpoint);
     }
 
-    public void StartReceiveData(Action<string> receiveFunc) {
+    public void StartReceiveData(Action<byte[]> receiveFunc) {
         _thread.Start(receiveFunc); // start thread and pass function argument
     }
 
@@ -106,7 +109,7 @@ public class UdpThread {
             return;
         }
 
-        Action<string> receiveFunc = (Action<string>)obj;
+        Action<byte[]> receiveFunc = (Action<byte[]>)obj;
         if (_client == null) {
             _client = new UdpClient(_endpoint);
         }
@@ -119,7 +122,7 @@ public class UdpThread {
             catch (SocketException) {
                 break;
             }
-            receiveFunc(Encoding.UTF8.GetString(buffer));
+            receiveFunc(buffer);
         }
     }
 }

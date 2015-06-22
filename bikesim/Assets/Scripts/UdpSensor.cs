@@ -52,27 +52,14 @@ public class UdpSensor {
         get { return _sensor; }
     }
 
-    private void UpdateSensor(string s) {
-        _sensor.timestamp_ms = _udp.ElapsedMilliseconds();
-        using (XmlReader reader = XmlReader.Create(new StringReader(s))) {
-            while (reader.Read()) {
-                if (reader.NodeType == XmlNodeType.Element) {
-                    if (reader.Name == "delta") {
-                        reader.Read(); // get next node with content
-                        _sensor.steerAngle = Convert.ToSingle(reader.Value);
-                    }
-                    if (reader.Name == "deltad") {
-                        reader.Read();
-                        _sensor.steerRate = Convert.ToSingle(reader.Value);
-                    }
-                    if (reader.Name == "cadence") {
-                        reader.Read();
-                        _sensor.wheelRate = -Convert.ToSingle(reader.Value);
-                        _sensor.wheelRate = -20.0; // TODO: remove hardcoded wheel rate
-                    }
-                    // TODO: incorporate brake signal
-                }
-            }
+    private void UpdateSensor(byte[] b) {
+        if ((b[0] == UdpThread.packetPrefix) &&
+                (b[sizeof(char) + 2*sizeof(float)] == UdpThread.packetSuffix)) {
+            _sensor.timestamp_ms = _udp.ElapsedMilliseconds();
+            _sensor.steerAngle = BitConverter.ToSingle(b, sizeof(char));
+            _sensor.steerRate = BitConverter.ToSingle(b,
+                    sizeof(char) + sizeof(float));
+            _sensor.wheelRate = -20.0; // TODO: remove hardcoded wheel rate
         }
     }
 }
