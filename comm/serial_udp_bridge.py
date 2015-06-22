@@ -73,6 +73,7 @@ class UdpHandler(socketserver.BaseRequestHandler):
         data = self.request[0].strip()
         torque = decode_torque(data)
         if torque is None:
+            print('Invalid torque received: ({}) {}'.format(len(data), data))
             return
 
         self.server.torque = torque * TORQUE_SCALING_FACTOR
@@ -175,7 +176,7 @@ class Receiver(object):
                         sample = Sample.decode(sample_bytes)
                         self.sample_q.put(sample)
                     except ValueError as ex: #invalid input
-                        print('Invalid sample recevied: {}'.format(ex))
+                        print('Invalid sample received: {}'.format(ex))
                 else:
                     self.byte_q.append(b)
         return not self.sample_q.empty()
