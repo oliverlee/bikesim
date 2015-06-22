@@ -52,12 +52,13 @@ public class UdpActuator {
         _actuator.envTorque = tau;
         _actuator.timestamp_ms= _udp.ElapsedMilliseconds();
 
-        byte[] data = new byte[2*sizeof(char) + sizeof(float)];
+        // Note: sizeof(char) = 2 (Unicode)
+        byte[] data = new byte[2*sizeof(byte) + sizeof(float)];
         data[0] = UdpThread.packetPrefix;
-        data[sizeof(char) + 2*sizeof(float)] = UdpThread.packetSuffix;
+        data[sizeof(byte) + sizeof(float)] = UdpThread.packetSuffix;
 
         byte[] torque = BitConverter.GetBytes(Convert.ToSingle(tau));
-        Buffer.BlockCopy(torque, 0, data, sizeof(char), sizeof(float));
+        Buffer.BlockCopy(torque, 0, data, sizeof(byte), sizeof(float));
         _udp.TransmitData(data);
     }
 }
