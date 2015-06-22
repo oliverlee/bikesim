@@ -4,6 +4,8 @@ import abc
 import bisect
 import collections
 import marshal
+import os
+import re
 import time
 
 import numpy as np
@@ -106,7 +108,7 @@ class Transducer(metaclass=abc.ABCMeta):
     def _update_data(self):
         self._data = np.array(self._data_str[self._sample_size:],
                               np.float32).reshape((self._time.shape[0],
-                                                   elf._sample_size))
+                                                   self._sample_size))
 
     def _update_dt(self):
         # don't include the last element
@@ -133,15 +135,18 @@ class Log(object):
     def __init__(self, path):
         sensor, actuator = parse_log(path)
         self._filepath = path
-        seif._logname = os.path.basename(path)
+        self._logname = os.path.basename(path)
         parts = self._logname.split('_')
-        self._subject = parts[-2]
-        self._feedback_enabled = bool(parts[-1]) == FEEDBACK_ENABLED
+        self._subject_code = parts[-2]
+        self._feedback_enabled = bool(parts[-1]) == Log.FEEDBACK_ENABLED
         self._sensor = sensor
         self._actuator = actuator
         self._start_time = sensor.start_time
         # assume a new log file is created for every run
-        self._timerange = (self._actuator.time[0], self._actuator.time[-1])
+        try:
+            self._timerange = (self._actuator.time[0], self._actuator.time[-1])
+        except IndexError:
+            raise ValueError('No actuator data in file {}'.format(path))
         self._check_timerange()
 
     @property
@@ -177,9 +182,11 @@ class Log(object):
         return self._timerange
 
     def _check_timerange(self):
-        t = actuator.time
+        t = self._actuator.time
         dt = t[1:] - t[:-1]
         i = dt[dt > 1.05*np.median(t)]
+        if not i: # no missing sections
+            return
         torque = self._actuator.torque[i + 1]
         if np.any(torque == 0):
             raise ValueError('{} had more than one run'.format(self._logname))
@@ -211,8 +218,8 @@ class Subject(object):
 
     def balance_time(self, feedback=None):
         if feedback is None:
-           return self.balance_time(Log.FEEDBACK_DISABLED,
-                                    Log.FEEDBACK_ENABLED)
+           return (self.balance_time(Log.FEEDBACK_DISABLED),
+                   self.balance_time(Log.FEEDBACK_ENABLED))
         return self._balance_time[feedback]
 
 
@@ -220,22 +227,34 @@ def balance_df(subjects):
     times = []
     groups = []
     for s in subjects:
-        times += s.balance_time() # order is (disabled, enabled)
-        groups += ['{}.{}'.format(s.code, en) for en in (0, 1)]
+        subject_times  = s.balance_time() # order is (disabled, enabled)
+        subject_codes  = ['{}.{}'.format(s.code, en) for en in (0, 1)]
+        for t, c in zip(subject_times, subject_codes):
+            if t:
+                times.extend(t)
+                groups.extend([c] * len(t))
     return pd.DataFrame(dict(time=times, subject=groups))
 
 
 def parse_log_dir(dirname):
     pattern = re.compile('^log_\d{6}_\d{6}_UTC_\d{3}_[01]$')
     subjects = dict()
+    log_count = 0
     for f in os.listdir(dirname):
         if pattern.match(os.path.basename(f)):
-            print('parsing file {}'.format(f))
+            f = os.path.join(dirname, f)
+            print('Parsing file {}'.format(f))
             log = Log(f)
             if log.subject_code not in subjects:
                 s = Subject(log.subject_code)
                 subjects[log.subject_code] = s
             subjects[log.subject_code].add_log(log)
+            log_count += 1
+    if not subjects:
+        print('No valid log files found!')
+    else:
+        msg = '{} log file(s) parsed for subject(s): {}'
+        print(msg.format(log_count, ', '.join(subjects.keys())))
     return subjects
 
 
