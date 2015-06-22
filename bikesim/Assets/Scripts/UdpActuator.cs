@@ -51,22 +51,14 @@ public class UdpActuator {
     public void SetTorque(double tau) {
         _actuator.envTorque = tau;
         _actuator.timestamp_ms= _udp.ElapsedMilliseconds();
-        _udp.TransmitData(XmlDatagram(tau));
-    }
 
-    private string XmlDatagram(double tau) {
-        MemoryStream ms = new MemoryStream();
-        using (XmlWriter writer = XmlWriter.Create(ms)) {
-            writer.WriteStartDocument();
-            writer.WriteStartElement("root");
-            writer.WriteStartElement("torque");
-            writer.WriteString(tau.ToString());
-            writer.WriteEndElement();
-            writer.WriteEndElement();
-            writer.WriteEndDocument();
-            writer.Flush();
-        }
-        byte[] b = ms.ToArray();
-        return Encoding.UTF8.GetString(b);
+        // Note: sizeof(char) = 2 (Unicode)
+        byte[] data = new byte[2*sizeof(byte) + sizeof(float)];
+        data[0] = UdpThread.packetPrefix;
+        data[sizeof(byte) + sizeof(float)] = UdpThread.packetSuffix;
+
+        byte[] torque = BitConverter.GetBytes(Convert.ToSingle(tau));
+        Buffer.BlockCopy(torque, 0, data, sizeof(byte), sizeof(float));
+        _udp.TransmitData(data);
     }
 }

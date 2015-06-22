@@ -15,7 +15,6 @@ import threading
 import time
 
 import serial
-from lxml import etree
 
 #import hanging_threads
 
@@ -60,23 +59,32 @@ MARSHAL_VERSION = 4
 def encode_torque(torque):
     return struct.pack('=cfc', SERIAL_START_CHAR, torque, SERIAL_END_CHAR)
 
+def decode_torque(data):
+    if len(data) != 6: # sizeof(float) + 2*sizeof(char)
+        return None
+    prefix_char, torque, suffix_char = struct.unpack('=cfc', data)
+    if prefix_char == SERIAL_START_CHAR and suffix_char == SERIAL_END_CHAR:
+        return torque
+    return None
+
 
 class UdpHandler(socketserver.BaseRequestHandler):
     def handle(self):
         data = self.request[0].strip()
-        root = etree.fromstring(data)
-        elem = root.find('torque')
-        if elem is not None:
-            tau0 = float(elem.text)
-            # rescale and limit torque
-            self.torque = tau0 * TORQUE_SCALING_FACTOR
-            if not math.isnan(self.torque):
-                if abs(self.torque) > TORQUE_LIMIT: # saturate torque
-                    self.torque = math.copysign(TORQUE_LIMIT, self.torque)
-                serial_write(self.server.serial, encode_torque(self.torque))
-            d = marshal.dumps((time.time() - self.server.start_time, tau0),
-                              MARSHAL_VERSION)
-            g_log_queue.put(d)
+        torque = decode_torque(data)
+        if torque is None:
+            print('Invalid torque received: ({}) {}'.format(len(data), data))
+            return
+
+        self.server.torque = torque * TORQUE_SCALING_FACTOR
+        if not math.isnan(self.server.torque):
+            if abs(self.server.torque) > TORQUE_LIMIT: # saturate torque
+                self.server.torque = math.copysign(TORQUE_LIMIT,
+                                                   self.server.torque)
+            serial_write(self.server.serial, encode_torque(self.server.torque))
+        d = marshal.dumps((time.time() - self.server.start_time, torque),
+                          MARSHAL_VERSION)
+        g_log_queue.put(d)
 
 
 class UdpServer(socketserver.UDPServer):
@@ -133,13 +141,8 @@ class Sample(object):
         l2 = [format(int(self.brake))]
         return l1 + l2
 
-    def print_xml(self, enc=DEFAULT_ENCODING):
-        root = etree.Element('root')
-        etree.SubElement(root, "delta").text = str(self.delta)
-        etree.SubElement(root, "deltad").text = str(self.deltad)
-        etree.SubElement(root, "cadence").text = str(0)
-        etree.SubElement(root, "brake").text = str(0)
-        return etree.tostring(root, encoding=enc)
+    def to_list(self):
+        return [self.delta, self.deltad, self.cadence, self.brake]
 
 
 class Receiver(object):
@@ -173,7 +176,7 @@ class Receiver(object):
                         sample = Sample.decode(sample_bytes)
                         self.sample_q.put(sample)
                     except ValueError as ex: #invalid input
-                        print('Invalid sample recevied: {}'.format(ex))
+                        print('Invalid sample received: {}'.format(ex))
                 else:
                     self.byte_q.append(b)
         return not self.sample_q.empty()
@@ -198,9 +201,9 @@ class SensorListener(threading.Thread):
             except OSError: # serial port closed
                 break
             self.sample = receiver.sample_q.get()
-            self.udp.sendto(self.sample.print_xml(), self.addr)
-            #self.udp.sendto(struct.pack('=cffc', SERIAL_START_CHAR, 1.1, 1.2,
-            #    SERIAL_END_CHAR), self.addr)
+            self.udp.sendto(struct.pack('=cffc',
+                SERIAL_START_CHAR, self.sample.delta,
+                self.sample.deltad, SERIAL_END_CHAR), self.addr)
             d = marshal.dumps((time.time() - self.start_time,
                                self.sample.to_list()),
                               MARSHAL_VERSION)

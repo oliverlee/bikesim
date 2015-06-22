@@ -40,7 +40,7 @@ public class State {
 // This class implements the bicycle simulator equations of motion as described
 // in Schwab, Recuero 2013.
 public class BicycleSimulator {
-    private const int _sim_period_ms = 10;
+    private const int _sim_period_ms = 20;
     private const int _sim_timeout_ms = 1000;
 
     private Sensor _lastSensor;
