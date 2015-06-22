@@ -6,12 +6,13 @@ import time
 
 import send_udp
 
+TRANSMISSION_FREQ = 50 # Hz
 port = 9901
 t0 = time.time()
 
 try:
     while True:
-        time.sleep(0.01)
+        time.sleep(1/TRANSMISSION_FREQ)
         t = time.time()
         dt = t - t0
         y = 2*math.sin(2*dt)
