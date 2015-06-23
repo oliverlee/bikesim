@@ -74,10 +74,10 @@ public class BicycleController : MonoBehaviour {
         rearWheel.transform.localScale = v;
         v = new Vector3(2*rF, wheelWidth, 2*rF);
         frontWheel.transform.localScale = v;
-        v = new Vector3(cR, frameWidth, frameWidth);
-        rearFrame.transform.localScale = v;
-        v = new Vector3(frameWidth, frameWidth, ls);
-        frontFrame.transform.localScale = v;
+        //v = new Vector3(cR, frameWidth, frameWidth);
+        //rearFrame.transform.localScale = v;
+        //v = new Vector3(frameWidth, frameWidth, ls);
+        //frontFrame.transform.localScale = v;
 
         headAngle = CalculateNominalPitch();
 
