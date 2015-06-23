@@ -112,8 +112,10 @@ public class BicycleController : MonoBehaviour {
 
         SetBicycleTransform(q);
         sensorInfo.text = System.String.Format(
-            "wheelrate: {0}\nsteertorque: {1}\nsim time: {2}",
-            sim.wheelRate, sim.feedbackTorque, sim.elapsedMilliseconds/1000);
+            "speed: {0}\nsteertorque: {1}\nsim time: {2}",
+            sim.wheelRate * rR * 3.6, // rad/s -> km/hr
+            sim.feedbackTorque,
+            sim.elapsedMilliseconds/1000);
         stateInfo.text = System.String.Format(
             "x: {0}\ny: {1}\nlean: {2}\nyaw: {3}\nsteer: {4}",
             q.x, q.y, q.lean, q.yaw, q.steer);
