@@ -7,11 +7,11 @@
 
 namespace {
     // Butter lowpass filter
-    // order: 4
-    // cutoff freq: 5.0
-    // sample freq: 50.0
-    const double a[] = { 1.0,-2.36951300718,2.31398841442,-1.05466540588,0.187379492368 };
-    const double b[] = { 0.00482434335772,0.0192973734309,0.0289460601463,0.0192973734309,0.00482434335772 };
+    // order: 2
+    // cutoff freq: 4.0
+    // sample freq: 200.0
+    const double a[] = { 1.0,-1.8226949252,0.837181651256 };
+    const double b[] = { 0.00362168151493,0.00724336302986,0.00362168151493 };
 } // namespace
 
 ButterLowpass::ButterLowpass(): _x{0.0f}, _y{0.0f}, _n{0} { }

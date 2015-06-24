@@ -38,15 +38,15 @@ def template_setup(ext, filename_base=None):
 
 if __name__ == "__main__":
     usage = 'generate arduino source files for filters\n'
-    usage += '{0} <cutoff_freq> <sample_freq>'.format(__file__)
+    usage += '{0} <order> <cutoff_freq> <sample_freq>'.format(__file__)
 
-    if len(sys.argv) < 3:
+    if len(sys.argv) < 4:
         print(usage)
         sys.exit(1)
 
-    cutoff_freq = float(sys.argv[1])
-    sample_freq = float(sys.argv[2])
-    order = 4
+    order = int(sys.argv[1])
+    cutoff_freq = float(sys.argv[2])
+    sample_freq = float(sys.argv[3])
     template_dict = {
         'cutoff_freq': cutoff_freq,
         'sample_freq': sample_freq,

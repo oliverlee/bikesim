@@ -84,7 +84,7 @@ namespace {
     // Define the sampling frequency serial tranmission frequency with TIMER3
     //   Use no more than 100 Hz for serial transmission rate where
     //   SERIAL_TX_FREQ = SAMPLING_FREQ/SERIAL_TX_PRE
-    const int SAMPLING_FREQ = 50;
+    const int SAMPLING_FREQ = 200;
     const int SERIAL_TX_PRE = 4; // prescaler for serial transmission
     int txCount = 0;
 
@@ -141,13 +141,16 @@ int torqueToDigitalOut (float torque) {
 }
 
 void readSensors() {
-    // Read analog sensor values for delta, deltadot
-    sample.delta = deltaFilter.filter(valToDelta(analogRead(DELTAPIN)));
-    //sample.delta = valToDelta(analogRead(DELTAPIN));
-    sample.deltaDot = (sample.delta - prevDelta)*SAMPLING_FREQ;
-    prevDelta = sample.delta;
-    // directly call USB send function, blocking
-    USB_Send(CDC_TX, &sample, sizeof(sample));
+    if (++txCount > SERIAL_TX_PRE - 1) {
+        sample.delta = deltaFilter.filter(valToDelta(analogRead(DELTAPIN)));
+        sample.deltaDot = (sample.delta - prevDelta)*SAMPLING_FREQ/SERIAL_TX_PRE;
+        prevDelta = sample.delta;
+        // directly call USB send function, blocking
+        USB_Send(CDC_TX, &sample, sizeof(sample));
+        txCount = 0;
+    } else {
+        sample.delta = deltaFilter.filter(valToDelta(analogRead(DELTAPIN)));
+    }
 
 }
 

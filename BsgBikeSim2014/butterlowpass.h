@@ -8,7 +8,7 @@
 
 class ButterLowpass {
 private:
-    static const int _size = 4 + 1;
+    static const int _size = 2 + 1;
     double _x[_size]; // input
     double _y[_size]; // output
     int _n; // current array index
