@@ -136,7 +136,9 @@ class Log(object):
         self._sensor = sensor
         self._actuator = actuator
         self._start_time = sensor.start_time
-        self._timerange = (actuator.time[0], actuator.time[-1])
+        # assume a new log file is created for every run
+        self._timerange = (self._actuator.time[0], self._actuator.time[-1])
+        self._check_timerange()
 
     @property
     def filepath(self):
@@ -169,6 +171,15 @@ class Log(object):
     @property
     def timerange(self):
         return self._timerange
+
+    def _check_timerange(self):
+        t = actuator.time
+        dt = t[1:] - t[:-1]
+        i = dt[dt > 1.05*np.median(t)]
+        torque = self._actuator.torque[i + 1]
+        if np.any(torque == 0):
+            raise ValueError('{} had more than one run'.format(self._logname))
+
 
 
 class Subject(object):
@@ -228,7 +239,7 @@ def parse_log(path):
 
 def plot_timeinfo(transducer, max_dt=None):
     name = transducer.name
-    dt = transducer.dt * 1000
+    dt = transducer.dt * 1000 # milliseconds
     t = transducer.time[1:] # remove the first element to match dt.shape
     if max_dt is not None:
         # set a threshold for maximum dt to consider
