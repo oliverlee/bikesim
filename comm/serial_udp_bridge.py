@@ -59,30 +59,32 @@ MARSHAL_VERSION = 4
 def encode_torque(torque):
     return struct.pack('=cfc', SERIAL_START_CHAR, torque, SERIAL_END_CHAR)
 
-def decode_torque(data):
-    if len(data) != 6: # sizeof(float) + 2*sizeof(char)
+def decode_state(data):
+    if len(data) != 10: # 2*sizeof(float) + 2*sizeof(char)
         return None
-    prefix_char, torque, suffix_char = struct.unpack('=cfc', data)
+    prefix_char, torque, lean, suffix_char = struct.unpack('=cffc', data)
     if prefix_char == SERIAL_START_CHAR and suffix_char == SERIAL_END_CHAR:
-        return torque
+        return torque, lean
     return None
 
 
 class UdpHandler(socketserver.BaseRequestHandler):
     def handle(self):
         data = self.request[0].strip()
-        torque = decode_torque(data)
-        if torque is None:
-            print('Invalid torque received: ({}) {}'.format(len(data), data))
+        state = decode_state(data)
+        if state is None:
+            print('Invalid state received: ({}) {}'.format(len(data), data))
             return
 
+        torque, lean = state
         self.server.torque = torque * TORQUE_SCALING_FACTOR
         if not math.isnan(self.server.torque):
             if abs(self.server.torque) > TORQUE_LIMIT: # saturate torque
                 self.server.torque = math.copysign(TORQUE_LIMIT,
                                                    self.server.torque)
             serial_write(self.server.serial, encode_torque(self.server.torque))
-        d = marshal.dumps((time.time() - self.server.start_time, torque),
+        d = marshal.dumps((time.time() - self.server.start_time,
+                           'actuator', [torque, lean]),
                           MARSHAL_VERSION)
         g_log_queue.put(d)
 
@@ -205,7 +207,7 @@ class SensorListener(threading.Thread):
                 SERIAL_START_CHAR, self.sample.delta,
                 self.sample.deltad, SERIAL_END_CHAR), self.addr)
             d = marshal.dumps((time.time() - self.start_time,
-                               self.sample.to_list()),
+                               'sensor', self.sample.to_list()),
                               MARSHAL_VERSION)
             g_log_queue.put(d)
 

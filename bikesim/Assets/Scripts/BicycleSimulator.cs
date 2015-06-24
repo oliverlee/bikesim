@@ -163,7 +163,7 @@ public class BicycleSimulator {
         UpdateSensor();
         IntegrateState();
         _feedbackTorque = EstimateFeedbackTorque();
-        _actuator.SetTorque(_feedbackTorque);
+        _actuator.SendTorque(_feedbackTorque, _state);
     }
 
     private void UpdateSensor() {
