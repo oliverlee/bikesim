@@ -8,6 +8,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import seaborn as sns
 
 import sys
 sys.path.append('../comm')
@@ -55,6 +56,11 @@ class Transducer(metaclass=abc.ABCMeta):
         idx = self._fields.index(fieldname)
         return self._data[:, idx]
 
+    def get_timerange_indices(self, timerange):
+        tmin, tmax = timerange
+        t = self._time
+        return (t >= tmin) & (t <= tmax)
+
     @property
     def name(self):
         return self._name
@@ -92,11 +98,13 @@ class Transducer(metaclass=abc.ABCMeta):
         return self._dt
 
     def _update_time(self):
-        self._time = np.array(self._time_str, np.float32)
+        # ignore first sample
+        self._time = np.array(self._time_str[1:], np.float32)
 
     def _update_data(self):
-        self._data = np.array(self._data_str, np.float32).reshape(
-                (self._time.shape[0], self._sample_size))
+        self._data = np.array(self._data_str[self._sample_size:],
+                              np.float32).reshape((self._time.shape[0],
+                                                   elf._sample_size))
 
     def _update_dt(self):
         # don't include the last element
@@ -231,33 +239,27 @@ def align_yaxis(ax1, v1, ax2, v2):
     """adjust ax2 ylimit so that v2 in ax2 is aligned to v1 in ax1"""
     _, y1 = ax1.transData.transform((0, v1))
     _, y2 = ax2.transData.transform((0, v2))
-    adjust_yaxis(ax2,(y1-y2)/2,v2)
-    adjust_yaxis(ax1,(y2-y1)/2,v1)
+    inv = ax2.transData.inverted()
+    _, dy = inv.transform((0, 0)) - inv.transform((0, y1-y2))
+    ax2.set_ylim(dy + ax2.get_ylim())
 
 
-def adjust_yaxis(ax, ydif, v):
-    """shift axis ax by ydiff, maintaining point v at the same location"""
-    inv = ax.transData.inverted()
-    _, dy = inv.transform((0, 0)) - inv.transform((0, ydif))
-    miny, maxy = ax.get_ylim()
-    miny, maxy = miny - v, maxy - v
-    if -miny>maxy or (-miny==maxy and dy > 0):
-        nminy = miny
-        nmaxy = miny*(maxy+dy)/(miny+dy)
+def scale_yaxis(ax, lim, v):
+    ymin, ymax = ax.get_ylim()
+    if lim < ymin:
+        factor = (lim - v)/(ymin - v)
     else:
-        nmaxy = maxy
-        nminy = maxy*(miny+dy)/(maxy+dy)
-    ax.set_ylim(nminy+v, nmaxy+v) 
+        factor = (lim - v)/(ymax - v)
+    ax.set_ylim(factor*ymin, factor*ymax)
 
 
 def plot_subplots(sensor, actuator, fields, timerange=None):
     colors = line_colors(len(fields))
-    if timerange is None:
-        tmin, tmax = shared_timerange(sensor, actuator, fields)
-    else:
-        tmin, tmax = timerange
+    tmin, tmax = calc_timerange(sensor, actuator, fields, timerange)
 
     fig, axes = plt.subplots(len(fields))
+    if len(fields) == 1:
+        axes = (axes,)
     for ax, color, field in zip(axes, colors, fields):
         if field in actuator.fields:
             t = actuator.time
@@ -271,24 +273,22 @@ def plot_subplots(sensor, actuator, fields, timerange=None):
         ax.tick_params(axis='y', colors=color)
         ax.legend((field,))
         ax.set_xlim([tmin, tmax])
+        ax.grid()
     axes[-1].set_xlabel('time [s]')
     return fig, axes
 
 
 def plot_singleplot(sensor, actuator, fields, timerange=None):
     colors = line_colors(len(fields))
-    if timerange is None:
-        tmin, tmax = shared_timerange(sensor, actuator, fields)
-    else:
-        tmin, tmax = timerange
+    tmin, tmax = calc_timerange(sensor, actuator, fields, timerange)
 
     fig, ax = plt.subplots()
     n = len(fields) - 2
     axes = [ax] + [ax.twinx() for i in fields[1:]]
-    fig.subplots_adjust(right=0.75**n)
+    fig.subplots_adjust(right=1/(1 + 0.15*n))
     lines = []
-    for i, ax in enumerate(axes[2:]):
-        ax.spines['right'].set_position(('axes', 1.2 + 0.2*i))
+    for i, ax in enumerate(axes[2:], 1):
+        ax.spines['right'].set_position(('axes', 1 + 0.15*i))
         ax.set_frame_on(True)
         ax.patch.set_visible(False)
     for ax, color, field in zip(axes, colors, fields):
@@ -307,6 +307,59 @@ def plot_singleplot(sensor, actuator, fields, timerange=None):
     return fig, axes
 
 
+def plot_lean_steer(sensor, actuator, timerange=None):
+    fields = ('delta', 'phi')
+    fig, ax = _plot_singleplot_imp(sensor, actuator, fields)
+    ax.set_ylabel('angle [deg]')
+    ax.legend()
+    return fig, ax
+
+
+def plot_lean_steer_yy(sensor, actuator, timerange=None):
+    fields = ('delta', 'phi')
+    fig, ax1 = plt.subplots()
+    ax2 = ax1.twinx()
+    _ = _plot_singleplot_imp(sensor, actuator, fields, axes=(ax1, ax2))
+    ymin, ymax = ax2.get_ylim()
+    align_yaxis(ax1, 0, ax2, 0)
+    if ymax > 90:
+        scale_yaxis(ax2, 90, 0)
+    else:
+        scale_yaxis(ax2, -90, 0)
+    return fig, (ax1, ax2)
+
+
+def _plot_singleplot_imp(sensor, actuator, fields, timerange=None, colors=None, axes=None):
+    if colors is None:
+        colors = line_colors(len(fields))
+    if axes is None:
+        fig, ax = plt.subplots()
+        axes = len(fields)*[ax]
+    else:
+        fig = None
+    if timerange is None:
+        timerange = shared_timerange(sensor, actuator, fields)
+
+    s_ind = sensor.get_timerange_indices(timerange)
+    a_ind = actuator.get_timerange_indices(timerange)
+    s_t = sensor.time[s_ind]
+    a_t = actuator.time[a_ind]
+    for ax, color, field in zip(axes, colors, fields):
+        if field in sensor.fields:
+            t = s_t
+            y = sensor.get_field(field)[s_ind]
+        else:
+            t = a_t
+            y = actuator.get_field(field)[a_ind]
+        ax.plot(t, y, color=color, label=field)
+    axes[0].set_xlim(timerange)
+    if fig is not None:
+        axes = axes[0]
+    return fig, axes
+
+
+
+
 def shared_timerange(sensor, actuator, fields):
     if set.intersection(set(actuator.fields), set(fields)):
         tmin = max(sensor.time[0], actuator.time[0])
@@ -315,6 +368,13 @@ def shared_timerange(sensor, actuator, fields):
         tmin = sensor.time[0]
         tmax = sensor.time[-1]
     return tmin, tmax
+
+
+def calc_timerange(sensor, actuator, fields, timerange):
+    if timerange is None:
+        return shared_timerange(sensor, actuator, fields)
+    else:
+        return timerange
 
 
 def units(field):
@@ -334,5 +394,9 @@ def units(field):
 
 
 def line_colors(size):
-    return iter(cm.Accent(np.linspace(0, 1, size)))
+    if size < 7:
+        return iter(sns.color_palette('muted'))
+    else:
+        return iter(sns.color_palette('muted', size))
+
 
