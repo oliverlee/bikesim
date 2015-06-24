@@ -108,7 +108,7 @@ class Sensor(Transducer):
 
 
 class Actuator(Transducer):
-    _fields = ('torque', 'lean')
+    _fields = ('torque', 'phi')
 
 
 def parse_log(path):
@@ -245,13 +245,13 @@ def adjust_yaxis(ax, ydif, v):
 
 
 def plot_subplots(sensor, actuator, fields, timerange=None):
-    fig, axes = plt.subplots(len(fields))
-    colors = iter(cm.Accent(np.linspace(0, 1, len(fields))))
+    colors = line_colors(len(fields))
     if timerange is None:
         tmin, tmax = shared_timerange(sensor, actuator, fields)
     else:
         tmin, tmax = timerange
 
+    fig, axes = plt.subplots(len(fields))
     for ax, color, field in zip(axes, colors, fields):
         if field in actuator.fields:
             t = actuator.time
@@ -263,19 +263,19 @@ def plot_subplots(sensor, actuator, fields, timerange=None):
         ax.plot(t[indices], y[indices], color=color)
         ax.legend((field,))
         ax.set_xlim([tmin, tmax])
+        ax.set_ylabel(units(field), color=color)
     axes[-1].set_xlabel('time [s]')
     return fig, axes
 
 
 def plot_singleplot(sensor, actuator, fields, timerange=None):
-    colors = iter(cm.Set1(np.linspace(0, 1, len(fields))))
+    colors = line_colors(len(fields))
     if timerange is None:
         tmin, tmax = shared_timerange(sensor, actuator, fields)
     else:
         tmin, tmax = timerange
 
     fig, ax = plt.subplots()
-
     n = len(fields) - 2
     axes = [ax] + [ax.twinx() for i in fields[1:]]
     fig.subplots_adjust(right=0.75**n)
@@ -294,7 +294,7 @@ def plot_singleplot(sensor, actuator, fields, timerange=None):
         indices = (t >= tmin) & (t <= tmax)
         ax.plot(t[indices], y[indices], color=color, label=field)
         ax.tick_params(axis='y', colors=color)
-        ax.set_ylabel(field, color=color)
+        ax.set_ylabel(units(field), color=color)
     axes[0].set_xlabel('time [s]')
     axes[0].set_xlim([tmin, tmax])
     return fig, axes
@@ -308,3 +308,20 @@ def shared_timerange(sensor, actuator, fields):
         tmin = sensor.time[0]
         tmax = sensor.time[-1]
     return tmin, tmax
+
+
+def units(field):
+    if field == 'delta':
+        return 'deg'
+    elif field == 'deltad':
+        return 'deg/s'
+    elif field == 'torque':
+        return 'N-m'
+    elif field == 'phi':
+        return 'deg'
+    raise KeyError
+
+
+def line_colors(size):
+    return iter(cm.Accent(np.linspace(0, 1, size)))
+
