@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import abc
+import bisect
 import collections
-import pickle
 import marshal
 import time
+
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -116,7 +117,6 @@ class Transducer(metaclass=abc.ABCMeta):
                 self._data[:, i] = 180/np.pi*self._data[:, i]
 
 
-
 class Sensor(Transducer):
     _fields = ('delta', 'deltad', 'cadence', 'brake')
 
@@ -125,19 +125,84 @@ class Actuator(Transducer):
     _fields = ('torque', 'phi')
 
 
+class Log(object):
+    def __init__(self, path):
+        sensor, actuator = parse_log(path)
+        self._filepath = path
+        seif._logname = os.path.basename(path)
+        parts = self._logname.split('_')
+        self._subject = parts[-2]
+        self._feedback_enabled = parts[-1]
+        self._sensor = sensor
+        self._actuator = actuator
+        self._start_time = sensor.start_time
+        self._timerange = (actuator.time[0], actuator.time[-1])
+
+    @property
+    def filepath(self):
+        return self._filepath
+
+    @property
+    def logname(self):
+        return self._logname
+
+    @property
+    def subject(self):
+        return self._subject
+
+    @property
+    def feedback(self):
+        return self._feedback_enabled
+
+    @property
+    def sensor(self):
+        return self._sensor
+
+    @property
+    def actuator(self):
+        return self._actuator
+
+    @property
+    def start_time(self):
+        return self._start_time
+
+    @property
+    def timerange(self):
+        return self._timerange
+
+
+class Subject(object):
+    def __init__(self, code):
+        self._code = code
+        self._logs = []
+        self._log_keys = []
+
+    @property
+    def code(self):
+        return self._code
+
+    @property
+    def logs(self):
+        return self._logs
+
+    def add_log(self, log):
+        k = log.start_time
+        i = bisect.bisect_left(self._log_keys, k)
+        self._log_keys.insert(i, k)
+        self._logs.insert(i, log)
+
+
 def parse_log(path):
     sensor = Sensor('sensor', path)
     actuator = Actuator('actuator', path)
-    sample = Sample()
     with open(path, 'rb') as f:
         while True:
             try:
-                #p = pickle.load(f)
                 p = marshal.load(f)
             except EOFError:
                 break
 
-            if isinstance(p, int): #time.struct_time):
+            if isinstance(p, int): # unixtime
                 p = time.gmtime(p)
                 if sensor.start_time is None:
                     sensor._start_time = p
