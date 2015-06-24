@@ -20,7 +20,6 @@ import serial
 
 
 DEFAULT_BAUDRATE = 2000000 # 115200
-DEFAULT_ENCODING = 'utf-8'
 DEFAULT_UDPHOST = 'localhost'
 DEFAULT_UDPTXPORT = 9900
 DEFAULT_UDPRXPORT = 9901
@@ -91,12 +90,11 @@ class UdpHandler(socketserver.BaseRequestHandler):
 
 class UdpServer(socketserver.UDPServer):
     def __init__(self, server_address, RequestHandlerClass,
-                 serial_port, start_time, encoding):
+                 serial_port, start_time ):
         socketserver.UDPServer.__init__(self, server_address,
                                         RequestHandlerClass)
         self.serial = serial_port
         self.start_time = start_time
-        self.encoding = encoding
         self.torque = None
 
 
@@ -217,14 +215,17 @@ def utc_filename():
 
 
 class Logger(threading.Thread):
-    def __init__(self):
+    def __init__(self, subject, feedback_enabled):
         threading.Thread.__init__(self, name='log thread')
         self._terminate = threading.Event()
+        self.subject = subject
+        self.feedback_enabled = feedback_enabled
 
     def run(self):
         t0 = time.time()
         timestamp = t0
-        filename = 'log_{}'.format(utc_filename())
+        filename = 'log_{}_{}_{}'.format(utc_filename(), self.subject,
+                                         self.feedback_enabled)
         print('Logging sensor/actuator data to {}'.format(filename))
         with open(filename, 'wb') as log:
             marshal.dump(int(time.time()), log, MARSHAL_VERSION)
@@ -262,12 +263,13 @@ if __name__ == "__main__":
         'vice versa.')
     parser.add_argument('port',
         help='serial port for communication with arduino')
+    parser.add_argument('subject',
+        help='note numerical code for test subject in log filename')
+    parser.add_argument('feedback',
+        help='note if torque feedback is enabled in log filename')
     parser.add_argument('-b', '--baudrate',
         help='serial port baudrate ({})'.format(DEFAULT_BAUDRATE),
         default=DEFAULT_BAUDRATE, type=int)
-    parser.add_argument('-e', '--encoding',
-        help='serial data encoding type ({})'.format(DEFAULT_ENCODING),
-        default=DEFAULT_ENCODING)
     parser.add_argument('-H', '--udp_host',
         help='udp remote host ip ({})'.format(DEFAULT_UDPHOST),
         default=DEFAULT_UDPHOST)
@@ -286,13 +288,13 @@ if __name__ == "__main__":
     udp_tx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     t0 = time.time()
-    actuator = UdpServer(udp_rx_addr, UdpHandler, ser, t0, args.encoding)
+    actuator = UdpServer(udp_rx_addr, UdpHandler, ser, t0)
     actuator_thread = threading.Thread(target=actuator.serve_forever)
     actuator_thread.daemon = True
 
     sensor = SensorListener(ser, udp_tx, udp_tx_addr, t0)
 
-    log = Logger()
+    log = Logger(args.subject, args.feedback)
 
     sensor.start()
     actuator_thread.start()
