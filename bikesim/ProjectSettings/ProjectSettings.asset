@@ -11,7 +11,7 @@ PlayerSettings:
   targetIOSGraphics: -1
   targetResolution: 0
   accelerometerFrequency: 60
-  companyName: DefaultCompany
+  companyName: TU Delft
   productName: bikesim
   cloudProjectId: 
   defaultCursor: {fileID: 0}
@@ -27,7 +27,7 @@ PlayerSettings:
   m_MTRendering: 1
   m_MobileMTRendering: 0
   m_UseDX11: 1
-  m_Stereoscopic3D: 0
+  m_Stereoscopic3D: 1
   iosShowActivityIndicatorOnLoading: -1
   androidShowActivityIndicatorOnLoading: -1
   iosAppInBackgroundBehavior: 0
@@ -47,11 +47,11 @@ PlayerSettings:
   Prepare IOS For Recording: 0
   submitAnalytics: 1
   usePlayerLog: 1
-  bakeCollisionMeshes: 0
+  bakeCollisionMeshes: 1
   forceSingleInstance: 0
   resizableWindow: 0
   useMacAppStoreValidation: 0
-  gpuSkinning: 0
+  gpuSkinning: 1
   xboxPIXTextureCapture: 0
   xboxEnableAvatar: 0
   xboxEnableKinect: 0
@@ -77,7 +77,20 @@ PlayerSettings:
     Others: 1
   bundleIdentifier: com.Company.ProductName
   bundleVersion: 1.0
-  preloadedAssets: []
+  preloadedAssets:
+  - {fileID: 100000, guid: 43202a31bd1113061100b7a844295342, type: 3}
+  - {fileID: 100000, guid: 8d302a31bd1113061100b7a844295342, type: 3}
+  - {fileID: 15600000, guid: 2ebd8e467e1a8a04cb61bdf3fc307dfc, type: 2}
+  - {fileID: 2100000, guid: 84796f45c2e03bc409167505c3aee5d0, type: 2}
+  - {fileID: 100016, guid: 3baa24e52b115eb44943c07f6e5d2039, type: 2}
+  - {fileID: 2100000, guid: e9705e00f62f62849b89fc9fd55aa0e3, type: 2}
+  - {fileID: 10206, guid: 0000000000000000e000000000000000, type: 0}
+  - {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+  - {fileID: 11500000, guid: 311f034d8170bdd49bad2f7647e36f88, type: 3}
+  - {fileID: 11500000, guid: ef685f1eaf91b174e8d569b21379c5e0, type: 3}
+  - {fileID: 11500000, guid: 925a2fba4b9d5634d819afae0606c0ea, type: 3}
+  - {fileID: 2100000, guid: 5526f677179d4ec41a9d8c15775b3ae3, type: 2}
+  - {fileID: 10303, guid: 0000000000000000f000000000000000, type: 0}
   metroEnableIndependentInputSource: 0
   metroEnableLowLatencyPresentationAPI: 0
   xboxOneDisableKinectGpuReservation: 0
@@ -93,8 +106,8 @@ PlayerSettings:
   ForceSDCardPermission: 0
   CreateWallpaper: 0
   APKExpansionFiles: 0
-  preloadShaders: 0
-  StripUnusedMeshComponents: 0
+  preloadShaders: 1
+  StripUnusedMeshComponents: 1
   iPhoneSdkVersion: 988
   iPhoneTargetOSVersion: 22
   uIPrerenderedIcon: 0
