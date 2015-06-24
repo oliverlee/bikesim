@@ -7,6 +7,7 @@ import marshal
 import time
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 
 import sys
 sys.path.append('../comm')
@@ -219,3 +220,91 @@ class HistDisplay(object):
         self.ax.relim()
         self.ax.autoscale_view()
 
+
+def align_yaxis(ax1, v1, ax2, v2):
+    """adjust ax2 ylimit so that v2 in ax2 is aligned to v1 in ax1"""
+    _, y1 = ax1.transData.transform((0, v1))
+    _, y2 = ax2.transData.transform((0, v2))
+    adjust_yaxis(ax2,(y1-y2)/2,v2)
+    adjust_yaxis(ax1,(y2-y1)/2,v1)
+
+
+def adjust_yaxis(ax, ydif, v):
+    """shift axis ax by ydiff, maintaining point v at the same location"""
+    inv = ax.transData.inverted()
+    _, dy = inv.transform((0, 0)) - inv.transform((0, ydif))
+    miny, maxy = ax.get_ylim()
+    miny, maxy = miny - v, maxy - v
+    if -miny>maxy or (-miny==maxy and dy > 0):
+        nminy = miny
+        nmaxy = miny*(maxy+dy)/(miny+dy)
+    else:
+        nmaxy = maxy
+        nminy = maxy*(miny+dy)/(maxy+dy)
+    ax.set_ylim(nminy+v, nmaxy+v) 
+
+
+def plot_subplots(sensor, actuator, fields, timerange=None):
+    fig, axes = plt.subplots(len(fields))
+    colors = iter(cm.Accent(np.linspace(0, 1, len(fields))))
+    if timerange is None:
+        tmin, tmax = shared_timerange(sensor, actuator, fields)
+    else:
+        tmin, tmax = timerange
+
+    for ax, color, field in zip(axes, colors, fields):
+        if field in actuator.fields:
+            t = actuator.time
+            y = actuator.get_field(field)
+        else:
+            t = sensor.time
+            y = sensor.get_field(field)
+        indices = (t >= tmin) & (t <= tmax)
+        ax.plot(t[indices], y[indices], color=color)
+        ax.legend((field,))
+        ax.set_xlim([tmin, tmax])
+    axes[-1].set_xlabel('time [s]')
+    return fig, axes
+
+
+def plot_singleplot(sensor, actuator, fields, timerange=None):
+    colors = iter(cm.Set1(np.linspace(0, 1, len(fields))))
+    if timerange is None:
+        tmin, tmax = shared_timerange(sensor, actuator, fields)
+    else:
+        tmin, tmax = timerange
+
+    fig, ax = plt.subplots()
+
+    n = len(fields) - 2
+    axes = [ax] + [ax.twinx() for i in fields[1:]]
+    fig.subplots_adjust(right=0.75**n)
+    lines = []
+    for i, ax in enumerate(axes[2:]):
+        ax.spines['right'].set_position(('axes', 1.2 + 0.2*i))
+        ax.set_frame_on(True)
+        ax.patch.set_visible(False)
+    for ax, color, field in zip(axes, colors, fields):
+        if field in actuator.fields:
+            t = actuator.time
+            y = actuator.get_field(field)
+        else:
+            t = sensor.time
+            y = sensor.get_field(field)
+        indices = (t >= tmin) & (t <= tmax)
+        ax.plot(t[indices], y[indices], color=color, label=field)
+        ax.tick_params(axis='y', colors=color)
+        ax.set_ylabel(field, color=color)
+    axes[0].set_xlabel('time [s]')
+    axes[0].set_xlim([tmin, tmax])
+    return fig, axes
+
+
+def shared_timerange(sensor, actuator, fields):
+    if set.intersection(set(actuator.fields), set(fields)):
+        tmin = max(sensor.time[0], actuator.time[0])
+        tmax = min(sensor.time[-1], actuator.time[-1])
+    else:
+        tmin = sensor.time[0]
+        tmax = sensor.time[-1]
+    return tmin, tmax
