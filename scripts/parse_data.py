@@ -22,7 +22,6 @@ class Transducer(metaclass=abc.ABCMeta):
         for f in cls._fields:
             setattr(cls, f, prop(f))
         return super().__new__(cls)
-        #return super(Transducer, cls).__new__(cls)
 
     def __init__(self, name, filepath=''):
         self._name = name
@@ -45,6 +44,7 @@ class Transducer(metaclass=abc.ABCMeta):
         self._update_time()
         self._update_data()
         self._update_dt()
+        self._convert_rad_deg()
 
     def get_field(self, fieldname):
         if len(self._time) == 0:
@@ -101,6 +101,12 @@ class Transducer(metaclass=abc.ABCMeta):
     def _update_dt(self):
         # don't include the last element
         self._dt = (np.roll(self.time, -1) - self.time)[:-1]
+
+    def _convert_rad_deg(self):
+        for i, f in enumerate(self._fields):
+            if units(f).startswith('deg'):
+                self._data[:, i] = 180/np.pi*self._data[:, i]
+
 
 
 class Sensor(Transducer):
@@ -261,9 +267,10 @@ def plot_subplots(sensor, actuator, fields, timerange=None):
             y = sensor.get_field(field)
         indices = (t >= tmin) & (t <= tmax)
         ax.plot(t[indices], y[indices], color=color)
+        ax.set_ylabel(units(field), color=color)
+        ax.tick_params(axis='y', colors=color)
         ax.legend((field,))
         ax.set_xlim([tmin, tmax])
-        ax.set_ylabel(units(field), color=color)
     axes[-1].set_xlabel('time [s]')
     return fig, axes
 
@@ -293,8 +300,8 @@ def plot_singleplot(sensor, actuator, fields, timerange=None):
             y = sensor.get_field(field)
         indices = (t >= tmin) & (t <= tmax)
         ax.plot(t[indices], y[indices], color=color, label=field)
-        ax.tick_params(axis='y', colors=color)
         ax.set_ylabel(units(field), color=color)
+        ax.tick_params(axis='y', colors=color)
     axes[0].set_xlabel('time [s]')
     axes[0].set_xlim([tmin, tmax])
     return fig, axes
@@ -315,6 +322,10 @@ def units(field):
         return 'deg'
     elif field == 'deltad':
         return 'deg/s'
+    elif field == 'cadence':
+        return 'deg/s'
+    elif field == 'brake':
+        return ''
     elif field == 'torque':
         return 'N-m'
     elif field == 'phi':
