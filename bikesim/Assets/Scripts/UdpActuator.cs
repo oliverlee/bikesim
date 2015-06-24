@@ -6,11 +6,14 @@ using System.IO;
 
 
 public class Actuator {
-    public double envTorque; // torque the "environment" returns to user
+    public double torque; // torque the "environment" returns to user
+    // last sent model state
+    public State state;
     public long timestamp_ms;
     public Actuator() : this(0.0, 0) { }
-    public Actuator(double tau, long ts) {
-        envTorque = tau;
+    public Actuator(double torque, long ts) {
+        this.torque = torque;
+        this.state = new State();
         timestamp_ms = ts;
     }
 }
@@ -32,7 +35,7 @@ public class UdpActuator {
     }
 
     public void Stop() {
-        SetTorque(0.0);
+        SendTorque(0.0);
         _udp.Stop();
     }
 
@@ -44,21 +47,36 @@ public class UdpActuator {
         get { return _actuator; }
     }
 
-    public double torque {
-        get { return _actuator.envTorque; }
+    public State state {
+        get { return _actuator.state; }
     }
 
-    public void SetTorque(double tau) {
-        _actuator.envTorque = tau;
+    public double torque {
+        get { return _actuator.torque; }
+    }
+
+    private void SendTorque(double tau) {
+        SendTorque(tau, new State());
+    }
+
+    public void SendTorque(double tau, State state) {
+        _actuator.torque = tau;
+        _actuator.state = state;
         _actuator.timestamp_ms= _udp.ElapsedMilliseconds();
 
         // Note: sizeof(char) = 2 (Unicode)
-        byte[] data = new byte[2*sizeof(byte) + sizeof(float)];
+        int packetSize = 2*sizeof(byte) + 2*sizeof(float);
+        byte[] data = new byte[packetSize];
         data[0] = UdpThread.packetPrefix;
-        data[sizeof(byte) + sizeof(float)] = UdpThread.packetSuffix;
+        data[packetSize - 1] = UdpThread.packetSuffix;
 
-        byte[] torque = BitConverter.GetBytes(Convert.ToSingle(tau));
-        Buffer.BlockCopy(torque, 0, data, sizeof(byte), sizeof(float));
+        byte[] floatBytes =
+            BitConverter.GetBytes(Convert.ToSingle(_actuator.torque));
+        Buffer.BlockCopy(floatBytes, 0, data, sizeof(byte), sizeof(float));
+        floatBytes =
+            BitConverter.GetBytes(Convert.ToSingle(_actuator.state.lean));
+        Buffer.BlockCopy(floatBytes, 0, data, sizeof(byte) + sizeof(float),
+                sizeof(float));
         _udp.TransmitData(data);
     }
 }
