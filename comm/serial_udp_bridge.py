@@ -215,14 +215,17 @@ def utc_filename():
 
 
 class Logger(threading.Thread):
-    def __init__(self):
+    def __init__(self, subject, feedback_enabled):
         threading.Thread.__init__(self, name='log thread')
         self._terminate = threading.Event()
+        self.subject = subject
+        self.feedback_enabled = feedback_enabled
 
     def run(self):
         t0 = time.time()
         timestamp = t0
-        filename = 'log_{}'.format(utc_filename())
+        filename = 'log_{}_{}_{}'.format(utc_filename(), self.subject,
+                                         self.feedback_enabled)
         print('Logging sensor/actuator data to {}'.format(filename))
         with open(filename, 'wb') as log:
             marshal.dump(int(time.time()), log, MARSHAL_VERSION)
@@ -260,6 +263,10 @@ if __name__ == "__main__":
         'vice versa.')
     parser.add_argument('port',
         help='serial port for communication with arduino')
+    parser.add_argument('subject',
+        help='note numerical code for test subject in log filename')
+    parser.add_argument('feedback',
+        help='note if torque feedback is enabled in log filename')
     parser.add_argument('-b', '--baudrate',
         help='serial port baudrate ({})'.format(DEFAULT_BAUDRATE),
         default=DEFAULT_BAUDRATE, type=int)
@@ -287,7 +294,7 @@ if __name__ == "__main__":
 
     sensor = SensorListener(ser, udp_tx, udp_tx_addr, t0)
 
-    log = Logger()
+    log = Logger(args.subject, args.feedback)
 
     sensor.start()
     actuator_thread.start()
