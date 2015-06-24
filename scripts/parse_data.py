@@ -107,7 +107,7 @@ class Sensor(Transducer):
 
 
 class Actuator(Transducer):
-    _fields = ('torque',)
+    _fields = ('torque', 'lean')
 
 
 def parse_log(path):
@@ -134,13 +134,13 @@ def parse_log(path):
                     print('time.struct_time found but transducer start and '
                           'end times already set.')
             else:
-                timestamp, data = p
-                if isinstance(data, list):
+                timestamp, source, data = p
+                if source == 'sensor':
                     sensor.put(timestamp, data)
-                elif isinstance(data, float):
-                    actuator.put(timestamp, (data,))
+                elif source == 'actuator':
+                    actuator.put(timestamp, data)
                 else:
-                    print('Unpickled unexpected type: {}'.format(type(data)))
+                    print('Unmarshalled unexpected type: {}'.format(type(data)))
     sensor.update()
     actuator.update()
     return sensor, actuator
