@@ -10,6 +10,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import seaborn as sns
+import pandas as pd
 
 import sys
 sys.path.append('../comm')
@@ -126,13 +127,16 @@ class Actuator(Transducer):
 
 
 class Log(object):
+    FEEDBACK_DISABLED = False
+    FEEDBACK_ENABLED = True
+
     def __init__(self, path):
         sensor, actuator = parse_log(path)
         self._filepath = path
         seif._logname = os.path.basename(path)
         parts = self._logname.split('_')
         self._subject = parts[-2]
-        self._feedback_enabled = parts[-1]
+        self._feedback_enabled = bool(parts[-1]) == FEEDBACK_ENABLED
         self._sensor = sensor
         self._actuator = actuator
         self._start_time = sensor.start_time
@@ -149,8 +153,8 @@ class Log(object):
         return self._logname
 
     @property
-    def subject(self):
-        return self._subject
+    def subject_code(self):
+        return self._subject_code
 
     @property
     def feedback(self):
@@ -181,12 +185,13 @@ class Log(object):
             raise ValueError('{} had more than one run'.format(self._logname))
 
 
-
 class Subject(object):
     def __init__(self, code):
         self._code = code
         self._logs = []
         self._log_keys = []
+        self._balance_time = {Log.FEEDBACK_DISABLED: [],
+                              Log.FEEDBACK_ENABLED: []}
 
     @property
     def code(self):
@@ -197,10 +202,41 @@ class Subject(object):
         return self._logs
 
     def add_log(self, log):
+        assert log.subject_code == self._code
         k = log.start_time
         i = bisect.bisect_left(self._log_keys, k)
         self._log_keys.insert(i, k)
         self._logs.insert(i, log)
+        self._balance_time[log.feedback].append(np.diff(log.timerange)[0])
+
+    def balance_time(self, feedback=None):
+        if feedback is None:
+           return self.balance_time(Log.FEEDBACK_DISABLED,
+                                    Log.FEEDBACK_ENABLED)
+        return self._balance_time[feedback]
+
+
+def balance_df(subjects):
+    times = []
+    groups = []
+    for s in subjects:
+        times += s.balance_time() # order is (disabled, enabled)
+        groups += ['{}.{}'.format(s.code, en) for en in (0, 1)]
+    return pd.DataFrame(dict(time=times, subject=groups))
+
+
+def parse_log_dir(dirname):
+    pattern = re.compile('^log_\d{6}_\d{6}_UTC_\d{3}_[01]$')
+    subjects = dict()
+    for f in os.listdir(dirname):
+        if pattern.match(os.path.basename(f)):
+            print('parsing file {}'.format(f))
+            log = Log(f)
+            if log.subject_code not in subjects:
+                s = Subject(log.subject_code)
+                subjects[log.subject_code] = s
+            subjects[log.subject_code].add_log(log)
+    return subjects
 
 
 def parse_log(path):
@@ -432,7 +468,6 @@ def _plot_singleplot_imp(sensor, actuator, fields, timerange=None, colors=None, 
     if fig is not None:
         axes = axes[0]
     return fig, axes
-
 
 
 
