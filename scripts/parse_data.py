@@ -11,6 +11,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import matplotlib.patches as mpatches
 import seaborn as sns
 import pandas as pd
 
@@ -138,7 +139,7 @@ class Log(object):
         self._logname = os.path.basename(path)
         parts = self._logname.split('_')
         self._subject_code = parts[-2]
-        self._feedback_enabled = bool(parts[-1]) == Log.FEEDBACK_ENABLED
+        self._feedback_enabled = bool(int(parts[-1])) == Log.FEEDBACK_ENABLED
         self._sensor = sensor
         self._actuator = actuator
         self._start_time = sensor.start_time
@@ -223,17 +224,68 @@ class Subject(object):
         return self._balance_time[feedback]
 
 
-def balance_df(subjects):
+def balance_df(subjects, feedback=None):
     times = []
     groups = []
     for s in subjects:
-        subject_times  = s.balance_time() # order is (disabled, enabled)
-        subject_codes  = ['{}.{}'.format(s.code, en) for en in (0, 1)]
+        if feedback is None:
+            subject_times = s.balance_time() # order is (disabled, enabled)
+            subject_codes = ['{}.{}'.format(s.code, en) for en in (0, 1)]
+        else:
+            subject_times = (s.balance_time(feedback),)
+            subject_codes = ['{}'.format(s.code)]
         for t, c in zip(subject_times, subject_codes):
             if t:
                 times.extend(t)
                 groups.extend([c] * len(t))
     return pd.DataFrame(dict(time=times, subject=groups))
+
+
+def plot_dist_paired_boxchart(subject_map, color=None):
+    fig, ax = plt.subplots()
+    size = len(subject_map.keys())
+    for i, s in enumerate(subject_map.values(), 1):
+        if color is None:
+            sns.boxplot(s.balance_time(), positions=[3*i - 2, 3*i - 1])
+        else:
+            sns.boxplot(s.balance_time(), positions=[3*i - 2, 3*i - 1])
+    xmax = 3*size
+    ax.set_xlim(0, xmax)
+    ax.set_xticks(np.arange(1.5, xmax, 3))
+    ax.set_xticklabels(list(subject_map.keys()))
+    ax.set_xlabel('subjects')
+    ax.set_ylabel('time [s]')
+
+    color = sns.color_palette(color)
+    p0 = mpatches.Patch(color=color[0], label='torque disabled')
+    p1 = mpatches.Patch(color=color[1], label='torque enabled')
+    ax.legend(handles=(p0, p1))
+    return fig, ax
+
+
+def plot_dist_overlapping_histogram(subject_map, color=None):
+    fig, ax = plt.subplots()
+    sns.despine(left=True)
+    size = len(subject_map.keys())
+    disabled = []
+    enabled = []
+    for s in subject_map.values():
+        dis, en = s.balance_time()
+        disabled += dis
+        enabled += en
+    sns.distplot(disabled, kde=False, ax=ax)
+    sns.distplot(enabled, kde=False, ax=ax)
+
+    color = sns.color_palette()
+    p0 = mpatches.Patch(color=color[0], label='torque disabled')
+    p1 = mpatches.Patch(color=color[1], label='torque enabled')
+    ax.legend(handles=(p0, p1))
+    ax.set_xlim([0, ax.get_xlim()[1]])
+    ax.set_xlabel('time [s]')
+
+    plt.setp(ax, yticks=[])
+    plt.tight_layout()
+    return fig, ax
 
 
 def parse_log_dir(dirname):
@@ -253,6 +305,7 @@ def parse_log_dir(dirname):
     if not subjects:
         print('No valid log files found!')
     else:
+        subjects = collections.OrderedDict(sorted(subjects.items()))
         msg = '{} log file(s) parsed for subject(s): {}'
         print(msg.format(log_count, ', '.join(subjects.keys())))
     return subjects
