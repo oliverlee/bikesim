@@ -138,7 +138,7 @@ class Log(object):
         self._logname = os.path.basename(path)
         parts = self._logname.split('_')
         self._subject_code = parts[-2]
-        self._feedback_enabled = bool(parts[-1]) == Log.FEEDBACK_ENABLED
+        self._feedback_enabled = bool(int(parts[-1])) == Log.FEEDBACK_ENABLED
         self._sensor = sensor
         self._actuator = actuator
         self._start_time = sensor.start_time
