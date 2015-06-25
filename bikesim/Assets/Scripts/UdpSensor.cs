@@ -60,7 +60,7 @@ public class UdpSensor {
             _sensor.steerAngle = BitConverter.ToSingle(b, sizeof(byte));
             _sensor.steerRate = BitConverter.ToSingle(b,
                     sizeof(byte) + sizeof(float));
-            _sensor.wheelRate = -18.5185f; // TODO: remove hardcoded wheel rate
+            _sensor.wheelRate = -13.3333f; // 4m/s * TODO: remove hardcoded wheel rate
         }
     }
 }
