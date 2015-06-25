@@ -14,6 +14,7 @@ import matplotlib.cm as cm
 import matplotlib.patches as mpatches
 import seaborn as sns
 import pandas as pd
+from scipy import signal
 
 import sys
 sys.path.append('../comm')
@@ -253,20 +254,16 @@ def plot_dist_paired_boxchart(subject_map, color=None):
     ax.set_xlim(0, xmax)
     ax.set_xticks(np.arange(1.5, xmax, 3))
     ax.set_xticklabels(list(subject_map.keys()))
-    ax.set_xlabel('subjects')
+    ax.set_xlabel('subject')
     ax.set_ylabel('time [s]')
 
-    color = sns.color_palette(color)
-    p0 = mpatches.Patch(color=color[0], label='torque disabled')
-    p1 = mpatches.Patch(color=color[1], label='torque enabled')
-    ax.legend(handles=(p0, p1))
+    set_torque_enabled_legend(ax)
     return fig, ax
 
 
-def plot_dist_overlapping_histogram(subject_map, color=None):
+def plot_dist_overlapping_histogram(subject_map):
     fig, ax = plt.subplots()
     sns.despine(left=True)
-    size = len(subject_map.keys())
     disabled = []
     enabled = []
     for s in subject_map.values():
@@ -276,16 +273,72 @@ def plot_dist_overlapping_histogram(subject_map, color=None):
     sns.distplot(disabled, kde=False, ax=ax)
     sns.distplot(enabled, kde=False, ax=ax)
 
-    color = sns.color_palette()
-    p0 = mpatches.Patch(color=color[0], label='torque disabled')
-    p1 = mpatches.Patch(color=color[1], label='torque enabled')
-    ax.legend(handles=(p0, p1))
     ax.set_xlim([0, ax.get_xlim()[1]])
     ax.set_xlabel('time [s]')
 
     plt.setp(ax, yticks=[])
     plt.tight_layout()
+    set_torque_enabled_legend(ax)
     return fig, ax
+
+
+def rms(a):
+    return np.sqrt(np.mean(a**2))
+
+
+def plot_overlapping_psd(subject_map):
+    fig, ax = plt.subplots()
+    sns.despine(left=True)
+    color = sns.color_palette()
+    psd = [np.array([]), np.array([])]
+    fs = 20 # Hz
+    text_offset = [2, 10]
+    text_size = 12
+    bbox_props = dict(boxstyle="square,pad=0.1", fc="w", ec="w", alpha=0.9)
+    for i, s in enumerate(subject_map.values(), 1):
+        lean0 = []
+        lean1 = []
+        for log in s.logs: # maybe just take the longest run?
+            if not log.feedback:
+                lean0 = np.append(lean0, log.actuator.phi)
+            else:
+                lean1 = np.append(lean1, log.actuator.phi)
+        for en, lean in zip((0, 1), (lean0, lean1)):
+            f, psds = signal.welch(lean, fs, nperseg=2048,
+                                   return_onesided=True)
+            ax.loglog(f, psds, color=color[en])
+            psd[en] = np.append(psd[en], psds)
+            ax.text(f[len(f)/(text_offset[en]*i)],
+                    psds[len(f)/(text_offset[en]*i)],
+                    '{} - rms: {:0.4}'.format(log.subject_code, rms(lean)),
+                    ha='right', va ='center', color=color[en],
+                    size=text_size, bbox=bbox_props)
+
+    psd0, psd1 = psd
+    group_size = len(subject_map)
+    psd0 = psd0.reshape((group_size, len(f)))
+    psd0_max = psd0.max(0)
+    psd1 = psd1.reshape((group_size, len(f)))
+    psd1_max = psd1.max(0)
+
+    ymin = 1e-2
+    plt.fill_between(f, psd0_max, psd1_max, color=color[0], alpha=0.2)
+    plt.fill_between(f, psd1_max, ymin, color=color[1], alpha=0.2)
+
+    ax.set_xlim([1e-2,  1e1])
+    ax.set_xlabel('frequency [Hz]')
+    ax.set_ylim([ymin, ax.get_ylim()[1]])
+    ax.set_yticks([])
+
+    set_torque_enabled_legend(ax)
+    return fig, ax
+
+
+def set_torque_enabled_legend(ax):
+    color = sns.color_palette()
+    p0 = mpatches.Patch(color=color[0], label='torque disabled')
+    p1 = mpatches.Patch(color=color[1], label='torque enabled')
+    ax.legend(handles=(p0, p1))
 
 
 def parse_log_dir(dirname):
