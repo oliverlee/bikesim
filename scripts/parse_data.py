@@ -253,12 +253,38 @@ def plot_dist_paired_boxchart(subject_map, color=None):
     ax.set_xlim(0, xmax)
     ax.set_xticks(np.arange(1.5, xmax, 3))
     ax.set_xticklabels(list(subject_map.keys()))
+    ax.set_xlabel('subjects')
     ax.set_ylabel('time [s]')
 
     color = sns.color_palette(color)
     p0 = mpatches.Patch(color=color[0], label='torque disabled')
     p1 = mpatches.Patch(color=color[1], label='torque enabled')
     ax.legend(handles=(p0, p1))
+    return fig, ax
+
+
+def plot_dist_overlapping_histogram(subject_map, color=None):
+    fig, ax = plt.subplots()
+    sns.despine(left=True)
+    size = len(subject_map.keys())
+    disabled = []
+    enabled = []
+    for s in subject_map.values():
+        dis, en = s.balance_time()
+        disabled += dis
+        enabled += en
+    sns.distplot(disabled, kde=False, ax=ax)
+    sns.distplot(enabled, kde=False, ax=ax)
+
+    color = sns.color_palette()
+    p0 = mpatches.Patch(color=color[0], label='torque disabled')
+    p1 = mpatches.Patch(color=color[1], label='torque enabled')
+    ax.legend(handles=(p0, p1))
+    ax.set_xlim([0, ax.get_xlim()[1]])
+    ax.set_xlabel('time [s]')
+
+    plt.setp(ax, yticks=[])
+    plt.tight_layout()
     return fig, ax
 
 
