@@ -303,19 +303,28 @@ def plot_overlapping_psd(subject_map):
     color = sns.color_palette()
     psd = [np.array([]), np.array([])]
     fs = 20 # Hz
-    text_offset = [2, 10]
+#    text_offset = [2, 10]
+    text_offset = [2.1, 10]
     text_size = 12
     bbox_props = dict(boxstyle="square,pad=0.1", fc="w", ec="w", alpha=0.9)
     for i, s in enumerate(subject_map.values(), 1):
-        lean0 = []
-        lean1 = []
-        for log in s.logs: # maybe just take the longest run?
-            if not log.feedback:
-                lean0 = np.append(lean0, log.actuator.phi)
-            else:
-                lean1 = np.append(lean1, log.actuator.phi)
-        for en, lean in zip((0, 1), (lean0, lean1)):
-            f, psds = signal.welch(lean, fs, nperseg=2048,
+#        lean0 = []
+#        lean1 = []
+#        for log in s.logs: # maybe just take the longest run?
+#            if not log.feedback:
+#                lean0 = np.append(lean0, log.actuator.phi)
+#            else:
+#                lean1 = np.append(lean1, log.actuator.phi)
+#        for en, lean in zip((0, 1), (lean0, lean1)):
+        best_balance = [0, 0]
+        best_lean = [[], []]
+        for log in s.logs:
+            en = int(log.feedback)
+            if log.balance_time > best_balance[en]:
+                best_balance[en] = log.balance_time
+                best_lean[en] = log.actuator.phi
+        for en, lean in zip((0, 1), best_lean):
+            f, psds = signal.welch(lean, fs, nperseg=256,
                                    return_onesided=True)
             ax.loglog(f, psds, color=color[en])
             psd[en] = np.append(psd[en], psds)
@@ -332,11 +341,13 @@ def plot_overlapping_psd(subject_map):
     psd1 = psd1.reshape((group_size, len(f)))
     psd1_max = psd1.max(0)
 
-    ymin = 1e-2
+#    ymin = 1e-2
+    ymin = 1e-5
     plt.fill_between(f, psd0_max, psd1_max, color=color[0], alpha=0.2)
     plt.fill_between(f, psd1_max, ymin, color=color[1], alpha=0.2)
 
-    ax.set_xlim([1e-2,  1e1])
+#    ax.set_xlim([1e-2,  1e1])
+    ax.set_xlim([1e-1,  1e1])
     ax.set_xlabel('frequency [Hz]')
     ax.set_ylim([ymin, ax.get_ylim()[1]])
     ax.set_yticks([])
