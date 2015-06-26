@@ -348,7 +348,7 @@ def rms(a):
     return np.sqrt(np.mean(a**2))
 
 
-def plot_overlapping_psd(subject_map, mode='longest'):
+def plot_overlapping_psd(subject_map, field, mode='longest'):
     options = {'longest', 'all'}
     if mode not in options:
         raise KeyError("Invalid mode selected. Choices are: {}.".format(
@@ -372,13 +372,16 @@ def plot_overlapping_psd(subject_map, mode='longest'):
                 assert fs == fs_est
 
             en = int(log.feedback)
+            try:
+                data = log.actuator.get_field(field)
+            except ValueError:
+                data = log.sensor.get_field(field)
             if mode == 'longest':
                 if log.balance_time > longest_balance_time[en]:
                     longest_balance_time[en] = log.balance_time
-                    selected_sig[en] = log.actuator.get_field('phi')
+                    selected_sig[en] = data
             elif mode == 'all':
-                selected_sig[en] = np.append(selected_sig[en],
-                                             log.actuator.get_field('phi'))
+                selected_sig[en] = np.append(selected_sig[en], data)
 
         for en, sig in zip((0, 1), selected_sig):
             f, psds = signal.welch(sig, fs, nperseg=256,
@@ -404,8 +407,8 @@ def plot_overlapping_psd(subject_map, mode='longest'):
 
     ax.set_xlabel('frequency [Hz]')
     ax.set_xlim([f[0], f[-1]])
+    ax.set_ylabel('power [{}^2/Hz]'.format(units(field)))
     ax.set_ylim([ymin, ax.get_ylim()[1]])
-    #ax.set_yticks([])
 
     set_torque_enabled_legend(ax)
     return fig, ax
@@ -431,7 +434,7 @@ def plot_subject_balance_time_change_boxplot(subject_map):
     p0 = mpatches.Patch(color=color[0], label='torque disabled')
     p1 = mpatches.Patch(color=color[1], label='torque enabled')
     g.add_legend({p0.get_label(): p0, p1.get_label(): p1})
-    g.set_axis_labels('period', 'time')
+    g.set_axis_labels('period', 'time [s]')
     return g
 
 
