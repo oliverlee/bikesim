@@ -14,6 +14,7 @@ import matplotlib.cm as cm
 import matplotlib.patches as mpatches
 import seaborn as sns
 import pandas as pd
+from scipy import signal
 
 import sys
 sys.path.append('../comm')
@@ -149,6 +150,7 @@ class Log(object):
         except IndexError:
             raise ValueError('No actuator data in file {}'.format(path))
         self._check_timerange()
+        self._balance_time = np.diff(self._timerange)[0]
 
     @property
     def filepath(self):
@@ -182,6 +184,10 @@ class Log(object):
     def timerange(self):
         return self._timerange
 
+    @property
+    def balance_time(self):
+        return self._balance_time
+
     def _check_timerange(self):
         t = self._actuator.time
         dt = t[1:] - t[:-1]
@@ -194,12 +200,19 @@ class Log(object):
 
 
 class Subject(object):
+    PERIOD0 = 0
+    PERIOD1 = 1
+
     def __init__(self, code):
         self._code = code
         self._logs = []
         self._log_keys = []
-        self._balance_time = {Log.FEEDBACK_DISABLED: [],
-                              Log.FEEDBACK_ENABLED: []}
+        self._balance_time = {
+                (Log.FEEDBACK_DISABLED, Subject.PERIOD0): [],
+                (Log.FEEDBACK_DISABLED, Subject.PERIOD1): [],
+                (Log.FEEDBACK_ENABLED, Subject.PERIOD1): [],
+                (Log.FEEDBACK_ENABLED, Subject.PERIOD0): [],
+                }
 
     @property
     def code(self):
@@ -215,58 +228,104 @@ class Subject(object):
         i = bisect.bisect_left(self._log_keys, k)
         self._log_keys.insert(i, k)
         self._logs.insert(i, log)
-        self._balance_time[log.feedback].append(np.diff(log.timerange)[0])
+        if not len(self._logs):
+            period = Subject.PERIOD0
+        else:
+            t0 = time.mktime(self._logs[0].start_time)
+            t1 = time.mktime(log.start_time)
+            period = int((t1 - t0) > 25*60) # 25 minutes
+        self._balance_time[(log.feedback, period)].append(log.balance_time)
 
-    def balance_time(self, feedback=None):
-        if feedback is None:
-           return (self.balance_time(Log.FEEDBACK_DISABLED),
-                   self.balance_time(Log.FEEDBACK_ENABLED))
-        return self._balance_time[feedback]
+    def balance_time(self, feedback=None, period=None):
+        if period is None:
+            if feedback is None:
+                dis = (self._balance_time[(Log.FEEDBACK_DISABLED,
+                                           Subject.PERIOD0)] +
+                       self._balance_time[(Log.FEEDBACK_DISABLED,
+                                           Subject.PERIOD1)])
+                en = (self._balance_time[(Log.FEEDBACK_ENABLED,
+                                          Subject.PERIOD0)] +
+                      self._balance_time[(Log.FEEDBACK_ENABLED,
+                                          Subject.PERIOD1)])
+                return (dis, en)
+            else:
+                t = (self._balance_time[(feedback, Subject.PERIOD0)] +
+                     self._balance_time[(feedback, Subject.PERIOD1)])
+                return t
+        else:
+            if feedback is None:
+                dis = self._balance_time[(Log.FEEDBACK_DISABLED, period)]
+                en = self._balance_time[(Log.FEEDBACK_ENABLED, period)]
+                return (dis, en)
+            else:
+                return self._balance_time[feedback, period]
+        assert False
 
 
-def balance_df(subjects, feedback=None):
-    times = []
+def balance_df(subjects):
+    timespans = []
     groups = []
+    enabled = []
+    log_times = []
+    elapsed_times = []
+    elapsed_times_per_feedback = []
+    first_log_time = dict()
+    periods = []
     for s in subjects:
-        if feedback is None:
-            subject_times = s.balance_time() # order is (disabled, enabled)
-            subject_codes = ['{}.{}'.format(s.code, en) for en in (0, 1)]
-        else:
-            subject_times = (s.balance_time(feedback),)
-            subject_codes = ['{}'.format(s.code)]
-        for t, c in zip(subject_times, subject_codes):
-            if t:
-                times.extend(t)
-                groups.extend([c] * len(t))
-    return pd.DataFrame(dict(time=times, subject=groups))
+        for log in s.logs:
+            log_time = time.mktime(log.start_time)
+            if s.code not in first_log_time:
+                first_log_time[s.code] = log_time
+            full_code = s.code + '.' + str(log.feedback)
+            if full_code not in first_log_time:
+                first_log_time[full_code] = log_time
+            elapsed_time = log_time - first_log_time[s.code]
+            elapsed_per_feedback = log_time - first_log_time[full_code]
+
+            timespans.append(log.balance_time)
+            groups.append(s.code)
+            enabled.append(log.feedback)
+            log_times.append(log_time)
+            elapsed_times.append(elapsed_time)
+            elapsed_times_per_feedback.append(elapsed_per_feedback)
+            if elapsed_time > 25*60: # 25 minutes
+                periods.append("second")
+            else:
+                periods.append("first")
+    return pd.DataFrame(dict(log_timespan=timespans, subject=groups,
+                             torque_enabled=enabled,
+                             log_start_time=log_times,
+                             elapsed_time=elapsed_times,
+                             period=periods,
+                             elapsed_time_per_feedback=elapsed_times_per_feedback))
 
 
-def plot_dist_paired_boxchart(subject_map, color=None):
-    fig, ax = plt.subplots()
-    size = len(subject_map.keys())
-    for i, s in enumerate(subject_map.values(), 1):
-        if color is None:
-            sns.boxplot(s.balance_time(), positions=[3*i - 2, 3*i - 1])
-        else:
-            sns.boxplot(s.balance_time(), positions=[3*i - 2, 3*i - 1])
-    xmax = 3*size
-    ax.set_xlim(0, xmax)
-    ax.set_xticks(np.arange(1.5, xmax, 3))
-    ax.set_xticklabels(list(subject_map.keys()))
-    ax.set_xlabel('subjects')
-    ax.set_ylabel('time [s]')
+def plot_dist_grouped_boxchart(subject_map):
+#   fig, ax = plt.subplots()
+#    size = len(subject_map.keys())
+#    for i, s in enumerate(subject_map.values(), 1):
+#        sns.boxplot(s.balance_time(), positions=[3*i - 2, 3*i - 1])
+#    xmax = 3*size
+#    ax.set_xlim(0, xmax)
+#    ax.set_xticks(np.arange(1.5, xmax, 3))
+#    ax.set_xticklabels(list(subject_map.keys()))
+#    ax.set_xlabel('subject')
+#    ax.set_ylabel('time [s]')
+#    set_torque_enabled_legend(ax)
+#    return fig, ax
+    df = balance_df(subject_map.values())
+    g = sns.factorplot("subject", "log_timespan", "torque_enabled", df,
+                       kind="box", size=6, aspect=1.75, legend=False)
+    g.despine()
+    g.set_axis_labels("subject", "time [s]")
+    ax = g.axes[0][0]
+    set_torque_enabled_legend(ax)
+    return g
 
-    color = sns.color_palette(color)
-    p0 = mpatches.Patch(color=color[0], label='torque disabled')
-    p1 = mpatches.Patch(color=color[1], label='torque enabled')
-    ax.legend(handles=(p0, p1))
-    return fig, ax
 
-
-def plot_dist_overlapping_histogram(subject_map, color=None):
+def plot_dist_overlapping_histogram(subject_map):
     fig, ax = plt.subplots()
     sns.despine(left=True)
-    size = len(subject_map.keys())
     disabled = []
     enabled = []
     for s in subject_map.values():
@@ -276,16 +335,107 @@ def plot_dist_overlapping_histogram(subject_map, color=None):
     sns.distplot(disabled, kde=False, ax=ax)
     sns.distplot(enabled, kde=False, ax=ax)
 
-    color = sns.color_palette()
-    p0 = mpatches.Patch(color=color[0], label='torque disabled')
-    p1 = mpatches.Patch(color=color[1], label='torque enabled')
-    ax.legend(handles=(p0, p1))
     ax.set_xlim([0, ax.get_xlim()[1]])
     ax.set_xlabel('time [s]')
 
     plt.setp(ax, yticks=[])
     plt.tight_layout()
+    set_torque_enabled_legend(ax)
     return fig, ax
+
+
+def rms(a):
+    return np.sqrt(np.mean(a**2))
+
+
+def plot_overlapping_psd(subject_map):
+    fig, ax = plt.subplots()
+    sns.despine(left=True)
+    color = sns.color_palette()
+    psd = [np.array([]), np.array([])]
+    fs = 20 # Hz
+#    text_offset = [2, 10]
+    text_offset = [2.1, 10]
+    text_size = 12
+    bbox_props = dict(boxstyle="square,pad=0.1", fc="w", ec="w", alpha=0.9)
+    for i, s in enumerate(subject_map.values(), 1):
+#        lean0 = []
+#        lean1 = []
+#        for log in s.logs: # maybe just take the longest run?
+#            if not log.feedback:
+#                lean0 = np.append(lean0, log.actuator.phi)
+#            else:
+#                lean1 = np.append(lean1, log.actuator.phi)
+#        for en, lean in zip((0, 1), (lean0, lean1)):
+        best_balance = [0, 0]
+        best_lean = [[], []]
+        for log in s.logs:
+            en = int(log.feedback)
+            if log.balance_time > best_balance[en]:
+                best_balance[en] = log.balance_time
+                best_lean[en] = log.actuator.phi
+        for en, lean in zip((0, 1), best_lean):
+            f, psds = signal.welch(lean, fs, nperseg=256,
+                                   return_onesided=True)
+            ax.loglog(f, psds, color=color[en])
+            psd[en] = np.append(psd[en], psds)
+            ax.text(f[len(f)/(text_offset[en]*i)],
+                    psds[len(f)/(text_offset[en]*i)],
+                    '{} - rms: {:0.4}'.format(log.subject_code, rms(lean)),
+                    ha='right', va ='center', color=color[en],
+                    size=text_size, bbox=bbox_props)
+
+    psd0, psd1 = psd
+    group_size = len(subject_map)
+    psd0 = psd0.reshape((group_size, len(f)))
+    psd0_max = psd0.max(0)
+    psd1 = psd1.reshape((group_size, len(f)))
+    psd1_max = psd1.max(0)
+
+#    ymin = 1e-2
+    ymin = 1e-5
+    plt.fill_between(f, psd0_max, psd1_max, color=color[0], alpha=0.2)
+    plt.fill_between(f, psd1_max, ymin, color=color[1], alpha=0.2)
+
+#    ax.set_xlim([1e-2,  1e1])
+    ax.set_xlim([1e-1,  1e1])
+    ax.set_xlabel('frequency [Hz]')
+    ax.set_ylim([ymin, ax.get_ylim()[1]])
+    ax.set_yticks([])
+
+    set_torque_enabled_legend(ax)
+    return fig, ax
+
+
+def plot_subject_balance_time_change_boxplot(subject_map):
+    df = pd.DataFrame(dict(v=[0, 1, 2, 3]))
+    g = sns.FacetGrid(df, col='v', col_wrap=2, sharex=True,
+                      sharey=False, legend_out=True)
+    sns.despine()
+
+    c = sns.color_palette()
+    color = 2*[c[0], c[1]]
+    for i, s in enumerate(subject_map.values()):
+        ax = g.axes[i]
+        ax.set_title('{}'.format(s.code))
+        sns.boxplot(s.balance_time(period=0) + s.balance_time(period=1),
+                    positions=[1, 2, 4, 5], color=color, ax=ax)
+    xmax = 3*2
+    ax.set_xlim([0, xmax])
+    ax.set_xticks(np.arange(1.5, xmax, 3))
+    ax.set_xticklabels(['first', 'second'])
+    p0 = mpatches.Patch(color=color[0], label='torque disabled')
+    p1 = mpatches.Patch(color=color[1], label='torque enabled')
+    g.add_legend({p0.get_label(): p0, p1.get_label(): p1})
+    g.set_axis_labels('period', 'time')
+    return g
+
+
+def set_torque_enabled_legend(ax):
+    color = sns.color_palette()
+    p0 = mpatches.Patch(color=color[0], label='torque disabled')
+    p1 = mpatches.Patch(color=color[1], label='torque enabled')
+    ax.legend(handles=(p0, p1))
 
 
 def parse_log_dir(dirname):
@@ -295,7 +445,7 @@ def parse_log_dir(dirname):
     for f in os.listdir(dirname):
         if pattern.match(os.path.basename(f)):
             f = os.path.join(dirname, f)
-            print('Parsing file {}'.format(f))
+            #print('Parsing file {}'.format(f))
             log = Log(f)
             if log.subject_code not in subjects:
                 s = Subject(log.subject_code)
