@@ -231,7 +231,7 @@ class Subject(object):
         if not len(self._logs):
             period = Subject.PERIOD0
         else:
-            t0 = time.mktime(self._logs[0].start_time)
+            t0 = time.mktime(self._logs[0].start_time) # TODO: FIXME
             t1 = time.mktime(log.start_time)
             period = int((t1 - t0) > 25*60) # 25 minutes
         self._balance_time[(log.feedback, period)].append(log.balance_time)
@@ -348,40 +348,46 @@ def rms(a):
     return np.sqrt(np.mean(a**2))
 
 
-def plot_overlapping_psd(subject_map):
+def plot_overlapping_psd(subject_map, mode='longest'):
+    options = {'longest', 'all'}
+    if mode not in options:
+        raise KeyError("Invalid mode selected. Choices are: {}.".format(
+            ', '.join(o for o in options)))
     fig, ax = plt.subplots()
     sns.despine(left=True)
     color = sns.color_palette()
     psd = [np.array([]), np.array([])]
-    fs = 20 # Hz
-#    text_offset = [2, 10]
-    text_offset = [2.1, 10]
+    text_offset = [2, 10]
     text_size = 12
     bbox_props = dict(boxstyle="square,pad=0.1", fc="w", ec="w", alpha=0.9)
+    fs = None
     for i, s in enumerate(subject_map.values(), 1):
-#        lean0 = []
-#        lean1 = []
-#        for log in s.logs: # maybe just take the longest run?
-#            if not log.feedback:
-#                lean0 = np.append(lean0, log.actuator.phi)
-#            else:
-#                lean1 = np.append(lean1, log.actuator.phi)
-#        for en, lean in zip((0, 1), (lean0, lean1)):
-        best_balance = [0, 0]
-        best_lean = [[], []]
+        longest_balance_time = [0, 0]
+        selected_sig = [[], []]
         for log in s.logs:
+            fs_est = round(1/np.median(log.sensor.dt)/5)*5
+            if fs is None:
+                fs = fs_est
+            else:
+                assert fs == fs_est
+
             en = int(log.feedback)
-            if log.balance_time > best_balance[en]:
-                best_balance[en] = log.balance_time
-                best_lean[en] = log.actuator.phi
-        for en, lean in zip((0, 1), best_lean):
-            f, psds = signal.welch(lean, fs, nperseg=256,
+            if mode == 'longest':
+                if log.balance_time > longest_balance_time[en]:
+                    longest_balance_time[en] = log.balance_time
+                    selected_sig[en] = log.actuator.get_field('phi')
+            elif mode == 'all':
+                selected_sig[en] = np.append(selected_sig[en],
+                                             log.actuator.get_field('phi'))
+
+        for en, sig in zip((0, 1), selected_sig):
+            f, psds = signal.welch(sig, fs, nperseg=256,
                                    return_onesided=True)
             ax.loglog(f, psds, color=color[en])
             psd[en] = np.append(psd[en], psds)
             ax.text(f[len(f)/(text_offset[en]*i)],
                     psds[len(f)/(text_offset[en]*i)],
-                    '{} - rms: {:0.4}'.format(log.subject_code, rms(lean)),
+                    '{} - rms: {:0.4}'.format(log.subject_code, rms(sig)),
                     ha='right', va ='center', color=color[en],
                     size=text_size, bbox=bbox_props)
 
@@ -391,17 +397,15 @@ def plot_overlapping_psd(subject_map):
     psd0_max = psd0.max(0)
     psd1 = psd1.reshape((group_size, len(f)))
     psd1_max = psd1.max(0)
+    ymin = min(psd1.min(0).min(), psd0.min(0).min())
 
-#    ymin = 1e-2
-    ymin = 1e-5
     plt.fill_between(f, psd0_max, psd1_max, color=color[0], alpha=0.2)
     plt.fill_between(f, psd1_max, ymin, color=color[1], alpha=0.2)
 
-#    ax.set_xlim([1e-2,  1e1])
-    ax.set_xlim([1e-1,  1e1])
     ax.set_xlabel('frequency [Hz]')
+    ax.set_xlim([f[0], f[-1]])
     ax.set_ylim([ymin, ax.get_ylim()[1]])
-    ax.set_yticks([])
+    #ax.set_yticks([])
 
     set_torque_enabled_legend(ax)
     return fig, ax
@@ -536,15 +540,6 @@ def plot_timeinfo(transducer, max_dt=None):
     hd = HistDisplay(t, dt, rects, bin_edges)
     ax[0].callbacks.connect('xlim_changed', hd.ax_update)
     return fig, ax, hd
-
-
-#def plot_hist(transducers, max_dt=None):
-#    if isinstance(transducers, collections.abc.Iterable):
-#        times = (t.dt for t in transducers)
-#        x = (dt[dt<max_dt] if max_dt is not None else dt for dt in times)
-#    else:
-#        dt = transducers.dt
-#        x = dt[dt<max_dt] if max_dt is not None else dt
 
 
 class HistDisplay(object):
