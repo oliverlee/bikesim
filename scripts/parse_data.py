@@ -213,6 +213,7 @@ class Subject(object):
                 (Log.FEEDBACK_ENABLED, Subject.PERIOD1): [],
                 (Log.FEEDBACK_ENABLED, Subject.PERIOD0): [],
                 }
+        self._first_log_time = [None, None]
 
     @property
     def code(self):
@@ -228,12 +229,15 @@ class Subject(object):
         i = bisect.bisect_left(self._log_keys, k)
         self._log_keys.insert(i, k)
         self._logs.insert(i, log)
-        if not len(self._logs):
-            period = Subject.PERIOD0
-        else:
-            t0 = time.mktime(self._logs[0].start_time) # TODO: FIXME
-            t1 = time.mktime(log.start_time)
-            period = int((t1 - t0) > 25*60) # 25 minutes
+
+        en = int(log.feedback)
+        if self._first_log_time[en] is None:
+            self._first_log_time[en] = time.mktime(log.start_time)
+        t0 = self._first_log_time[en]
+        t1 = time.mktime(log.start_time)
+        # Assume 25 minute limit for period 0 from first log with same torque
+        # setting (enabled/disabled)
+        period = int((t1 - t0) > 25*60)
         self._balance_time[(log.feedback, period)].append(log.balance_time)
 
     def balance_time(self, feedback=None, period=None):
@@ -417,7 +421,7 @@ def plot_overlapping_psd(subject_map, field, mode='longest'):
 def plot_subject_balance_time_change_boxplot(subject_map):
     df = pd.DataFrame(dict(v=[0, 1, 2, 3]))
     g = sns.FacetGrid(df, col='v', col_wrap=2, sharex=True,
-                      sharey=False, legend_out=True)
+                      sharey=False, legend_out=True, aspect=1.75)
     sns.despine()
 
     c = sns.color_palette()
