@@ -200,12 +200,19 @@ class Log(object):
 
 
 class Subject(object):
+    PERIOD0 = 0
+    PERIOD1 = 1
+
     def __init__(self, code):
         self._code = code
         self._logs = []
         self._log_keys = []
-        self._balance_time = {Log.FEEDBACK_DISABLED: [],
-                              Log.FEEDBACK_ENABLED: []}
+        self._balance_time = {
+                (Log.FEEDBACK_DISABLED, Subject.PERIOD0): [],
+                (Log.FEEDBACK_DISABLED, Subject.PERIOD1): [],
+                (Log.FEEDBACK_ENABLED, Subject.PERIOD1): [],
+                (Log.FEEDBACK_ENABLED, Subject.PERIOD0): [],
+                }
 
     @property
     def code(self):
@@ -221,39 +228,83 @@ class Subject(object):
         i = bisect.bisect_left(self._log_keys, k)
         self._log_keys.insert(i, k)
         self._logs.insert(i, log)
-        self._balance_time[log.feedback].append(log.balance_time)
+        if not len(self._logs):
+            period = Subject.PERIOD0
+        else:
+            t0 = time.mktime(self._logs[0].start_time)
+            t1 = time.mktime(log.start_time)
+            period = int((t1 - t0) > 25*60) # 25 minutes
+        self._balance_time[(log.feedback, period)].append(log.balance_time)
 
-    def balance_time(self, feedback=None):
-        if feedback is None:
-           return (self.balance_time(Log.FEEDBACK_DISABLED),
-                   self.balance_time(Log.FEEDBACK_ENABLED))
-        return self._balance_time[feedback]
+    def balance_time(self, feedback=None, period=None):
+        if period is None:
+            if feedback is None:
+                dis = (self._balance_time[(Log.FEEDBACK_DISABLED,
+                                           Subject.PERIOD0)] +
+                       self._balance_time[(Log.FEEDBACK_DISABLED,
+                                           Subject.PERIOD1)])
+                en = (self._balance_time[(Log.FEEDBACK_ENABLED,
+                                          Subject.PERIOD0)] +
+                      self._balance_time[(Log.FEEDBACK_ENABLED,
+                                          Subject.PERIOD1)])
+                return (dis, en)
+            else:
+                t = (self._balance_time[(feedback, Subject.PERIOD0)] +
+                     self._balance_time[(feedback, Subject.PERIOD1)])
+                return t
+        else:
+            if feedback is None:
+                dis = self._balance_time[(Log.FEEDBACK_DISABLED, period)]
+                en = self._balance_time[(Log.FEEDBACK_ENABLED, period)]
+                return (dis, en)
+            else:
+                return self._balance_time[feedback, period]
+        assert False
 
 
 def balance_df(subjects):
-    times = []
+    timespans = []
     groups = []
     enabled = []
-    start_times = []
+    log_times = []
+    elapsed_times = []
+    elapsed_times_per_feedback = []
+    first_log_time = dict()
+    periods = []
     for s in subjects:
         for log in s.logs:
-            times.append(log.balance_time)
+            log_time = time.mktime(log.start_time)
+            if s.code not in first_log_time:
+                first_log_time[s.code] = log_time
+            full_code = s.code + '.' + str(log.feedback)
+            if full_code not in first_log_time:
+                first_log_time[full_code] = log_time
+            elapsed_time = log_time - first_log_time[s.code]
+            elapsed_per_feedback = log_time - first_log_time[full_code]
+
+            timespans.append(log.balance_time)
             groups.append(s.code)
             enabled.append(log.feedback)
-            start_times.append(log.start_time)
-    return pd.DataFrame(dict(time=times, subject=groups,
+            log_times.append(log_time)
+            elapsed_times.append(elapsed_time)
+            elapsed_times_per_feedback.append(elapsed_per_feedback)
+            if elapsed_time > 25*60: # 25 minutes
+                periods.append("second")
+            else:
+                periods.append("first")
+    return pd.DataFrame(dict(log_timespan=timespans, subject=groups,
                              torque_enabled=enabled,
-                             log_start_time=start_times))
+                             log_start_time=log_times,
+                             elapsed_time=elapsed_times,
+                             period=periods,
+                             elapsed_time_per_feedback=elapsed_times_per_feedback))
 
 
 def plot_dist_grouped_boxchart(subject_map):
 #   fig, ax = plt.subplots()
 #    size = len(subject_map.keys())
 #    for i, s in enumerate(subject_map.values(), 1):
-#        if color is None:
-#            sns.boxplot(s.balance_time(), positions=[3*i - 2, 3*i - 1])
-#        else:
-#            sns.boxplot(s.balance_time(), positions=[3*i - 2, 3*i - 1])
+#        sns.boxplot(s.balance_time(), positions=[3*i - 2, 3*i - 1])
 #    xmax = 3*size
 #    ax.set_xlim(0, xmax)
 #    ax.set_xticks(np.arange(1.5, xmax, 3))
@@ -263,13 +314,13 @@ def plot_dist_grouped_boxchart(subject_map):
 #    set_torque_enabled_legend(ax)
 #    return fig, ax
     df = balance_df(subject_map.values())
-    g = sns.factorplot("subject", "time", "torque_enabled", df, kind="box",
-                       legend=False)
+    g = sns.factorplot("subject", "log_timespan", "torque_enabled", df,
+                       kind="box", size=6, aspect=1.75, legend=False)
     g.despine()
     g.set_axis_labels("subject", "time [s]")
     ax = g.axes[0][0]
     set_torque_enabled_legend(ax)
-    return g, ax
+    return g
 
 
 def plot_dist_overlapping_histogram(subject_map):
@@ -354,6 +405,30 @@ def plot_overlapping_psd(subject_map):
 
     set_torque_enabled_legend(ax)
     return fig, ax
+
+
+def plot_subject_balance_time_change_boxplot(subject_map):
+    df = pd.DataFrame(dict(v=[0, 1, 2, 3]))
+    g = sns.FacetGrid(df, col='v', col_wrap=2, sharex=True,
+                      sharey=False, legend_out=True)
+    sns.despine()
+
+    c = sns.color_palette()
+    color = 2*[c[0], c[1]]
+    for i, s in enumerate(subject_map.values()):
+        ax = g.axes[i]
+        ax.set_title('{}'.format(s.code))
+        sns.boxplot(s.balance_time(period=0) + s.balance_time(period=1),
+                    positions=[1, 2, 4, 5], color=color, ax=ax)
+    xmax = 3*2
+    ax.set_xlim([0, xmax])
+    ax.set_xticks(np.arange(1.5, xmax, 3))
+    ax.set_xticklabels(['first', 'second'])
+    p0 = mpatches.Patch(color=color[0], label='torque disabled')
+    p1 = mpatches.Patch(color=color[1], label='torque enabled')
+    g.add_legend({p0.get_label(): p0, p1.get_label(): p1})
+    g.set_axis_labels('period', 'time')
+    return g
 
 
 def set_torque_enabled_legend(ax):
