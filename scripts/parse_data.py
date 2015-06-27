@@ -319,7 +319,7 @@ def plot_dist_grouped_boxchart(subject_map):
 #    return fig, ax
     df = balance_df(subject_map.values())
     g = sns.factorplot("subject", "log_timespan", "torque_enabled", df,
-                       kind="box", size=6, aspect=1.75, legend=False)
+                       kind="box", size=7, aspect=1.75, legend=False)
     g.despine()
     g.set_axis_labels("subject", "time [s]")
     ax = g.axes[0][0]
@@ -342,8 +342,7 @@ def plot_dist_overlapping_histogram(subject_map):
     ax.set_xlim([0, ax.get_xlim()[1]])
     ax.set_xlabel('time [s]')
 
-    plt.setp(ax, yticks=[])
-    plt.tight_layout()
+    #plt.setp(ax, yticks=[])
     set_torque_enabled_legend(ax)
     return fig, ax
 
@@ -353,16 +352,27 @@ def rms(a):
 
 
 def plot_overlapping_psd(subject_map, field, mode='longest'):
-    options = {'longest', 'all'}
-    if mode not in options:
-        raise KeyError("Invalid mode selected. Choices are: {}.".format(
-            ', '.join(o for o in options)))
+    if mode == 'longest':
+        nperseg = 128
+        #text_position = [100, 100, 50, 50, 25, 25, 13, 13]
+        text_position = [30, 30, 50, 50, 25, 25, 13, 13]
+    elif mode == 'all':
+        nperseg = 2048
+        if field == 'phi':
+            text_position = [1000, 34, 400, 200, 750, 17, 500, 100]
+        elif field == 'deltad':
+            text_position = [1000, 34, 1000, 15, 900, 8, 135, 80]
+        elif field == 'delta':
+            text_position = [1000, 34, 1000, 15, 900, 8, 135, 100]
+    else:
+        raise KeyError("Invalid mode selected. Choices are: longest, all.")
+
     fig, ax = plt.subplots()
     sns.despine(left=True)
     color = sns.color_palette()
     psd = [np.array([]), np.array([])]
-    text_offset = [2, 10]
     text_size = 12
+    #text_offset = [2, 10]
     bbox_props = dict(boxstyle="square,pad=0.1", fc="w", ec="w", alpha=0.9)
     fs = None
     for i, s in enumerate(subject_map.values(), 1):
@@ -388,12 +398,14 @@ def plot_overlapping_psd(subject_map, field, mode='longest'):
                 selected_sig[en] = np.append(selected_sig[en], data)
 
         for en, sig in zip((0, 1), selected_sig):
-            f, psds = signal.welch(sig, fs, nperseg=256,
+            f, psds = signal.welch(sig, fs, nperseg=nperseg,
                                    return_onesided=True)
             ax.loglog(f, psds, color=color[en])
             psd[en] = np.append(psd[en], psds)
-            ax.text(f[len(f)/(text_offset[en]*i)],
-                    psds[len(f)/(text_offset[en]*i)],
+#            ax.text(f[len(f)/(text_offset[en]*i)],
+#                    psds[len(f)/(text_offset[en]*i)],
+            ax.text(f[text_position[2*(i - 1) + en]],
+                    psds[text_position[2*(i - 1) + en]],
                     '{} - rms: {:0.4}'.format(log.subject_code, rms(sig)),
                     ha='right', va ='center', color=color[en],
                     size=text_size, bbox=bbox_props)
@@ -421,32 +433,37 @@ def plot_overlapping_psd(subject_map, field, mode='longest'):
 def plot_subject_balance_time_change_boxplot(subject_map):
     df = pd.DataFrame(dict(v=[0, 1, 2, 3]))
     g = sns.FacetGrid(df, col='v', col_wrap=2, sharex=True,
-                      sharey=False, legend_out=True, aspect=1.75)
+                      sharey=False, legend_out=True, size=2.4, aspect=1.2)
     sns.despine()
 
     c = sns.color_palette()
     color = 2*[c[0], c[1]]
     for i, s in enumerate(subject_map.values()):
         ax = g.axes[i]
-        ax.set_title('{}'.format(s.code))
+        ax.set_title('{}'.format(s.code), size=14)
         sns.boxplot(s.balance_time(period=0) + s.balance_time(period=1),
+                    fliersize=5, widths=1.0,
                     positions=[1, 2, 4, 5], color=color, ax=ax)
     xmax = 3*2
     ax.set_xlim([0, xmax])
     ax.set_xticks(np.arange(1.5, xmax, 3))
     ax.set_xticklabels(['first', 'second'])
+    g.set_axis_labels('period', 'time [s]')
     p0 = mpatches.Patch(color=color[0], label='torque disabled')
     p1 = mpatches.Patch(color=color[1], label='torque enabled')
-    g.add_legend({p0.get_label(): p0, p1.get_label(): p1})
-    g.set_axis_labels('period', 'time [s]')
+    #g.add_legend({p0.get_label(): p0, p1.get_label(): p1})
+    set_torque_enabled_legend(g.axes[1], {'size': 8})
     return g
 
 
-def set_torque_enabled_legend(ax):
+def set_torque_enabled_legend(ax, prop=None):
     color = sns.color_palette()
     p0 = mpatches.Patch(color=color[0], label='torque disabled')
     p1 = mpatches.Patch(color=color[1], label='torque enabled')
-    ax.legend(handles=(p0, p1))
+    if prop is None:
+        ax.legend(handles=(p0, p1))
+    else:
+        ax.legend(handles=(p0, p1), prop=prop, loc='upper right')
 
 
 def parse_log_dir(dirname):
