@@ -421,6 +421,7 @@ def plot_overlapping_psd(subject_map, field, mode='longest'):
             f, psds = signal.welch(sig, fs, nperseg=nperseg,
                                    return_onesided=True)
             ax.loglog(f, psds, color=color[en])
+            #ax.semilogx(f, psds, color=color[en])
             psd[en] = np.append(psd[en], psds)
             ax.text(f[text_position[2*(i - 1) + en]],
                     psds[text_position[2*(i - 1) + en]],
@@ -449,6 +450,18 @@ def plot_overlapping_psd(subject_map, field, mode='longest'):
 
     set_torque_enabled_legend(ax)
     return fig, ax
+
+
+def interpolated_signal_average(xs, ys):
+    x_longest = []
+    for x in xs:
+        if len(x) > len(x_longest):
+            x_longest = x
+    y_interp = np.zeros((len(x_longest), len(xs)))
+    for i, x, y in zip(range(len(xs)), xs, ys):
+        y_interp[:, i] = np.interp(x_longest, x, y)
+    y_avg = y_interp.mean(axis=1)
+    return x_longest, y_avg
 
 
 def plot_subject_balance_time_change_boxplot(subject_map):
