@@ -4,6 +4,7 @@ import abc
 import bisect
 import collections
 import marshal
+import math
 import os
 import re
 import time
@@ -198,6 +199,16 @@ class Log(object):
         if np.any(torque == 0):
             raise ValueError('{} had more than one run'.format(self._logname))
 
+    def get_field_in_timerange(self, field, timerange=None):
+        if timerange is None:
+            timerange = self.timerange
+        if field in self._sensor.fields:
+            transducer = self._sensor
+        else:
+            transducer = self._actuator
+        ind = transducer.get_timerange_indices(timerange)
+        return transducer.get_field(field)[ind]
+
 
 class Subject(object):
     PERIOD0 = 0
@@ -385,7 +396,6 @@ def plot_overlapping_psd(subject_map, field, mode='longest'):
     color = sns.color_palette()
     psd = [np.array([]), np.array([])]
     text_size = 12
-    #text_offset = [2, 10]
     bbox_props = dict(boxstyle="square,pad=0.1", fc="w", ec="w", alpha=0.9)
     fs = None
     for i, s in enumerate(subject_map.values(), 1):
@@ -399,10 +409,7 @@ def plot_overlapping_psd(subject_map, field, mode='longest'):
                 assert fs == fs_est
 
             en = int(log.feedback)
-            try:
-                data = log.actuator.get_field(field)
-            except ValueError:
-                data = log.sensor.get_field(field)
+            data = log.get_field_in_timerange(field)
             if mode == 'longest':
                 if log.balance_time > longest_balance_time[en]:
                     longest_balance_time[en] = log.balance_time
@@ -415,8 +422,6 @@ def plot_overlapping_psd(subject_map, field, mode='longest'):
                                    return_onesided=True)
             ax.loglog(f, psds, color=color[en])
             psd[en] = np.append(psd[en], psds)
-#            ax.text(f[len(f)/(text_offset[en]*i)],
-#                    psds[len(f)/(text_offset[en]*i)],
             ax.text(f[text_position[2*(i - 1) + en]],
                     psds[text_position[2*(i - 1) + en]],
                     '{} - rms: {:0.4}'.format(log.subject_code, rms(sig)),
@@ -783,5 +788,8 @@ def line_colors(size):
         return iter(sns.color_palette('muted'))
     else:
         return iter(sns.color_palette('muted', size))
+
+def largest_pow_2(n):
+    return 2**int(math.log(n, 2))
 
 
