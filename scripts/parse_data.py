@@ -305,26 +305,37 @@ def balance_df(subjects):
 
 
 def plot_dist_grouped_boxchart(subject_map):
-#   fig, ax = plt.subplots()
-#    size = len(subject_map.keys())
-#    for i, s in enumerate(subject_map.values(), 1):
-#        sns.boxplot(s.balance_time(), positions=[3*i - 2, 3*i - 1])
-#    xmax = 3*size
-#    ax.set_xlim(0, xmax)
-#    ax.set_xticks(np.arange(1.5, xmax, 3))
-#    ax.set_xticklabels(list(subject_map.keys()))
-#    ax.set_xlabel('subject')
-#    ax.set_ylabel('time [s]')
-#    set_torque_enabled_legend(ax)
-#    return fig, ax
-    df = balance_df(subject_map.values())
-    g = sns.factorplot("subject", "log_timespan", "torque_enabled", df,
-                       kind="box", size=7, aspect=1.75, legend=False)
-    g.despine()
-    g.set_axis_labels("subject", "time [s]")
-    ax = g.axes[0][0]
+    fig, ax = plt.subplots()
+    size = len(subject_map.keys())
+    for i, s in enumerate(subject_map.values(), 1):
+        sns.boxplot(s.balance_time(), positions=[3*i - 2, 3*i - 1],
+                    widths=1.0, fliersize=5)
+
+    ymax = ax.get_ylim()[1]
+    for i, s in enumerate(subject_map.values(), 1):
+        ax.text(3*i - 2, ymax,
+                'n = {}'.format(len(s.balance_time(feedback=False))),
+                ha='center', va='bottom')
+        ax.text(3*i - 1, ymax,
+                'n = {}'.format(len(s.balance_time(feedback=True))),
+                ha='center', va='bottom')
+
+    xmax = 3*size
+    ax.set_xlim(0, xmax)
+    ax.set_xticks(np.arange(1.5, xmax, 3))
+    ax.set_xticklabels(list(subject_map.keys()))
+    ax.set_xlabel('subject')
+    ax.set_ylabel('time [s]')
     set_torque_enabled_legend(ax)
-    return g
+    return fig, ax
+#    df = balance_df(subject_map.values())
+#    g = sns.factorplot("subject", "log_timespan", "torque_enabled", df,
+#                       kind="box", size=7, aspect=1.75, legend=False)
+#    g.despine()
+#    g.set_axis_labels("subject", "time [s]")
+#    ax = g.axes[0][0]
+#    set_torque_enabled_legend(ax)
+#    return g
 
 
 def plot_dist_overlapping_histogram(subject_map):
@@ -438,21 +449,29 @@ def plot_subject_balance_time_change_boxplot(subject_map):
 
     c = sns.color_palette()
     color = 2*[c[0], c[1]]
+    positions = [1, 2, 4, 5]
+    xmax = 3*2
     for i, s in enumerate(subject_map.values()):
         ax = g.axes[i]
         ax.set_title('{}'.format(s.code), size=14)
         sns.boxplot(s.balance_time(period=0) + s.balance_time(period=1),
                     fliersize=5, widths=1.0,
-                    positions=[1, 2, 4, 5], color=color, ax=ax)
-    xmax = 3*2
+                    positions=positions, color=color, ax=ax)
+
+        ymax = ax.get_ylim()[1]
+        for j, f, p in zip(positions, 2*[False, True], [0, 0, 1, 1]):
+            ax.text(j, ymax,
+                    'n = {}'.format(len(s.balance_time(feedback=f,
+                                                       period=p))),
+                    ha='center', va='bottom')
+
     ax.set_xlim([0, xmax])
     ax.set_xticks(np.arange(1.5, xmax, 3))
     ax.set_xticklabels(['first', 'second'])
     g.set_axis_labels('period', 'time [s]')
     p0 = mpatches.Patch(color=color[0], label='torque disabled')
     p1 = mpatches.Patch(color=color[1], label='torque enabled')
-    #g.add_legend({p0.get_label(): p0, p1.get_label(): p1})
-    set_torque_enabled_legend(g.axes[1], {'size': 8})
+    set_torque_enabled_legend(g.axes[1], {'size': 10})
     return g
 
 
@@ -679,6 +698,15 @@ def plot_lean_steer_yy(sensor, actuator, timerange=None):
         scale_yaxis(ax2, 90, 0)
     else:
         scale_yaxis(ax2, -90, 0)
+    ax1.set_xlabel('time [s]')
+    ax1.set_ylabel('steer angle [deg]')
+    ax2.set_ylabel('lean angle [deg]')
+    ax1.grid()
+
+    color = sns.color_palette()
+    p0 = mpatches.Patch(color=color[0], label='steer')
+    p1 = mpatches.Patch(color=color[1], label='lean')
+    ax1.legend(handles=(p0, p1))
     return fig, (ax1, ax2)
 
 
