@@ -327,6 +327,8 @@ def plot_dist_grouped_boxchart(subject_map):
     ax.set_xlabel('subject')
     ax.set_ylabel('time [s]')
     set_torque_enabled_legend(ax)
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
     return fig, ax
 #    df = balance_df(subject_map.values())
 #    g = sns.factorplot("subject", "log_timespan", "torque_enabled", df,
@@ -434,7 +436,10 @@ def plot_overlapping_psd(subject_map, field, mode='longest'):
 
     ax.set_xlabel('frequency [Hz]')
     ax.set_xlim([f[0], f[-1]])
-    ax.set_ylabel('power [{}^2/Hz]'.format(units(field)))
+    if field == 'deltad':
+        ax.set_ylabel('power [(deg/s)**2/Hz]')
+    else:
+        ax.set_ylabel('power [{}**2/Hz]'.format(units(field)))
     ax.set_ylim([ymin, ax.get_ylim()[1]])
 
     set_torque_enabled_legend(ax)
