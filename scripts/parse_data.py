@@ -394,20 +394,15 @@ def plot_overlapping_psd(subject_map, field, mode='longest'):
     fig, ax = plt.subplots()
     sns.despine(left=True)
     color = sns.color_palette()
-    psd = [np.array([]), np.array([])]
+    psd0 = np.array([])
+    psd1 = np.array([])
     text_size = 12
     bbox_props = dict(boxstyle="square,pad=0.1", fc="w", ec="w", alpha=0.9)
-    fs = None
+    fs = 50 # Hz
     for i, s in enumerate(subject_map.values(), 1):
         longest_balance_time = [0, 0]
         selected_sig = [[], []]
         for log in s.logs:
-            fs_est = round(1/np.median(log.sensor.dt)/5)*5
-            if fs is None:
-                fs = fs_est
-            else:
-                assert fs == fs_est
-
             en = int(log.feedback)
             data = log.get_field_in_timerange(field)
             if mode == 'longest':
@@ -415,25 +410,56 @@ def plot_overlapping_psd(subject_map, field, mode='longest'):
                     longest_balance_time[en] = log.balance_time
                     selected_sig[en] = data
             elif mode == 'all':
-                selected_sig[en] = np.append(selected_sig[en], data)
+                selected_sig[en].append(data)
+                #if len(data) >= nperseg:
+                #    # nperseg = 256 / 50 Hz = 5.12 sec of data
+                #    # segs = len(data) // nperseg
+                #    # selected_sig[en].extend(data[-segs*nperseg:])
+                #    selected_sig[en].append(data)
 
         for en, sig in zip((0, 1), selected_sig):
-            f, psds = signal.welch(sig, fs, nperseg=nperseg,
-                                   return_onesided=True)
-            ax.loglog(f, psds, color=color[en])
-            #ax.semilogx(f, psds, color=color[en])
-            psd[en] = np.append(psd[en], psds)
-            ax.text(f[text_position[2*(i - 1) + en]],
-                    psds[text_position[2*(i - 1) + en]],
-                    '{} - rms: {:0.4}'.format(log.subject_code, rms(sig)),
+            # calculate psd for sample(s)
+            if mode == 'longest':
+                nseg = largest_pow_2(len(sig))/ 8
+                f, psd = signal.welch(sig, fs, nperseg=nperseg,
+                                      return_onesided=True)
+            elif mode == 'all':
+#                # using noverlap=0 is equivalent to Bartlett's method
+#                f, psd = signal.welch(sig, fs, nperseg=nperseg,
+#                                      window='hann')
+#                                      #noverlap=0, window='hann')
+                freqs = []
+                psds = []
+                for data in sig:
+                    if nperseg < len(data):
+                        f, psd = signal.welch(data, fs, nperseg=nperseg,
+                                              window='hann')
+                    else:
+                        f, psd = signal.welch(data, fs,
+                                              nperseg=largest_pow_2(len(sig)),
+                                              window='hann')
+                    freqs.append(f)
+                    psds.append(psd)
+                print(s.code, en, len(freqs))
+                f, psd = interpolated_signal_average(freqs, psds)
+
+            #ax.loglog(f, psd, color=color[en])
+            ax.semilogx(f, psd, color=color[en])
+            text_pos = text_position[2*(i - 1) + en] / 1024 * len(f)
+            ax.text(f[text_pos], psd[text_pos],
+                    '{} - rms: {:0.4}'.format(log.subject_code, rms(psd)),
                     ha='right', va ='center', color=color[en],
                     size=text_size, bbox=bbox_props)
 
-    psd0, psd1 = psd
-    group_size = len(subject_map)
-    psd0 = psd0.reshape((group_size, len(f)))
+            if en:
+                psd1 = np.append(psd1, psd)
+            else:
+                psd0 = np.append(psd0, psd)
+
+
+    psd0 = psd0.reshape((len(psd0)/len(f), len(f)))
     psd0_max = psd0.max(0)
-    psd1 = psd1.reshape((group_size, len(f)))
+    psd1 = psd1.reshape((len(psd1)/len(f), len(f)))
     psd1_max = psd1.max(0)
     ymin = min(psd1.min(0).min(), psd0.min(0).min())
 
