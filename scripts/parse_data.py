@@ -4,6 +4,7 @@ import abc
 import bisect
 import collections
 import marshal
+import math
 import os
 import re
 import time
@@ -14,6 +15,7 @@ import matplotlib.cm as cm
 import matplotlib.patches as mpatches
 import seaborn as sns
 import pandas as pd
+from scipy import signal
 
 import sys
 sys.path.append('../comm')
@@ -149,6 +151,7 @@ class Log(object):
         except IndexError:
             raise ValueError('No actuator data in file {}'.format(path))
         self._check_timerange()
+        self._balance_time = np.diff(self._timerange)[0]
 
     @property
     def filepath(self):
@@ -182,6 +185,10 @@ class Log(object):
     def timerange(self):
         return self._timerange
 
+    @property
+    def balance_time(self):
+        return self._balance_time
+
     def _check_timerange(self):
         t = self._actuator.time
         dt = t[1:] - t[:-1]
@@ -192,14 +199,32 @@ class Log(object):
         if np.any(torque == 0):
             raise ValueError('{} had more than one run'.format(self._logname))
 
+    def get_field_in_timerange(self, field, timerange=None):
+        if timerange is None:
+            timerange = self.timerange
+        if field in self._sensor.fields:
+            transducer = self._sensor
+        else:
+            transducer = self._actuator
+        ind = transducer.get_timerange_indices(timerange)
+        return transducer.get_field(field)[ind]
+
 
 class Subject(object):
+    PERIOD0 = 0
+    PERIOD1 = 1
+
     def __init__(self, code):
         self._code = code
         self._logs = []
         self._log_keys = []
-        self._balance_time = {Log.FEEDBACK_DISABLED: [],
-                              Log.FEEDBACK_ENABLED: []}
+        self._balance_time = {
+                (Log.FEEDBACK_DISABLED, Subject.PERIOD0): [],
+                (Log.FEEDBACK_DISABLED, Subject.PERIOD1): [],
+                (Log.FEEDBACK_ENABLED, Subject.PERIOD1): [],
+                (Log.FEEDBACK_ENABLED, Subject.PERIOD0): [],
+                }
+        self._first_log_time = [None, None]
 
     @property
     def code(self):
@@ -215,58 +240,120 @@ class Subject(object):
         i = bisect.bisect_left(self._log_keys, k)
         self._log_keys.insert(i, k)
         self._logs.insert(i, log)
-        self._balance_time[log.feedback].append(np.diff(log.timerange)[0])
 
-    def balance_time(self, feedback=None):
-        if feedback is None:
-           return (self.balance_time(Log.FEEDBACK_DISABLED),
-                   self.balance_time(Log.FEEDBACK_ENABLED))
-        return self._balance_time[feedback]
+        en = int(log.feedback)
+        if self._first_log_time[en] is None:
+            self._first_log_time[en] = time.mktime(log.start_time)
+        t0 = self._first_log_time[en]
+        t1 = time.mktime(log.start_time)
+        # Assume 25 minute limit for period 0 from first log with same torque
+        # setting (enabled/disabled)
+        period = int((t1 - t0) > 25*60)
+        self._balance_time[(log.feedback, period)].append(log.balance_time)
 
-
-def balance_df(subjects, feedback=None):
-    times = []
-    groups = []
-    for s in subjects:
-        if feedback is None:
-            subject_times = s.balance_time() # order is (disabled, enabled)
-            subject_codes = ['{}.{}'.format(s.code, en) for en in (0, 1)]
+    def balance_time(self, feedback=None, period=None):
+        if period is None:
+            if feedback is None:
+                dis = (self._balance_time[(Log.FEEDBACK_DISABLED,
+                                           Subject.PERIOD0)] +
+                       self._balance_time[(Log.FEEDBACK_DISABLED,
+                                           Subject.PERIOD1)])
+                en = (self._balance_time[(Log.FEEDBACK_ENABLED,
+                                          Subject.PERIOD0)] +
+                      self._balance_time[(Log.FEEDBACK_ENABLED,
+                                          Subject.PERIOD1)])
+                return (dis, en)
+            else:
+                t = (self._balance_time[(feedback, Subject.PERIOD0)] +
+                     self._balance_time[(feedback, Subject.PERIOD1)])
+                return t
         else:
-            subject_times = (s.balance_time(feedback),)
-            subject_codes = ['{}'.format(s.code)]
-        for t, c in zip(subject_times, subject_codes):
-            if t:
-                times.extend(t)
-                groups.extend([c] * len(t))
-    return pd.DataFrame(dict(time=times, subject=groups))
+            if feedback is None:
+                dis = self._balance_time[(Log.FEEDBACK_DISABLED, period)]
+                en = self._balance_time[(Log.FEEDBACK_ENABLED, period)]
+                return (dis, en)
+            else:
+                return self._balance_time[feedback, period]
+        assert False
 
 
-def plot_dist_paired_boxchart(subject_map, color=None):
+def balance_df(subjects):
+    timespans = []
+    groups = []
+    enabled = []
+    log_times = []
+    elapsed_times = []
+    elapsed_times_per_feedback = []
+    first_log_time = dict()
+    periods = []
+    for s in subjects:
+        for log in s.logs:
+            log_time = time.mktime(log.start_time)
+            if s.code not in first_log_time:
+                first_log_time[s.code] = log_time
+            full_code = s.code + '.' + str(log.feedback)
+            if full_code not in first_log_time:
+                first_log_time[full_code] = log_time
+            elapsed_time = log_time - first_log_time[s.code]
+            elapsed_per_feedback = log_time - first_log_time[full_code]
+
+            timespans.append(log.balance_time)
+            groups.append(s.code)
+            enabled.append(log.feedback)
+            log_times.append(log_time)
+            elapsed_times.append(elapsed_time)
+            elapsed_times_per_feedback.append(elapsed_per_feedback)
+            if elapsed_time > 25*60: # 25 minutes
+                periods.append("second")
+            else:
+                periods.append("first")
+    return pd.DataFrame(dict(log_timespan=timespans, subject=groups,
+                             torque_enabled=enabled,
+                             log_start_time=log_times,
+                             elapsed_time=elapsed_times,
+                             period=periods,
+                             elapsed_time_per_feedback=elapsed_times_per_feedback))
+
+
+def plot_dist_grouped_boxchart(subject_map):
     fig, ax = plt.subplots()
     size = len(subject_map.keys())
     for i, s in enumerate(subject_map.values(), 1):
-        if color is None:
-            sns.boxplot(s.balance_time(), positions=[3*i - 2, 3*i - 1])
-        else:
-            sns.boxplot(s.balance_time(), positions=[3*i - 2, 3*i - 1])
+        sns.boxplot(s.balance_time(), positions=[3*i - 2, 3*i - 1],
+                    widths=1.0, fliersize=5)
+
+    ymax = ax.get_ylim()[1]
+    for i, s in enumerate(subject_map.values(), 1):
+        ax.text(3*i - 2, ymax,
+                'n = {}'.format(len(s.balance_time(feedback=False))),
+                ha='center', va='bottom')
+        ax.text(3*i - 1, ymax,
+                'n = {}'.format(len(s.balance_time(feedback=True))),
+                ha='center', va='bottom')
+
     xmax = 3*size
     ax.set_xlim(0, xmax)
     ax.set_xticks(np.arange(1.5, xmax, 3))
     ax.set_xticklabels(list(subject_map.keys()))
-    ax.set_xlabel('subjects')
+    ax.set_xlabel('subject')
     ax.set_ylabel('time [s]')
-
-    color = sns.color_palette(color)
-    p0 = mpatches.Patch(color=color[0], label='torque disabled')
-    p1 = mpatches.Patch(color=color[1], label='torque enabled')
-    ax.legend(handles=(p0, p1))
+    set_torque_enabled_legend(ax)
+    ax.spines['right'].set_visible(False)
+    ax.spines['top'].set_visible(False)
     return fig, ax
+#    df = balance_df(subject_map.values())
+#    g = sns.factorplot("subject", "log_timespan", "torque_enabled", df,
+#                       kind="box", size=7, aspect=1.75, legend=False)
+#    g.despine()
+#    g.set_axis_labels("subject", "time [s]")
+#    ax = g.axes[0][0]
+#    set_torque_enabled_legend(ax)
+#    return g
 
 
-def plot_dist_overlapping_histogram(subject_map, color=None):
+def plot_dist_overlapping_histogram(subject_map):
     fig, ax = plt.subplots()
     sns.despine(left=True)
-    size = len(subject_map.keys())
     disabled = []
     enabled = []
     for s in subject_map.values():
@@ -276,16 +363,143 @@ def plot_dist_overlapping_histogram(subject_map, color=None):
     sns.distplot(disabled, kde=False, ax=ax)
     sns.distplot(enabled, kde=False, ax=ax)
 
-    color = sns.color_palette()
-    p0 = mpatches.Patch(color=color[0], label='torque disabled')
-    p1 = mpatches.Patch(color=color[1], label='torque enabled')
-    ax.legend(handles=(p0, p1))
     ax.set_xlim([0, ax.get_xlim()[1]])
     ax.set_xlabel('time [s]')
 
-    plt.setp(ax, yticks=[])
-    plt.tight_layout()
+    #plt.setp(ax, yticks=[])
+    set_torque_enabled_legend(ax)
     return fig, ax
+
+
+def rms(a):
+    return np.sqrt(np.mean(a**2))
+
+
+def plot_overlapping_psd(subject_map, field, mode='longest'):
+    if mode == 'longest':
+        nperseg = 128
+        #text_position = [100, 100, 50, 50, 25, 25, 13, 13]
+        text_position = [30, 30, 50, 50, 25, 25, 13, 13]
+    elif mode == 'all':
+        nperseg = 2048
+        if field == 'phi':
+            text_position = [1000, 34, 400, 200, 750, 17, 500, 100]
+        elif field == 'deltad':
+            text_position = [750, 34, 1000, 15, 900, 8, 135, 80]
+        elif field == 'delta':
+            text_position = [1000, 34, 1000, 15, 900, 8, 135, 100]
+    else:
+        raise KeyError("Invalid mode selected. Choices are: longest, all.")
+
+    fig, ax = plt.subplots()
+    sns.despine(left=True)
+    color = sns.color_palette()
+    psd = [np.array([]), np.array([])]
+    text_size = 12
+    bbox_props = dict(boxstyle="square,pad=0.1", fc="w", ec="w", alpha=0.7)
+    fs = 50 # Hz
+    for i, s in enumerate(subject_map.values(), 1):
+        longest_balance_time = [0, 0]
+        selected_sig = [[], []]
+        for log in s.logs:
+            en = int(log.feedback)
+            data = log.get_field_in_timerange(field)
+            if mode == 'longest':
+                if log.balance_time > longest_balance_time[en]:
+                    longest_balance_time[en] = log.balance_time
+                    selected_sig[en] = data
+            elif mode == 'all':
+                selected_sig[en] = np.append(selected_sig[en], data)
+
+        for en, sig in zip((0, 1), selected_sig):
+            f, psds = signal.welch(sig, fs, nperseg=nperseg,
+                                   return_onesided=True)
+            ax.loglog(f, psds, color=color[en])
+            #ax.semilogx(f, psds, color=color[en])
+            psd[en] = np.append(psd[en], psds)
+            ax.text(f[text_position[2*(i - 1) + en]],
+                    psds[text_position[2*(i - 1) + en]],
+                    '{} - rms: {:0.4}'.format(log.subject_code, rms(sig)),
+                    ha='right', va ='center', color=color[en],
+                    size=text_size, bbox=bbox_props)
+
+    psd0, psd1 = psd
+    group_size = len(subject_map)
+    psd0 = psd0.reshape((group_size, len(f)))
+    psd0_max = psd0.max(0)
+    psd1 = psd1.reshape((group_size, len(f)))
+    psd1_max = psd1.max(0)
+    ymin = min(psd1.min(0).min(), psd0.min(0).min())
+
+    plt.fill_between(f, psd0_max, psd1_max, color=color[0], alpha=0.2)
+    plt.fill_between(f, psd1_max, ymin, color=color[1], alpha=0.2)
+
+    ax.set_xlabel('frequency [Hz]')
+    ax.set_xlim([f[0], f[-1]])
+    if field == 'deltad':
+        ax.set_ylabel('power [(deg/s)**2/Hz]')
+    else:
+        ax.set_ylabel('power [{}**2/Hz]'.format(units(field)))
+    ax.set_ylim([ymin, ax.get_ylim()[1]])
+
+    set_torque_enabled_legend(ax)
+    return fig, ax
+
+
+def interpolated_signal_average(xs, ys):
+    x_longest = []
+    for x in xs:
+        if len(x) > len(x_longest):
+            x_longest = x
+    y_interp = np.zeros((len(x_longest), len(xs)))
+    for i, x, y in zip(range(len(xs)), xs, ys):
+        y_interp[:, i] = np.interp(x_longest, x, y)
+    y_avg = y_interp.mean(axis=1)
+    return x_longest, y_avg
+
+
+def plot_subject_balance_time_change_boxplot(subject_map):
+    df = pd.DataFrame(dict(v=[0, 1, 2, 3]))
+    g = sns.FacetGrid(df, col='v', col_wrap=2, sharex=True,
+                      sharey=False, legend_out=True, size=2.4, aspect=1.2)
+    sns.despine()
+
+    c = sns.color_palette()
+    color = 2*[c[0], c[1]]
+    positions = [1, 2, 4, 5]
+    xmax = 3*2
+    for i, s in enumerate(subject_map.values()):
+        ax = g.axes[i]
+        ax.set_title('{}'.format(s.code), size=14)
+        sns.boxplot(s.balance_time(period=0) + s.balance_time(period=1),
+                    fliersize=5, widths=1.0,
+                    positions=positions, color=color, ax=ax)
+
+        ymax = ax.get_ylim()[1]
+        for j, f, p in zip(positions, 2*[False, True], [0, 0, 1, 1]):
+            ax.text(j, ymax,
+                    'n = {}'.format(len(s.balance_time(feedback=f,
+                                                       period=p))),
+                    ha='center', va='bottom')
+
+    ax.set_xlim([0, xmax])
+    ax.set_xticks(np.arange(1.5, xmax, 3))
+    ax.set_xticklabels(['first', 'second'])
+    g.set_axis_labels('period', 'time [s]')
+    p0 = mpatches.Patch(color=color[0], label='torque disabled')
+    p1 = mpatches.Patch(color=color[1], label='torque enabled')
+    set_torque_enabled_legend(g.axes[1], {'size': 10})
+    return g
+
+
+def set_torque_enabled_legend(ax, prop=None):
+    color = sns.color_palette()
+    p0 = mpatches.Patch(color=color[0], label='torque disabled')
+    p1 = mpatches.Patch(color=color[1], label='torque enabled')
+    if prop is None:
+        ax.legend(handles=(p0, p1))
+    else:
+        ax.legend(handles=(p0, p1), prop=prop, loc='upper right')
 
 
 def parse_log_dir(dirname):
@@ -295,7 +509,7 @@ def parse_log_dir(dirname):
     for f in os.listdir(dirname):
         if pattern.match(os.path.basename(f)):
             f = os.path.join(dirname, f)
-            print('Parsing file {}'.format(f))
+            #print('Parsing file {}'.format(f))
             log = Log(f)
             if log.subject_code not in subjects:
                 s = Subject(log.subject_code)
@@ -386,15 +600,6 @@ def plot_timeinfo(transducer, max_dt=None):
     hd = HistDisplay(t, dt, rects, bin_edges)
     ax[0].callbacks.connect('xlim_changed', hd.ax_update)
     return fig, ax, hd
-
-
-#def plot_hist(transducers, max_dt=None):
-#    if isinstance(transducers, collections.abc.Iterable):
-#        times = (t.dt for t in transducers)
-#        x = (dt[dt<max_dt] if max_dt is not None else dt for dt in times)
-#    else:
-#        dt = transducers.dt
-#        x = dt[dt<max_dt] if max_dt is not None else dt
 
 
 class HistDisplay(object):
@@ -510,6 +715,15 @@ def plot_lean_steer_yy(sensor, actuator, timerange=None):
         scale_yaxis(ax2, 90, 0)
     else:
         scale_yaxis(ax2, -90, 0)
+    ax1.set_xlabel('time [s]')
+    ax1.set_ylabel('steer angle [deg]')
+    ax2.set_ylabel('lean angle [deg]')
+    ax1.grid()
+
+    color = sns.color_palette()
+    p0 = mpatches.Patch(color=color[0], label='steer')
+    p1 = mpatches.Patch(color=color[1], label='lean')
+    ax1.legend(handles=(p0, p1))
     return fig, (ax1, ax2)
 
 
@@ -581,5 +795,8 @@ def line_colors(size):
         return iter(sns.color_palette('muted'))
     else:
         return iter(sns.color_palette('muted', size))
+
+def largest_pow_2(n):
+    return 2**int(math.log(n, 2))
 
 
