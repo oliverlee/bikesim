@@ -385,7 +385,7 @@ def plot_overlapping_psd(subject_map, field, mode='longest'):
         if field == 'phi':
             text_position = [1000, 34, 400, 200, 750, 17, 500, 100]
         elif field == 'deltad':
-            text_position = [1000, 34, 1000, 15, 900, 8, 135, 80]
+            text_position = [750, 34, 1000, 15, 900, 8, 135, 80]
         elif field == 'delta':
             text_position = [1000, 34, 1000, 15, 900, 8, 135, 100]
     else:
@@ -396,18 +396,12 @@ def plot_overlapping_psd(subject_map, field, mode='longest'):
     color = sns.color_palette()
     psd = [np.array([]), np.array([])]
     text_size = 12
-    bbox_props = dict(boxstyle="square,pad=0.1", fc="w", ec="w", alpha=0.9)
-    fs = None
+    bbox_props = dict(boxstyle="square,pad=0.1", fc="w", ec="w", alpha=0.7)
+    fs = 50 # Hz
     for i, s in enumerate(subject_map.values(), 1):
         longest_balance_time = [0, 0]
         selected_sig = [[], []]
         for log in s.logs:
-            fs_est = round(1/np.median(log.sensor.dt)/5)*5
-            if fs is None:
-                fs = fs_est
-            else:
-                assert fs == fs_est
-
             en = int(log.feedback)
             data = log.get_field_in_timerange(field)
             if mode == 'longest':
