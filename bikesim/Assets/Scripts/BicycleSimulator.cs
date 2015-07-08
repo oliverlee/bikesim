@@ -82,7 +82,7 @@ public class BicycleSimulator {
         _actuator.Start();
         _sensor.Start();
         _thread.Start();
-        _timestamp_ms = _stopwatch.ElapsedMilliseconds;
+        _timestamp_ms = 0;
     }
 
     public void Stop() {
@@ -167,9 +167,7 @@ public class BicycleSimulator {
     }
 
     private void UpdateSensor() {
-        _timestamp_ms = _lastSensor.timestamp_ms;
         _lastSensor = _sensor.sensor;
-        _lastSensor.timestamp_ms = _stopwatch.ElapsedMilliseconds;
         UpdateVParameters(_lastSensor.wheelRate);
     }
 
@@ -192,13 +190,22 @@ public class BicycleSimulator {
                     _lastSensor.wheelRate});
         };
 
+        long dt_ms = _lastSensor.timestamp_ms - _timestamp_ms;
+        if (dt_ms > 2*_sim_period_ms) {
+            // Data not received for a while. Skip integration step.
+            dt_ms = 0;
+        } else {
+            // assume the data was on time and use the nominal time step
+            dt_ms = _sim_period_ms;
+        }
+
         // Use the most recent measured handlebar steer angle and rate
         _state.steerRate = _lastSensor.steerRate;
         _state.steer = _lastSensor.steerAngle;
         // Since y[1], y[3] are set to zero, steer states do not change
         _state.vector = Integrator.RungeKutta4(f, _state.vector, 0,
-                Convert.ToDouble(
-                    _lastSensor.timestamp_ms - _timestamp_ms)/1000);
+                Convert.ToDouble(dt_ms)/1000);
+        _timestamp_ms = _lastSensor.timestamp_ms;
     }
 
 
