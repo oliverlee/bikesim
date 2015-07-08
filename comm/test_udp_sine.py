@@ -16,7 +16,7 @@ try:
         t = time.time()
         dt = t - t0
         y = 2*math.sin(2*dt)
-        send_udp.transmit_udp_xml(port, [str(y)]);
+        send_udp.transmit_sensors(port, [str(y)]);
         print('{:.4f}: {}'.format(dt, y))
 except KeyboardInterrupt:
-    send_udp.transmit_udp_xml(port, ['0'])
+    send_udp.transmit_sensors(port, ['0'])

@@ -9,7 +9,7 @@ import struct
 SERIAL_START_CHAR = b's'
 SERIAL_END_CHAR = b'e'
 
-def transmit_udp_xml(port, args):
+def transmit_sensors(port, args):
     num_args = len(args)
     args = [float(a) for a in args]
     args.append(SERIAL_END_CHAR)
@@ -21,7 +21,7 @@ def transmit_udp_xml(port, args):
 
 
 if __name__ == "__main__":
-    usage = ("{0} <port> <delta> <deltad>".format(__file__) +
+    usage = ("{0} <port> <delta> <deltad> <thetar>".format(__file__) +
              "\nor\n{0} <port> <torque>".format(__file__))
 
     if len(sys.argv) != 3 and len(sys.argv) != 4:
@@ -29,4 +29,4 @@ if __name__ == "__main__":
         print(usage)
         sys.exit(1)
 
-    transmit_udp_xml(int(sys.argv[1]), sys.argv[2:])
+    transmit_sensors(int(sys.argv[1]), sys.argv[2:])
