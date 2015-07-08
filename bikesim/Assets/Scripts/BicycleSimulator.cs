@@ -59,6 +59,7 @@ public class BicycleSimulator {
     private bool _shouldTerminate;
     private System.Diagnostics.Stopwatch _stopwatch;
     private long _timestamp_ms;
+    private long _elapsed_ms;
 
     public BicycleSimulator(BicycleParam param) {
         _param = param;
@@ -83,6 +84,7 @@ public class BicycleSimulator {
         _sensor.Start();
         _thread.Start();
         _timestamp_ms = 0;
+        _elapsed_ms = 0;
     }
 
     public void Stop() {
@@ -104,7 +106,7 @@ public class BicycleSimulator {
     }
 
     public double elapsedMilliseconds {
-        get { return _timestamp_ms; }
+        get { return _elapsed_ms; }
     }
 
     public State state {
@@ -194,7 +196,7 @@ public class BicycleSimulator {
         if (dt_ms > 2*_sim_period_ms) {
             // Data not received for a while. Skip integration step.
             dt_ms = 0;
-        } else {
+        } else if (dt_ms > 0) {
             // assume the data was on time and use the nominal time step
             dt_ms = _sim_period_ms;
         }
@@ -206,6 +208,7 @@ public class BicycleSimulator {
         _state.vector = Integrator.RungeKutta4(f, _state.vector, 0,
                 Convert.ToDouble(dt_ms)/1000);
         _timestamp_ms = _lastSensor.timestamp_ms;
+        _elapsed_ms += dt_ms;
     }
 
 
