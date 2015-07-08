@@ -29,6 +29,8 @@ MAX_TORQUE_CONT = 2.12
 TORQUE_SCALING_FACTOR = 1.0
 TORQUE_LIMIT = MAX_TORQUE_PEAK
 RAD_PER_DEG = 2*math.pi/360
+WHEEL_RADIUS = 0.3 # m
+DEFAULT_WHEEL_RATE = -1*4/WHEEL_RADIUS # m/s -> rad/s
 
 g_log_queue = queue.Queue() # elements are (timestamp, 'log line')
 SERIAL_WRITE_TIMEOUT = 0.005 # seconds
@@ -201,9 +203,11 @@ class SensorListener(threading.Thread):
             except OSError: # serial port closed
                 break
             self.sample = receiver.sample_q.get()
-            self.udp.sendto(struct.pack('=cffc',
+            self.udp.sendto(struct.pack('=cfffc',
                 SERIAL_START_CHAR, self.sample.delta,
-                self.sample.deltad, SERIAL_END_CHAR), self.addr)
+                self.sample.deltad,
+                DEFAULT_WHEEL_RATE,
+                SERIAL_END_CHAR), self.addr)
             d = marshal.dumps((time.time() - self.start_time,
                                'sensor', self.sample.to_list()),
                               MARSHAL_VERSION)

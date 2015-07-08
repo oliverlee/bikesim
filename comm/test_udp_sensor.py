@@ -25,15 +25,17 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     t0 = time.time()
-    thetar = 4 / WHEEL_RADIUS # m/s -> rad/s
+    thetar = -4/WHEEL_RADIUS # m/s -> rad/s
     try:
         while True:
             time.sleep(1/TRANSMISSION_FREQ)
             dt = time.time() - t0
             delta = 2*math.sin(3*dt)
             deltad = 2*math.cos(4*dt)
-            send_udp.transmit_sensors(args.port, [delta, deltad])
-            #send_udp.transmit_sensors(args.port, [delta, deltad, thetar])
+            delta = 0
+            deltad = 0
+            #send_udp.transmit_sensors(args.port, [delta, deltad])
+            send_udp.transmit_sensors(args.port, [delta, deltad, thetar])
     except KeyboardInterrupt:
         pass
     sys.exit(0)

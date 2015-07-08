@@ -55,12 +55,13 @@ public class UdpSensor {
     private void UpdateSensor(byte[] b) {
         // Note: sizeof(char) = 2 (Unicode)
         if ((b[0] == UdpThread.packetPrefix) &&
-                (b[sizeof(byte) + 2*sizeof(float)] == UdpThread.packetSuffix)) {
+                (b[sizeof(byte) + 3*sizeof(float)] == UdpThread.packetSuffix)) {
             _sensor.timestamp_ms = _udp.ElapsedMilliseconds();
             _sensor.steerAngle = BitConverter.ToSingle(b, sizeof(byte));
             _sensor.steerRate = BitConverter.ToSingle(b,
                     sizeof(byte) + sizeof(float));
-            _sensor.wheelRate = -13.3333f; // 4m/s * TODO: remove hardcoded wheel rate
+            _sensor.wheelRate = BitConverter.ToSingle(b,
+                    sizeof(byte) + 2*sizeof(float));
         }
     }
 }
