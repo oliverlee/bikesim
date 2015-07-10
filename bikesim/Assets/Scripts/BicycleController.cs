@@ -43,6 +43,8 @@ public class BicycleController : MonoBehaviour {
     public GameObject frontWheel;
     public Text sensorInfo;
     public Text stateInfo;
+    public Text countdownInfo;
+    public float resetCountdownLength;
 
     // visualization parameters
     // Values from Peterson dissertation
@@ -54,17 +56,13 @@ public class BicycleController : MonoBehaviour {
 
     // dependent parameters
     private float headAngle; // rad
-    //private float trail; // m
-    //private float wheelbase; // m
 
     private VizState q;
     private BicycleSimulator sim;
     private bool stopSim;
-//    private bool writeStateSpace;
 
     // Setup the Bicycle Configuration
     void Start () {
-//        writeStateSpace = true; // matrices A, B will be written to file once
         stopSim = false;
 
         // Set component sizes
@@ -74,10 +72,6 @@ public class BicycleController : MonoBehaviour {
         rearWheel.transform.localScale = v;
         v = new Vector3(2*rF, wheelWidth, 2*rF);
         frontWheel.transform.localScale = v;
-        //v = new Vector3(cR, frameWidth, frameWidth);
-        //rearFrame.transform.localScale = v;
-        //v = new Vector3(frameWidth, frameWidth, ls);
-        //frontFrame.transform.localScale = v;
 
         headAngle = CalculateNominalPitch();
 
@@ -86,16 +80,13 @@ public class BicycleController : MonoBehaviour {
         SetBicycleTransform(q);
         sim = new BicycleSimulator(new BenchmarkParam());
         sim.Start();
-
+        countdownInfo.text = "";
     }
-
+    
     void Update() {
-        //GamePadState state = GamePad.GetState(PlayerIndex.One);
-        //if (Input.GetKeyDown(KeyCode.R) ||
-        //        state.Buttons.Back == ButtonState.Pressed) {
         if (Input.GetKeyDown(KeyCode.R)) {
             sim.Stop();
-            Start();
+            Restart(resetCountdownLength);
         }
         if (stopSim) {
             return;
@@ -107,7 +98,7 @@ public class BicycleController : MonoBehaviour {
         catch (MathNet.Numerics.NonConvergenceException) {
             stopSim = true;
             sim.Stop();
-            //GamePad.SetVibration(PlayerIndex.One, 0.0f, 0.0f);
+            Restart(resetCountdownLength);
         }
 
         SetBicycleTransform(q);
@@ -120,7 +111,27 @@ public class BicycleController : MonoBehaviour {
             "x: {0}\ny: {1}\nlean: {2}\nyaw: {3}\nsteer: {4}",
             q.x, q.y, q.lean, q.yaw, q.steer);
     }
+    
+    IEnumerator countdown(float seconds) {
+        sim.Stop();
+        countdownInfo.text = System.String.Format(
+            "Restarting in: {0}", seconds);
+        float dt = 0.01f; // s
+        while (seconds > 0) {
+            yield return new WaitForSeconds(dt);
+            seconds -= dt;
+            countdownInfo.text = System.String.Format(
+                "Restarting in: {0:0.00}", seconds);
 
+        }
+        countdownInfo.text = "";
+        Start();
+    }
+    
+    void Restart(float seconds) {
+        StartCoroutine(countdown(seconds));
+    }
+    
     void SetBicycleTransform(VizState q) {
         // Update x and y positions of the rear wheel contact, yaw and lean of
         // the rear frame by modifying the transform of root bicycle game
@@ -225,7 +236,6 @@ public class BicycleController : MonoBehaviour {
     }
 
     public void OnApplicationQuit() {
-        //GamePad.SetVibration(PlayerIndex.One, 0.0f, 0.0f);
         sim.Stop();
     }
 }
