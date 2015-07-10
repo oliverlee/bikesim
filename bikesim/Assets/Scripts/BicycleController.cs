@@ -95,7 +95,7 @@ public class BicycleController : MonoBehaviour {
         //        state.Buttons.Back == ButtonState.Pressed) {
         if (Input.GetKeyDown(KeyCode.R)) {
             sim.Stop();
-            Application.LoadLevel(Application.loadedLevel);
+            Start();
         }
         if (stopSim) {
             return;
