@@ -47,12 +47,24 @@ public class BicycleController : MonoBehaviour {
     public float resetCountdownLength;
 
     // visualization parameters
-    // Values from Peterson dissertation
-    private float rR = 0.3f; // m
-    private float rF = 0.35f; // m
-    private float cR = 0.9534570696121847f; // m
-    private float ls = 0.2676445084476887f; // m
-    private float cF = 0.0320714267276193f; // m
+    //// Values from Peterson dissertation
+    //// These values are equivalent to moore parameters: rr, rf, d1, d2, d3
+    //private float rR = 0.3f; // m
+    //private float rF = 0.35f; // m
+    //private float cR = 0.9534570696121847f; // m
+    //private float ls = 0.2676445084476887f; // m
+    //private float cF = 0.0320714267276193f; // m
+
+    // parameters of bicycle Browser
+    // refer to: A.L. Schwab et al. "Lateral dynamics of a bicycle with a
+    // passive rider model: stability and controllability"
+    //
+    // http://www.bicycle.tudelft.nl/schwab/Publications/schwab2012lateral.pdf
+    private float rR = 0.340958858855f; // m
+    private float rF = 0.34352982332f; // m
+    private float cR = 0.9631492634872098f; // m
+    private float ls = 0.4338396131640938f; // m
+    private float cF = 0.0705000000001252f; // m
 
     // dependent parameters
     private float headAngle; // rad
@@ -82,7 +94,7 @@ public class BicycleController : MonoBehaviour {
         sim.Start();
         countdownInfo.text = "";
     }
-    
+
     void Update() {
         if (Input.GetKeyDown(KeyCode.R)) {
             sim.Stop();

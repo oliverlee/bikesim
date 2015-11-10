@@ -18,23 +18,47 @@ public abstract class BicycleParam {
 }
 
 public class BenchmarkParam : BicycleParam {
-    // parameters from Meijaard et al. 2007
-    private const double _m_phiphi = 80.81722;
-    private const double _m_phidelta = 2.31941332208709;
+    //// parameters from Meijaard et al. 2007
+    //private const double _m_phiphi = 80.81722;
+    //private const double _m_phidelta = 2.31941332208709;
+    //private const double _m_deltaphi = _m_phidelta;
+    //private const double _m_deltadelta = 0.29784188199686;
+    //private const double _c1_phiphi = 0;
+    //private const double _c1_phidelta = 33.86641391492494;
+    //private const double _c1_deltaphi = -0.85035641456978;
+    //private const double _c1_deltadelta = 1.68540397397560;
+    //private const double _k0_phiphi = -80.95;
+    //private const double _k0_phidelta = -2.59951685249872;
+    //private const double _k0_deltaphi = _k0_phidelta;
+    //private const double _k0_deltadelta = -0.80329488458618;
+    //private const double _k2_phiphi = 0;
+    //private const double _k2_phidelta = 76.59734589573222;
+    //private const double _k2_deltaphi = 0;
+    //private const double _k2_deltadelta = 2.65431523794604;
+
+    // parameters of bicycle Browser with rider Jason using yeadon model
+    // refer to: A.L. Schwab et al. "Lateral dynamics of a bicycle with a
+    // passive rider model: stability and controllability" and Jason Moore's phd
+    // dissertation.
+    //
+    // http://www.bicycle.tudelft.nl/schwab/Publications/schwab2012lateral.pdf
+    // https://moorepants.github.io/dissertation/physicalparameters.html#yeadon-method
+    private const double _m_phiphi = 102.78260126737564;
+    private const double _m_phidelta = 1.5349474185931016;
     private const double _m_deltaphi = _m_phidelta;
-    private const double _m_deltadelta = 0.29784188199686;
+    private const double _m_deltadelta = 0.24666219580863546;
     private const double _c1_phiphi = 0;
-    private const double _c1_phidelta = 33.86641391492494;
-    private const double _c1_deltaphi = -0.85035641456978;
-    private const double _c1_deltadelta = 1.68540397397560;
-    private const double _k0_phiphi = -80.95;
-    private const double _k0_phidelta = -2.59951685249872;
+    private const double _c1_phidelta = 26.39273018670496;
+    private const double _c1_deltaphi = -0.4498095401132608;
+    private const double _c1_deltadelta = 1.035419624597184;
+    private const double _k0_phiphi = -89.32195980848145;
+    private const double _k0_phidelta = -1.7415947744452318;
     private const double _k0_deltaphi = _k0_phidelta;
-    private const double _k0_deltadelta = -0.80329488458618;
+    private const double _k0_deltadelta = -0.6776962381761491;
     private const double _k2_phiphi = 0;
-    private const double _k2_phidelta = 76.59734589573222;
+    private const double _k2_phidelta = 74.12484374632714;
     private const double _k2_deltaphi = 0;
-    private const double _k2_deltadelta = 2.65431523794604;
+    private const double _k2_deltadelta = 1.5700590282694744;
 
     private Matrix<double> _mm;
     private Matrix<double> _c1;
@@ -66,8 +90,13 @@ public class BenchmarkParam : BicycleParam {
     public override Matrix<double> K0 { get { return _k0; } }
     public override Matrix<double> K2 { get { return _k2; } }
 
-    public override double steerAxisTilt { get { return Math.PI/10; } }
-    public override double trail { get { return 0.08; } }
-    public override double wheelbase { get { return 1.02; } }
-    public override double rearRadius { get { return 0.3; } }
+    //public override double steerAxisTilt { get { return Math.PI/10; } }
+    //public override double trail { get { return 0.08; } }
+    //public override double wheelbase { get { return 1.02; } }
+    //public override double rearRadius { get { return 0.3; } }
+
+    public override double steerAxisTilt { get { return 0.399680398707; } }
+    public override double trail { get { return 0.0685808540382; } }
+    public override double wheelbase { get { return 1.121; } }
+    public override double rearRadius { get { return 0.340958858855; } }
 }
