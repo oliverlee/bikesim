@@ -118,7 +118,8 @@ public class BicycleSimulator {
             Matrix<double> eye2 = SparseMatrix.CreateIdentity(2);
             Matrix<double> z2 = new SparseMatrix(2);
             Matrix<double> A1 = eye2.Append(z2);
-            Matrix<double> A0 = -_param.MM.Solve(_Cv.Append(_Kv));
+            Matrix<double> A0 = -1 * (_param.MM.Solve(_Cv).Append(
+                        _param.MM.Solve(_Kv)));
             return A0.Stack(A1);
         }
     }
