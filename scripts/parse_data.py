@@ -371,6 +371,16 @@ def plot_dist_overlapping_histogram(subject_map):
     return fig, ax
 
 
+def plot_historgram(subject_map, field):
+    fig, ax = plt.subplots(2, 2, sharex=True)
+    x = []
+    for i, subj in enumerate(subject_map.values()):
+        for log in subj.logs:
+            x = np.append(x, log.get_field_in_timerange(field))
+        sns.distplot(x, ax=ax[i//2, i%2])
+    return fig, ax
+
+
 def rms(a):
     return np.sqrt(np.mean(a**2))
 
