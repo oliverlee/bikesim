@@ -55,16 +55,27 @@ public class BicycleController : MonoBehaviour {
     //private float ls = 0.2676445084476887f; // m
     //private float cF = 0.0320714267276193f; // m
 
-    // parameters of bicycle Browser
+    //// parameters of bicycle Browser
+    //// refer to: A.L. Schwab et al. "Lateral dynamics of a bicycle with a
+    //// passive rider model: stability and controllability"
+    ////
+    //// http://www.bicycle.tudelft.nl/schwab/Publications/schwab2012lateral.pdf
+    //private float rR = 0.340958858855f; // m
+    //private float rF = 0.34352982332f; // m
+    //private float cR = 0.9631492634872098f; // m
+    //private float ls = 0.4338396131640938f; // m
+    //private float cF = 0.0705000000001252f; // m
+
+    // parameters of bicycle Stratos
     // refer to: A.L. Schwab et al. "Lateral dynamics of a bicycle with a
     // passive rider model: stability and controllability"
     //
     // http://www.bicycle.tudelft.nl/schwab/Publications/schwab2012lateral.pdf
-    private float rR = 0.340958858855f; // m
-    private float rF = 0.34352982332f; // m
-    private float cR = 0.9631492634872098f; // m
-    private float ls = 0.4338396131640938f; // m
-    private float cF = 0.0705000000001252f; // m
+    private float rR = 0.338477091115578f; // m
+    private float rF = 0.340003929196009f; // m
+    private float cR = 0.9476595418469894f; // m
+    private float ls = 0.29999727534537496f; // m
+    private float cF = 0.04500000000000001f; // m
 
     // dependent parameters
     private float headAngle; // rad
