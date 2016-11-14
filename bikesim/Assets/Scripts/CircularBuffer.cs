@@ -58,8 +58,13 @@ namespace CircularBuffer
         /// </summary>
         private int _size;
 
-        public CircularBuffer(int capacity)
-            : this(capacity, new T[] { })
+        /// <summary>
+        /// Determines if writing to a full buffer is allowed.
+        /// </summary>
+        private bool _overwrite;
+
+        public CircularBuffer(int capacity, bool overwrite = true)
+            : this(capacity, new T[] { }, overwrite)
         {
         }
 
@@ -75,7 +80,10 @@ namespace CircularBuffer
         /// Sugestion: use Skip(x).Take(y).ToArray() to build this argument from
         /// any enumerable.
         /// </param>
-        public CircularBuffer(int capacity, T[] items)
+        /// <param name='overwrite'>
+        /// Allows writing to a full buffer.
+        /// </param>
+        public CircularBuffer(int capacity, T[] items, overwrite = true)
         {
             if (capacity < 1)
             {
@@ -99,6 +107,7 @@ namespace CircularBuffer
 
             _start = 0;
             _end = _size == capacity ? 0 : _size;
+            _overwrite = overwrite;
         }
 
         /// <summary>
@@ -122,6 +131,11 @@ namespace CircularBuffer
                 return Size == 0;
             }
         }
+
+        /// <summary>
+        /// If this buffer allows pushing when full.
+        /// </summary>
+        public bool Overwrite { get { return _overwrite; } }
 
         /// <summary>
         /// Current buffer size (the number of elements that the buffer has).
@@ -190,9 +204,16 @@ namespace CircularBuffer
         {
             if (IsFull)
             {
-                _buffer[_end] = item;
-                Increment(ref _end);
-                _start = _end;
+                if (_overwrite)
+                {
+                    _buffer[_end] = item;
+                    Increment(ref _end);
+                    _start = _end;
+                }
+                else
+                {
+                    ThrowIfFull();
+                }
             }
             else
             {
@@ -214,9 +235,16 @@ namespace CircularBuffer
         {
             if (IsFull)
             {
-                Decrement(ref _start);
-                _end = _start;
-                _buffer[_start] = item;
+                if (_overwrite)
+                {
+                    Decrement(ref _start);
+                    _end = _start;
+                    _buffer[_start] = item;
+                }
+                else
+                {
+                    ThrowIfFull();
+                }
             }
             else
             {
@@ -292,6 +320,14 @@ namespace CircularBuffer
         private void ThrowIfEmpty(string message = "Cannot access an empty buffer.")
         {
             if (IsEmpty)
+            {
+                throw new InvalidOperationException(message);
+            }
+        }
+
+        private void ThrowIfFull(string message = "Cannot add item to a full buffer.")
+        {
+            if (IsFull)
             {
                 throw new InvalidOperationException(message);
             }
