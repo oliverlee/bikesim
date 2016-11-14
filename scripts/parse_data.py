@@ -323,20 +323,20 @@ def plot_dist_grouped_boxchart(subject_map):
                     widths=1.0, fliersize=5)
 
     ymax = ax.get_ylim()[1]
-    for i, s in enumerate(subject_map.values(), 1):
-        ax.text(3*i - 2, ymax,
-                'n = {}'.format(len(s.balance_time(feedback=False))),
-                ha='center', va='bottom')
-        ax.text(3*i - 1, ymax,
-                'n = {}'.format(len(s.balance_time(feedback=True))),
-                ha='center', va='bottom')
+    #for i, s in enumerate(subject_map.values(), 1):
+    #    ax.text(3*i - 2, ymax,
+    #            'n = {}'.format(len(s.balance_time(feedback=False))),
+    #            ha='center', va='bottom')
+    #    ax.text(3*i - 1, ymax,
+    #            'n = {}'.format(len(s.balance_time(feedback=True))),
+    #            ha='center', va='bottom')
 
     xmax = 3*size
     ax.set_xlim(0, xmax)
     ax.set_xticks(np.arange(1.5, xmax, 3))
     ax.set_xticklabels(list(subject_map.keys()))
-    ax.set_xlabel('subject')
-    ax.set_ylabel('time [s]')
+    ax.set_xlabel(r'subjects')
+    ax.set_ylabel(r'time $[\mathrm{s}]$')
     set_torque_enabled_legend(ax)
     ax.spines['right'].set_visible(False)
     ax.spines['top'].set_visible(False)
@@ -385,7 +385,8 @@ def rms(a):
     return np.sqrt(np.mean(a**2))
 
 
-def plot_overlapping_psd(subject_map, field, mode='longest'):
+def plot_overlapping_psd(subject_map, field, mode='longest', logy=True,
+        rmslabels=True):
     if mode == 'longest':
         nperseg = 128
         #text_position = [100, 100, 50, 50, 25, 25, 13, 13]
@@ -424,14 +425,17 @@ def plot_overlapping_psd(subject_map, field, mode='longest'):
         for en, sig in zip((0, 1), selected_sig):
             f, psds = signal.welch(sig, fs, nperseg=nperseg,
                                    return_onesided=True)
-            ax.loglog(f, psds, color=color[en])
-            #ax.semilogx(f, psds, color=color[en])
+            if logy:
+                ax.loglog(f, psds, color=color[en])
+            else:
+                ax.semilogx(f, psds, color=color[en])
             psd[en] = np.append(psd[en], psds)
-            ax.text(f[text_position[2*(i - 1) + en]],
-                    psds[text_position[2*(i - 1) + en]],
-                    '{} - rms: {:0.4}'.format(log.subject_code, rms(sig)),
-                    ha='right', va ='center', color=color[en],
-                    size=text_size, bbox=bbox_props)
+            if rmslabels:
+                ax.text(f[text_position[2*(i - 1) + en]],
+                        psds[text_position[2*(i - 1) + en]],
+                        '{} - rms: {:0.4}'.format(log.subject_code, rms(sig)),
+                        ha='right', va ='center', color=color[en],
+                        size=text_size, bbox=bbox_props)
 
     psd0, psd1 = psd
     group_size = len(subject_map)
@@ -444,12 +448,12 @@ def plot_overlapping_psd(subject_map, field, mode='longest'):
     plt.fill_between(f, psd0_max, psd1_max, color=color[0], alpha=0.2)
     plt.fill_between(f, psd1_max, ymin, color=color[1], alpha=0.2)
 
-    ax.set_xlabel('frequency [Hz]')
+    ax.set_xlabel(r'frequency $[\mathrm{Hz}]$')
     ax.set_xlim([f[0], f[-1]])
     if field == 'deltad':
-        ax.set_ylabel('power [(deg/s)**2/Hz]')
+        ax.set_ylabel(r'power $[(\frac{\mathrm{deg}}{\mathrm{s}})^2 \mathrm{Hz}^{-1}]$')
     else:
-        ax.set_ylabel('power [{}**2/Hz]'.format(units(field)))
+        ax.set_ylabel(r'power $[{}^2/\mathrm{Hz}]$'.format(units(field)))
     ax.set_ylim([ymin, ax.get_ylim()[1]])
 
     set_torque_enabled_legend(ax)
