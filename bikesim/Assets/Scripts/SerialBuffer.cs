@@ -90,6 +90,19 @@ namespace CircularBuffer {
             _size -= n;
         }
 
+        public bool PopPacket(int n) {
+            if (HasPacket) {
+                int size;
+                if (_zero_index < _start) {
+                    size = _zero_index + Capacity - _start;
+                } else {
+                    size = _zero_index - _start;
+                }
+                PopFront(size);
+                SearchForZeroByte(_start);
+            }
+        }
+
         private void Increment(ref int index, int n) {
             if (n < 1) {
                 throw new ArgumentException(
