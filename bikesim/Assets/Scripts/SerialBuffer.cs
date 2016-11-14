@@ -86,7 +86,7 @@ namespace CircularBuffer {
                 throw new ArgumentException(
                         "Cannot pop more elements than are in the buffer." "n");
             }
-            Decrement(ref _end, n);
+            Increment(ref _start, n);
             _size -= n;
         }
 
