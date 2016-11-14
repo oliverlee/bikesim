@@ -41,27 +41,27 @@ namespace CircularBuffer
     /// </summary>
     public class CircularBuffer<T> : IEnumerable<T>
     {
-        private T[] _buffer;
+        protected T[] _buffer;
 
         /// <summary>
         /// The _start. Index of the first element in buffer.
         /// </summary>
-        private int _start;
+        protected int _start;
 
         /// <summary>
         /// The _end. Index after the last element in the buffer.
         /// </summary>
-        private int _end;
+        protected int _end;
 
         /// <summary>
         /// The _size. Buffer size.
         /// </summary>
-        private int _size;
+        protected int _size;
 
         /// <summary>
         /// Determines if writing to a full buffer is allowed.
         /// </summary>
-        private bool _overwrite;
+        protected bool _overwrite;
 
         public CircularBuffer(int capacity, bool overwrite = true)
             : this(capacity, new T[] { }, overwrite)
@@ -317,7 +317,7 @@ namespace CircularBuffer
         }
         #endregion
 
-        private void ThrowIfEmpty(string message = "Cannot access an empty buffer.")
+        protected void ThrowIfEmpty(string message = "Cannot access an empty buffer.")
         {
             if (IsEmpty)
             {
@@ -325,7 +325,7 @@ namespace CircularBuffer
             }
         }
 
-        private void ThrowIfFull(string message = "Cannot add item to a full buffer.")
+        protected void ThrowIfFull(string message = "Cannot add item to a full buffer.")
         {
             if (IsFull)
             {
@@ -338,7 +338,7 @@ namespace CircularBuffer
         /// around if necessary.
         /// </summary>
         /// <param name="index"></param>
-        private void Increment(ref int index)
+        protected void Increment(ref int index)
         {
             if (++index == Capacity)
             {
@@ -351,7 +351,7 @@ namespace CircularBuffer
         /// around if necessary.
         /// </summary>
         /// <param name="index"></param>
-        private void Decrement(ref int index)
+        protected void Decrement(ref int index)
         {
             if (index == 0)
             {
@@ -369,7 +369,7 @@ namespace CircularBuffer
         /// <param name='index'>
         /// External index.
         /// </param>
-        private int InternalIndex(int index)
+        protected int InternalIndex(int index)
         {
             return _start + (index < (Capacity - _start) ? index : index - Capacity);
         }
@@ -383,7 +383,7 @@ namespace CircularBuffer
         // The array is composed by at most two non-contiguous segments, 
         // the next two methods allow easy access to those.
 
-        private ArraySegment<T> ArrayOne()
+        protected ArraySegment<T> ArrayOne()
         {
             if (_start < _end)
             {
@@ -395,7 +395,7 @@ namespace CircularBuffer
             }
         }
 
-        private ArraySegment<T> ArrayTwo()
+        protected ArraySegment<T> ArrayTwo()
         {
             if (_start < _end)
             {
