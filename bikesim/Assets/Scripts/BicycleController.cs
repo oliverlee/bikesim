@@ -34,6 +34,16 @@ public class VizState {
         wheelAngle = System.Convert.ToSingle(q.wheelAngle);
         steer = System.Convert.ToSingle(q.steer);
     }
+    public void SetState(BicyclePose pose, float wheelRadius, int previousWheelAngle, byte previousTimestamp) {
+        x = pose.x;
+        y = pose.y;
+        pitch = pose.pitch;
+        yaw = pose.yaw;
+        lean = pose.roll;
+        steer = pose.steer;
+        float wheelRate = pose.v / wheelRadius;
+        wheelAngle = previousWheelAngle + wheelRate*(pose.timestamp - previousTimestamp);
+    }
 }
 
 public class BicycleController : MonoBehaviour {
@@ -82,7 +92,7 @@ public class BicycleController : MonoBehaviour {
         sim.Start();
         countdownInfo.text = "";
     }
-    
+
     void Update() {
         if (Input.GetKeyDown(KeyCode.R)) {
             sim.Stop();
@@ -111,7 +121,7 @@ public class BicycleController : MonoBehaviour {
             "x: {0}\ny: {1}\nlean: {2}\nyaw: {3}\nsteer: {4}",
             q.x, q.y, q.lean, q.yaw, q.steer);
     }
-    
+
     IEnumerator countdown(float seconds) {
         sim.Stop();
         countdownInfo.text = System.String.Format(
@@ -127,11 +137,11 @@ public class BicycleController : MonoBehaviour {
         countdownInfo.text = "";
         Start();
     }
-    
+
     void Restart(float seconds) {
         StartCoroutine(countdown(seconds));
     }
-    
+
     void SetBicycleTransform(VizState q) {
         // Update x and y positions of the rear wheel contact, yaw and lean of
         // the rear frame by modifying the transform of root bicycle game
