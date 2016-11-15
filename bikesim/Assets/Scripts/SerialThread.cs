@@ -26,6 +26,7 @@ public class SerialThread {
     private byte[] _active_buffer;
     private byte[] _inactive_buffer;
 
+    private int _packet_start;
     private int _packet_size;
     private string _gitsha1;
     private System.Text.Encoding _ascii;
@@ -47,6 +48,7 @@ public class SerialThread {
         _active_buffer = _buffer_one;
         _inactive_buffer = _buffer_two;
 
+        _packet_start = 0;
         _packet_size = 0;
         _gitsha1 = null;
         _ascii = new System.Text.ASCIIEncoding();
@@ -111,6 +113,7 @@ public class SerialThread {
         _active_buffer = next_buffer;
         _inactive_buffer = current_buffer;
         _buffer_offset = buffer_length;
+        _packet_start = 0;
         _packet_size = 0; // if an unstuffed packet was stored in the inactive buffer, it's now been overwritten
     }
 
@@ -132,7 +135,7 @@ public class SerialThread {
                         int delimiter_index = Array.IndexOf(_active_buffer, (byte)0, _buffer_offset, bytes_read);
                         if (delimiter_index >= 0) {
                             while (delimiter_index >= 0) {
-                                UnstuffPacket(_active_buffer, _buffer_offset, delimiter_index - _buffer_offset + 1);
+                                UnstuffPacket(_active_buffer, _packet_start, delimiter_index - _packet_start + 1);
                                 PushReceivedPacket();
 
                                 // Continue to process received bytes as long as another packet exists
@@ -155,6 +158,7 @@ public class SerialThread {
     // Frame unstuff function here. This is copied from phobos/src/packet/frame.cc
     // TODO: Move framing (and serialization) code to separate files
     private int UnstuffPacket(byte[] buffer, int offset, int length) {
+        _packet_start += length;
         int read_index = offset;
         int write_index = 0;
 
