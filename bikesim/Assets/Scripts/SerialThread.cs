@@ -165,7 +165,7 @@ public class SerialThread {
         while (read_index < offset + length) {
             byte code = buffer[read_index++];
 
-            if ((read_index + code > length) && (code != 1)) {
+            if ((read_index + code > length + offset) && (code != 1)) {
                 // Distance code can exceed packet length if we start decoding
                 // in the middle of a packet. We can return now and handle the
                 // next packet correctly.
