@@ -122,19 +122,23 @@ public class SerialThread {
             if (!_port.IsOpen) {
                 OpenPort();
             } else {
-                if (_port.BytesToRead > 0) {
-                    int bytes_read = _port.Read(_active_buffer, _buffer_offset, _port.BytesToRead);
+                int bytes_read = _port.BytesToRead;
+                if (bytes_read > 0) {
+                    if (bytes_read > (_buffer_size - _buffer_offset)) {
+                        bytes_read = _buffer_size - _buffer_offset;
+                    }
+                    bytes_read = _port.Read(_active_buffer, _buffer_offset, bytes_read);
                     if (bytes_read > 0) {
-                        int delimiter_index = Array.IndexOf(_active_buffer, 0, _buffer_offset, bytes_read);
+                        int delimiter_index = Array.IndexOf(_active_buffer, (byte)0, _buffer_offset, bytes_read);
                         if (delimiter_index >= 0) {
                             while (delimiter_index >= 0) {
-                                UnstuffPacket(_active_buffer, _buffer_offset, delimiter_index - _buffer_offset);
+                                UnstuffPacket(_active_buffer, _buffer_offset, delimiter_index - _buffer_offset + 1);
                                 PushReceivedPacket();
 
                                 // Continue to process received bytes as long as another packet exists
                                 bytes_read -= (delimiter_index - _buffer_offset + 1);
                                 _buffer_offset = delimiter_index + 1;
-                                delimiter_index = Array.IndexOf(_active_buffer, 0, _buffer_offset, bytes_read);
+                                delimiter_index = Array.IndexOf(_active_buffer, (byte)0, _buffer_offset, bytes_read);
                             }
                             SwapByteBuffer(_active_buffer, _buffer_offset, bytes_read, _inactive_buffer);
                         } else {
@@ -165,10 +169,10 @@ public class SerialThread {
                 _inactive_buffer[write_index++] = 0;
             }
         }
-        System.Diagnostics.Debug.Assert(write_index == length - 2,
+        System.Diagnostics.Debug.Assert((write_index - 1) == (length - 2),
                 "number of unstuffed bytes does not match buffer length");
-        _packet_size = write_index;
-        return write_index;
+        _packet_size = write_index - 1;
+        return _packet_size;
     }
 
     private void PushReceivedPacket() {
