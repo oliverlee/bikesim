@@ -65,6 +65,7 @@ public class BicycleController : MonoBehaviour {
     private float cF = 0.0320714267276193f; // m
 
     private byte timestamp;
+    private System.Diagnostics.Stopwatch stopwatch;
 
     // dependent parameters
 //    private float headAngle; // rad
@@ -97,9 +98,12 @@ public class BicycleController : MonoBehaviour {
         countdownInfo.text = "";
 
         serial = new SerialThread("/dev/tty.usbmodem311", 115200);
-        serial.Start();
+        stopwatch = new System.Diagnostics.Stopwatch();
         pose = new BicyclePose();
+
+        serial.Start();
         timestamp = 0;
+        stopwatch.Start();
     }
 
     void Update() {
@@ -123,19 +127,32 @@ public class BicycleController : MonoBehaviour {
         pose = serial.PopBicyclePose();
         if (pose != null) {
             q.SetState(pose, rR, q.wheelAngle, timestamp);
-            timestamp = pose.timestamp;
+            // There is no operand to add between bytes in C#
+            int dt = pose.timestamp - timestamp; // milliseconds
+            if (dt < 0) {
+                dt += 256;
+            }
             SetBicycleTransform(q);
+
+            stateInfo.text = System.String.Format(
+                "x: {0}\ny: {1}\nroll: {2}\nyaw: {3}\nsteer: {4}",
+                q.x, q.y, q.lean, q.yaw, q.steer);
+            sensorInfo.text = System.String.Format(
+                "timestamp 1 {0}\ntimestamp 0 {1}\npose dt: {2} ms\nunity dt: {3} ms",
+                pose.timestamp, timestamp, dt, stopwatch.ElapsedMilliseconds);
+
+            timestamp = pose.timestamp;
+            stopwatch.Reset(); // .NET 2.0 doesn't have Stopwatch.Restart()
+            stopwatch.Start();
+        } else {
+            stateInfo.text = System.String.Format(
+                "pose dropped");
+            sensorInfo.text = System.String.Format(
+                "pose dropped");
         }
-        sensorInfo.text = "sensor info";
-        stateInfo.text = "state info";
-//        sensorInfo.text = System.String.Format(
-//            "speed: {0}\nsteertorque: {1}\nsim time: {2}",
 //            sim.wheelRate * rR * 3.6 * -1, // rad/s -> km/hr
 //            sim.feedbackTorque,
 //            sim.elapsedMilliseconds/1000);
-//        stateInfo.text = System.String.Format(
-//            "x: {0}\ny: {1}\nlean: {2}\nyaw: {3}\nsteer: {4}",
-//            q.x, q.y, q.lean, q.yaw, q.steer);
     }
 
     IEnumerator countdown(float seconds) {
