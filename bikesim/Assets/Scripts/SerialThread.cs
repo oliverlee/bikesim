@@ -19,10 +19,18 @@ public class SerialThread {
     // For phobos::flimnap, a packet consists of a pose_t, framed using COBS.
     // A pose_t is a packed struct of 29 bytes + 1 byte overhead from COBS + 1
     // byte delimiter = 31 bytes total
-    private byte[64] _buffer_one;
-    private byte[64] _buffer_two;
+    private const int _buffer_size = 64;
+    private byte[] _buffer_one;
+    private byte[] _buffer_two;
     private int _buffer_offset;
-    private bool _buffer_one_active;
+    private byte[] _active_buffer;
+    private byte[] _inactive_buffer;
+
+    private int _packet_size;
+    private string _gitsha1;
+    private System.Text.Encoding _ascii;
+    private readonly object _pose_lock;
+    private BicyclePose _pose;
 
     public SerialThread(string portname, Int32 baudrate) {
         _portname = portname;
@@ -32,10 +40,18 @@ public class SerialThread {
         _thread = null;
         _should_terminate = false;
 
-        _buffer_one = new byte[64];
-        _buffer_two = new byte[64];
+        _buffer_one = new byte[_buffer_size];
+        _buffer_two = new byte[_buffer_size];
         _buffer_offset = 0;
-        _buffer_one_active = true;
+
+        _active_buffer = _buffer_one;
+        _inactive_buffer = _buffer_two;
+
+        _packet_size = 0;
+        _gitsha1 = null;
+        _ascii = new System.Text.ASCIIEncoding();
+        _pose_lock = new object();
+        _pose = null;
     }
 
     public string portname {
@@ -46,11 +62,8 @@ public class SerialThread {
         get { return _baudrate; }
     }
 
-    private byte[] ActiveReadBuffer() {
-        if (_buffer_one_active) {
-            return _buffer_one;
-        }
-        return _buffer_two;
+    public string gitsha1 {
+        get { return _gitsha1; }
     }
 
     private void OpenPort() {
@@ -98,11 +111,13 @@ public class SerialThread {
         _active_buffer = next_buffer;
         _inactive_buffer = current_buffer;
         _buffer_offset = buffer_length;
+        _packet_size = 0; // if an unstuffed packet was stored in the inactive buffer, it's now been overwritten
     }
 
     private void ThreadFunction() {
         _should_terminate = false;
 
+        // TODO: Use delegates instead of a sleep loop
         while (!_should_terminate) {
             if (!_port.IsOpen) {
                 OpenPort();
@@ -114,9 +129,10 @@ public class SerialThread {
                         if (delimiter_index >= 0) {
                             while (delimiter_index >= 0) {
                                 UnstuffPacket(_active_buffer, _buffer_offset, delimiter_index - _buffer_offset);
+                                PushReceivedPacket();
 
                                 // Continue to process received bytes as long as another packet exists
-                                bytes_read -= (delimited_index - _buffer_offset + 1);
+                                bytes_read -= (delimiter_index - _buffer_offset + 1);
                                 _buffer_offset = delimiter_index + 1;
                                 delimiter_index = Array.IndexOf(_active_buffer, 0, _buffer_offset, bytes_read);
                             }
@@ -125,17 +141,66 @@ public class SerialThread {
                             _buffer_offset += bytes_read;
                         }
                     }
-
                 }
             }
-            //Thread.Sleep(10); // milliseconds
-            Thread.Yield();
+            Thread.Sleep(10); // milliseconds
+            //Thread.Yield();
         }
     }
 
-    // Frame unstuff function here.
+    // Frame unstuff function here. This is copied from phobos/src/packet/frame.cc
     // TODO: Move framing (and serialization) code to separate files
-    private void UnstuffPacket(byte[] buffer, int buffer_offset, int byte_size) {
-        //
+    private int UnstuffPacket(byte[] buffer, int offset, int length) {
+        int read_index = offset;
+        int write_index = 0;
+
+        while (read_index < offset + length) {
+            byte code = buffer[read_index++];
+
+            for (byte i = 1; i < code; ++i) {
+                _inactive_buffer[write_index++] = buffer[read_index++];
+            }
+
+            if ((code < 0xFF) && (read_index != length)) {
+                _inactive_buffer[write_index++] = 0;
+            }
+        }
+        System.Diagnostics.Debug.Assert(write_index == length - 2,
+                "number of unstuffed bytes does not match buffer length");
+        _packet_size = write_index;
+        return write_index;
+    }
+
+    private void PushReceivedPacket() {
+        const int EMPTY_PACKET_SIZE = 0;
+        const int GITSHA1_PACKET_SIZE = 7;
+        const int POSE_PACKET_SIZE = 29;
+
+        switch (_packet_size) {
+            case EMPTY_PACKET_SIZE:
+                return;
+            case GITSHA1_PACKET_SIZE:
+                _gitsha1 = _ascii.GetString(_inactive_buffer, 0, GITSHA1_PACKET_SIZE);
+                return;
+            case POSE_PACKET_SIZE:
+                BicyclePose pose = new BicyclePose();
+                pose.SetFromByteArray(_inactive_buffer);
+                lock(_pose_lock) {
+                    _pose = pose;
+                }
+                return;
+            default:
+                System.Diagnostics.Debug.Assert(false, "Invalid packet size.");
+                break;
+        }
+    }
+
+    public BicyclePose PopBicyclePose() {
+        BicyclePose pose = null;
+        lock(_pose_lock) {
+            pose = _pose;
+            _pose = null;
+        }
+        return pose;
     }
 }
