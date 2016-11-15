@@ -103,10 +103,10 @@ public class BicycleController : MonoBehaviour {
     }
 
     void Update() {
-//        if (Input.GetKeyDown(KeyCode.R)) {
-//            sim.Stop();
-//            Restart(resetCountdownLength);
-//        }
+        if (Input.GetKeyDown(KeyCode.R)) {
+            //sim.Stop();
+            Restart(resetCountdownLength);
+        }
 //        if (stopSim) {
 //            return;
 //        }
@@ -138,25 +138,25 @@ public class BicycleController : MonoBehaviour {
 //            q.x, q.y, q.lean, q.yaw, q.steer);
     }
 
-//    IEnumerator countdown(float seconds) {
+    IEnumerator countdown(float seconds) {
 //        sim.Stop();
-//        countdownInfo.text = System.String.Format(
-//            "Restarting in: {0}", seconds);
-//        float dt = 0.01f; // s
-//        while (seconds > 0) {
-//            yield return new WaitForSeconds(dt);
-//            seconds -= dt;
-//            countdownInfo.text = System.String.Format(
-//                "Restarting in: {0:0.00}", seconds);
-//
-//        }
-//        countdownInfo.text = "";
-//        Start();
-//    }
+        countdownInfo.text = System.String.Format(
+            "Restarting in: {0}", seconds);
+        float dt = 0.01f; // s
+        while (seconds > 0) {
+            yield return new WaitForSeconds(dt);
+            seconds -= dt;
+            countdownInfo.text = System.String.Format(
+                "Restarting in: {0:0.00}", seconds);
 
-//    void Restart(float seconds) {
-//        StartCoroutine(countdown(seconds));
-//    }
+        }
+        countdownInfo.text = "";
+        Start();
+    }
+
+    void Restart(float seconds) {
+        StartCoroutine(countdown(seconds));
+    }
 
     void SetBicycleTransform(VizState q) {
         // Update x and y positions of the rear wheel contact, yaw and lean of
