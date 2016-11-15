@@ -42,7 +42,11 @@ public class VizState {
         lean = pose.roll;
         steer = pose.steer;
         float wheelRate = pose.v / wheelRadius;
-        wheelAngle = previousWheelAngle + wheelRate*(pose.timestamp - previousTimestamp);
+        int dt = pose.timestamp - previousTimestamp;
+        if (dt < 0) {
+            dt += 256;
+        }
+        wheelAngle = previousWheelAngle + wheelRate*dt;
     }
 }
 
