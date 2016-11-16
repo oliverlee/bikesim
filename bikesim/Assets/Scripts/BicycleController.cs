@@ -129,6 +129,11 @@ public class BicycleController : MonoBehaviour {
 //        }
 
         pose = serial.PopBicyclePose();
+        string gitsha1 = serial.gitsha1;
+        if (gitsha1 == null) {
+            gitsha1 = "null";
+        }
+
         if (pose != null) {
             q.SetState(pose, rR, q.wheelAngle, timestamp);
             // There is no operand to add between bytes in C#
@@ -142,17 +147,17 @@ public class BicycleController : MonoBehaviour {
                 "x: {0}\ny: {1}\nroll: {2}\nyaw: {3}\nsteer: {4}",
                 q.x, q.y, q.lean, q.yaw, q.steer);
             sensorInfo.text = System.String.Format(
-                "timestamp 1 {0}\ntimestamp 0 {1}\npose dt: {2} ms\nunity dt: {3} ms",
-                pose.timestamp, timestamp, dt, stopwatch.ElapsedMilliseconds);
+                "firmware {4}\ntimestamp 1 {0}\ntimestamp 0 {1}\npose dt: {2} ms\nunity dt: {3} ms",
+                pose.timestamp, timestamp, dt, stopwatch.ElapsedMilliseconds, gitsha1);
 
             timestamp = pose.timestamp;
             stopwatch.Reset(); // .NET 2.0 doesn't have Stopwatch.Restart()
             stopwatch.Start();
         } else {
-            stateInfo.text = System.String.Format(
-                "pose dropped");
+            stateInfo.text = System.String.Format("pose dropped");
             sensorInfo.text = System.String.Format(
-                "pose dropped");
+                    "gitsha1: {0}\nserial open: {1}",
+                    gitsha1, serial.IsOpen);
         }
 //            sim.wheelRate * rR * 3.6 * -1, // rad/s -> km/hr
 //            sim.feedbackTorque,

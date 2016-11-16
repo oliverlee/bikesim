@@ -68,6 +68,10 @@ public class SerialThread {
         get { return _gitsha1; }
     }
 
+    public bool IsOpen {
+        get { return _port.IsOpen; }
+    }
+
     private void OpenPort() {
         _port = new SerialPort(_portname, _baudrate);
         _port.ReadTimeout = _read_timeout;
