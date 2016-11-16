@@ -101,7 +101,7 @@ public class BicycleController : MonoBehaviour {
 //        sim.Start();
         countdownInfo.text = "";
 
-        serial = new SerialThread("/dev/tty.usbmodem311", 115200);
+        serial = new SerialThread(GamePrefs.device, 115200);
         stopwatch = new System.Diagnostics.Stopwatch();
         pose = new BicyclePose();
 
