@@ -154,8 +154,7 @@ public class SerialThread {
                     }
                 }
             }
-            Thread.Sleep(10); // milliseconds
-            //Thread.Yield();
+            Thread.Sleep(0); // zero argument value results in a thread yield
         }
     }
 
