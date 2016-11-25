@@ -193,7 +193,7 @@ public class SerialThread {
     private void PushReceivedPacket() {
         const int EMPTY_PACKET_SIZE = 0;
         const int GITSHA1_PACKET_SIZE = 7;
-        const int POSE_PACKET_SIZE = 29;
+        const int POSE_PACKET_SIZE = 33;
 
         switch (_packet_size) {
             case EMPTY_PACKET_SIZE:
