@@ -34,19 +34,14 @@ public class VizState {
         wheelAngle = System.Convert.ToSingle(q.wheelAngle);
         steer = System.Convert.ToSingle(q.steer);
     }
-    public void SetState(BicyclePose pose, float wheelRadius, float previousWheelAngle, byte previousTimestamp) {
+    public void SetState(BicyclePose pose) {
         x = pose.x;
         y = pose.y;
         pitch = pose.pitch;
         yaw = pose.yaw;
         lean = pose.roll;
         steer = pose.steer;
-        float wheelRate = pose.v / wheelRadius;
-        int dt = pose.timestamp - previousTimestamp;
-        if (dt < 0) {
-            dt += 256;
-        }
-        wheelAngle = previousWheelAngle + wheelRate*dt;
+        wheelAngle = pose.rear_wheel;
     }
 }
 
@@ -139,7 +134,7 @@ public class BicycleController : MonoBehaviour {
 
         pose = serial.PopBicyclePose();
         if (pose != null) {
-            q.SetState(pose, rR, q.wheelAngle, timestamp);
+            q.SetState(pose);
             // There is no operand to add between bytes in C#
             int dt = pose.timestamp - timestamp; // milliseconds
             if (dt < 0) {
@@ -148,13 +143,14 @@ public class BicycleController : MonoBehaviour {
             SetBicycleTransform(q);
 
             stateInfo.text = System.String.Format(
-                "x: {0:F3}\ny: {1:F3}\npitch: {2:F3}\nyaw: {3:F3}\nroll: {4:F3}\nsteer: {5:F3}",
+                "x: {0:F3}\ny: {1:F3}\npitch: {2:F3}\nyaw: {3:F3}\nroll: {4:F3}\nsteer: {5:F3}\nwheel: {6:F3}",
                 q.x,
                 q.y,
                 Mathf.Rad2Deg*((q.pitch + Math.PI) % (2*Math.PI) - Math.PI),
                 Mathf.Rad2Deg*((q.yaw + Math.PI) % (2*Math.PI) - Math.PI),
                 Mathf.Rad2Deg*((q.lean+ Math.PI) % (2*Math.PI) - Math.PI),
-                Mathf.Rad2Deg*((q.steer + Math.PI) % (2*Math.PI) - Math.PI));
+                Mathf.Rad2Deg*((q.steer + Math.PI) % (2*Math.PI) - Math.PI),
+                Mathf.Rad2Deg*((q.wheelAngle + Math.PI) % (2*Math.PI) - Math.PI));
             sensorInfo.text = System.String.Format(
                 "firmware {2}\npose dt: {0} ms\nunity dt: {1} ms",
                 dt, stopwatch.ElapsedMilliseconds, gitsha1);

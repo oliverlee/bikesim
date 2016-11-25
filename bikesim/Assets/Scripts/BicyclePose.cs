@@ -5,6 +5,7 @@ public class BicyclePose {
     public float yaw;
     public float roll;
     public float steer;
+    public float rear_wheel;
     public float v;
     public byte timestamp;
 
@@ -15,8 +16,9 @@ public class BicyclePose {
         yaw = System.BitConverter.ToSingle(buffer, 12);
         roll = System.BitConverter.ToSingle(buffer, 16);
         steer = System.BitConverter.ToSingle(buffer, 20);
-        v = System.BitConverter.ToSingle(buffer, 24);
-        timestamp = buffer[28];
+        rear_wheel = System.BitConverter.ToSingle(buffer, 24);
+        v = System.BitConverter.ToSingle(buffer, 28);
+        timestamp = buffer[32];
     }
 }
 
