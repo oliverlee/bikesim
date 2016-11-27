@@ -143,14 +143,15 @@ public class BicycleController : MonoBehaviour {
             SetBicycleTransform(q);
 
             stateInfo.text = System.String.Format(
-                "x: {0:F3}\ny: {1:F3}\npitch: {2:F3}\nyaw: {3:F3}\nroll: {4:F3}\nsteer: {5:F3}\nwheel: {6:F3}",
+                "x: {0:F3}\ny: {1:F3}\npitch: {2:F3}\nyaw: {3:F3}\nroll: {4:F3}\nsteer: {5:F3}\nwheel: {6:F3}\nv: {7:F3}",
                 q.x,
                 q.y,
                 Mathf.Rad2Deg*((q.pitch + Math.PI) % (2*Math.PI) - Math.PI),
                 Mathf.Rad2Deg*((q.yaw + Math.PI) % (2*Math.PI) - Math.PI),
                 Mathf.Rad2Deg*((q.lean+ Math.PI) % (2*Math.PI) - Math.PI),
                 Mathf.Rad2Deg*((q.steer + Math.PI) % (2*Math.PI) - Math.PI),
-                Mathf.Rad2Deg*((q.wheelAngle + Math.PI) % (2*Math.PI) - Math.PI));
+                Mathf.Rad2Deg*((q.wheelAngle + Math.PI) % (2*Math.PI) - Math.PI),
+                pose.v);
             sensorInfo.text = System.String.Format(
                 "firmware {2}\npose dt: {0} ms\nunity dt: {1} ms",
                 dt, stopwatch.ElapsedMilliseconds, gitsha1);
