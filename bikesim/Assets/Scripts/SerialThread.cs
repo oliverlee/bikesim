@@ -35,6 +35,8 @@ public class SerialThread {
     private BicyclePose _pose;
     private int _packet_error;
 
+    private System.IO.FileStream _file;
+
     public SerialThread(string portname, Int32 baudrate) {
         _portname = portname;
         _baudrate = baudrate;
@@ -58,6 +60,20 @@ public class SerialThread {
         _pose = null;
 
         _packet_error = 0;
+        int log_number = 0;
+        _file = null;
+        while (_file == null) {
+            try {
+                _file = new System.IO.FileStream(
+                        String.Format("pose{0}.log", log_number),
+                        System.IO.FileMode.CreateNew,
+                        System.IO.FileAccess.Write,
+                        System.IO.FileShare.Read);
+                Debug.Log(String.Format("writing log to file: {0}", _file.Name));
+            } catch (System.IO.IOException e) {
+                ++log_number;
+            }
+        }
     }
 
     public string portname {
@@ -114,6 +130,8 @@ public class SerialThread {
         if (_thread.Join(100)) { // milliseconds
             _thread = null;
         }
+
+        _file.Close();
     }
 
     private void SwapByteBuffer(byte[] current_buffer, int buffer_offset, int buffer_length, byte[] next_buffer) {
@@ -123,6 +141,7 @@ public class SerialThread {
         _buffer_offset = buffer_length;
         _packet_start = 0;
         _packet_size = 0; // if an unstuffed packet was stored in the inactive buffer, it's now been overwritten
+        _file.Write(_inactive_buffer, 0, buffer_offset); // save received data to file
     }
 
     private void ThreadFunction() {

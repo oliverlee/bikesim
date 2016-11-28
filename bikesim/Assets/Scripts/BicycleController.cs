@@ -112,7 +112,10 @@ public class BicycleController : MonoBehaviour {
     void Update() {
         if (Input.GetKeyDown(KeyCode.R)) {
             //sim.Stop();
+            serial.Stop();
             Restart(resetCountdownLength);
+        } else if (Input.GetKeyDown(KeyCode.S)) {
+            serial.Stop();
         }
 //        if (stopSim) {
 //            return;
