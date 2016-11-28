@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.IO.Ports;
+using UnityEngine;
 
 
 public class SerialThread {
@@ -32,6 +33,7 @@ public class SerialThread {
     private System.Text.Encoding _ascii;
     private readonly object _pose_lock;
     private BicyclePose _pose;
+    private int _packet_error;
 
     public SerialThread(string portname, Int32 baudrate) {
         _portname = portname;
@@ -54,6 +56,8 @@ public class SerialThread {
         _ascii = new System.Text.ASCIIEncoding();
         _pose_lock = new object();
         _pose = null;
+
+        _packet_error = 0;
     }
 
     public string portname {
@@ -209,7 +213,7 @@ public class SerialThread {
                 }
                 return;
             default:
-                System.Diagnostics.Debug.Assert(false, "Invalid packet size.");
+                Debug.Log(String.Format("Invalid packet size: {0}", ++_packet_error));
                 break;
         }
     }
