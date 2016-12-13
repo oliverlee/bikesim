@@ -133,12 +133,23 @@ public class SerialThread {
             if (!_port.IsOpen) {
                 OpenPort();
             } else {
-                int bytes_read = _port.BytesToRead;
+                int bytes_read = 64;
+                try {
+                    bytes_read = _port.BytesToRead;
+                } catch (NullReferenceException) {
+                    // This happens on Windows
+                }
                 if (bytes_read > 0) {
                     if (bytes_read > (_buffer_size - _buffer_offset)) {
                         bytes_read = _buffer_size - _buffer_offset;
                     }
-                    bytes_read = _port.Read(_active_buffer, _buffer_offset, bytes_read);
+                    try {
+                        bytes_read = _port.Read(_active_buffer, _buffer_offset, bytes_read);
+                    } catch (TimeoutException) {
+                        // If on Windows, and aa NullRefernceException is thrown when defining bytes_read,
+                        // Read() may timeout if the true number of bytes to is zero.
+                        bytes_read = 0;
+                    }
                     if (bytes_read > 0) {
                         int delimiter_index = Array.IndexOf(_active_buffer, (byte)0, _buffer_offset, bytes_read);
                         if (delimiter_index >= 0) {
