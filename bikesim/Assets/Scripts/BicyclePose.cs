@@ -7,7 +7,8 @@ public class BicyclePose {
     public float steer;
     public float rear_wheel;
     public float v;
-    public byte timestamp;
+    public uint computation_time;
+    public uint timestamp;
 
     public void SetFromByteArray(byte[] buffer) {
         x = System.BitConverter.ToSingle(buffer, 0);
@@ -18,7 +19,8 @@ public class BicyclePose {
         steer = System.BitConverter.ToSingle(buffer, 20);
         rear_wheel = System.BitConverter.ToSingle(buffer, 24);
         v = System.BitConverter.ToSingle(buffer, 28);
-        timestamp = buffer[32];
+        computation_time = System.BitConverter.ToUInt32(buffer, 32);
+        timestamp = System.BitConverter.ToUInt32(buffer, 36);
     }
 }
 
