@@ -63,7 +63,7 @@ public class BicycleController : MonoBehaviour {
     private float ls = 0.2676445084476887f; // m
     private float cF = 0.0320714267276193f; // m
 
-    private uint timestamp;
+    private ushort timestamp;
     private System.Diagnostics.Stopwatch stopwatch;
 
     // dependent parameters
@@ -138,8 +138,12 @@ public class BicycleController : MonoBehaviour {
         pose = serial.PopBicyclePose();
         if (pose != null) {
             q.SetState(pose);
-            // There is no operand to add between bytes in C#
-            uint dt = pose.timestamp - timestamp; // microseconds
+            // There is no operand to add between ushort in C#
+            const int CH_CFG_ST_RESOLUTION = 10000;
+            int dt = pose.timestamp - timestamp; // system clock @ 10 kHz
+            if (dt < 0) {
+                dt += 0xffff;
+            }
             SetBicycleTransform(q);
 
             stateInfo.text = System.String.Format(
@@ -155,7 +159,7 @@ public class BicycleController : MonoBehaviour {
             sensorInfo.text = System.String.Format(
                 "firmware {0}\npose dt:\t\t{1} us\nunity dt:\t\t{2} us\nupdate dt:\t{3} us",
                 gitsha1,
-                dt.ToString("D6"),
+                (dt * 1000 * 1000 / CH_CFG_ST_RESOLUTION).ToString("D6"),
                 (stopwatch.ElapsedTicks * 1000 * 1000 /
                     System.Diagnostics.Stopwatch.Frequency).ToString("D6"),
                 pose.computation_time.ToString("D6"));
