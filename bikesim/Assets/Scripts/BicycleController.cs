@@ -63,7 +63,7 @@ public class BicycleController : MonoBehaviour {
     private float ls = 0.2676445084476887f; // m
     private float cF = 0.0320714267276193f; // m
 
-    private byte timestamp;
+    private uint timestamp;
     private System.Diagnostics.Stopwatch stopwatch;
 
     // dependent parameters
@@ -136,10 +136,7 @@ public class BicycleController : MonoBehaviour {
         if (pose != null) {
             q.SetState(pose);
             // There is no operand to add between bytes in C#
-            int dt = pose.timestamp - timestamp; // milliseconds
-            if (dt < 0) {
-                dt += 256;
-            }
+            uint dt = pose.timestamp - timestamp; // microseconds
             SetBicycleTransform(q);
 
             stateInfo.text = System.String.Format(
@@ -153,8 +150,12 @@ public class BicycleController : MonoBehaviour {
                 Mathf.Rad2Deg*((q.wheelAngle + Math.PI) % (2*Math.PI) - Math.PI),
                 pose.v);
             sensorInfo.text = System.String.Format(
-                "firmware {2}\npose dt: {0} ms\nunity dt: {1} ms",
-                dt, stopwatch.ElapsedMilliseconds, gitsha1);
+                "firmware {0}\npose dt:\t\t{1} us\nunity dt:\t\t{2} us\nupdate dt:\t{3} us",
+                gitsha1,
+                dt.ToString("D6"),
+                (stopwatch.ElapsedTicks * 1000 * 1000 /
+                    System.Diagnostics.Stopwatch.Frequency).ToString("D6"),
+                pose.computation_time.ToString("D6"));
 
             timestamp = pose.timestamp;
             stopwatch.Reset(); // .NET 2.0 doesn't have Stopwatch.Restart()
