@@ -70,6 +70,7 @@ public class BicycleController : MonoBehaviour {
     private VizState q;
     private SerialThread serial;
     private BicyclePose pose;
+    private bool cameraRoll;
 
     // Setup the Bicycle Configuration
     void Start () {
@@ -84,6 +85,7 @@ public class BicycleController : MonoBehaviour {
 
         // set camera offset from bicycle origin
         camera.transform.localPosition = new Vector3(0.162f, 0.0f, -1.38f);
+        cameraRoll = true;
 
         q = new VizState();
         SetBicycleTransform(q);
@@ -104,11 +106,12 @@ public class BicycleController : MonoBehaviour {
 
     void Update() {
         if (Input.GetKeyDown(KeyCode.R)) {
-            //sim.Stop();
             serial.Stop();
             Restart(resetCountdownLength);
         } else if (Input.GetKeyDown(KeyCode.S)) {
             serial.Stop();
+        } else if (Input.GetKeyDown(KeyCode.V)) {
+            cameraRoll = !cameraRoll;
         }
 
         string gitsha1 = serial.gitsha1;
@@ -138,12 +141,13 @@ public class BicycleController : MonoBehaviour {
                 Mathf.Rad2Deg*((q.wheelAngle + Math.PI) % (2*Math.PI) - Math.PI),
                 pose.v);
             sensorInfo.text = System.String.Format(
-                "firmware {0}\npose dt:\t\t{1} us\nunity dt:\t\t{2} us\nupdate dt:\t{3} us",
+                "firmware {0}\npose dt:\t\t{1} us\nunity dt:\t\t{2} us\nupdate dt:\t{3} us\ncamera roll: {4}",
                 gitsha1,
                 (dt * 1000 * 1000 / CH_CFG_ST_RESOLUTION).ToString("D6"),
                 (stopwatch.ElapsedTicks * 1000 * 1000 /
                     System.Diagnostics.Stopwatch.Frequency).ToString("D6"),
-                pose.computation_time.ToString("D6"));
+                pose.computation_time.ToString("D6"),
+                cameraRoll);
 
             timestamp = pose.timestamp;
             stopwatch.Reset(); // .NET 2.0 doesn't have Stopwatch.Restart()
@@ -182,11 +186,15 @@ public class BicycleController : MonoBehaviour {
             Quaternion.Euler(0.0f, 0.0f, -Mathf.Rad2Deg*q.yaw) *
             Quaternion.Euler(-Mathf.Rad2Deg*q.lean, 0.0f, 0.0f);
 
-        // counter camera roll
+        // camera roll
+        float roll = 270;
+        if (!cameraRoll) {
+            roll = (roll + Mathf.Rad2Deg*q.lean) % 360.0f; // fails for angles > 360
+        }
         camera.transform.localRotation = Quaternion.Euler(
                 camera.transform.localEulerAngles.x,
                 camera.transform.localEulerAngles.y,
-                (270 + Mathf.Rad2Deg*q.lean) % 360.0f); // fails for angles > 360
+                roll);
 
         // All wheel and frame local transforms are with respect to the
         // container game or lean frame
