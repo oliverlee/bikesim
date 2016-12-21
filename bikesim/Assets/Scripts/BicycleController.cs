@@ -50,6 +50,7 @@ public class BicycleController : MonoBehaviour {
     public GameObject rearFrame;
     public GameObject frontFrame;
     public GameObject frontWheel;
+    public Camera camera;
     public Text sensorInfo;
     public Text stateInfo;
     public Text countdownInfo;
@@ -66,18 +67,13 @@ public class BicycleController : MonoBehaviour {
     private ushort timestamp;
     private System.Diagnostics.Stopwatch stopwatch;
 
-    // dependent parameters
-//    private float headAngle; // rad
-
     private VizState q;
-//    private BicycleSimulator sim;
-//    private bool stopSim;
     private SerialThread serial;
     private BicyclePose pose;
+    private bool cameraRoll;
 
     // Setup the Bicycle Configuration
     void Start () {
-//        stopSim = false;
 
         // Set component sizes
         const float wheelWidth = 0.01f;
@@ -87,13 +83,12 @@ public class BicycleController : MonoBehaviour {
         v = new Vector3(2*rF, wheelWidth, 2*rF);
         frontWheel.transform.localScale = v;
 
-//        headAngle = CalculateNominalPitch();
+        // set camera offset from bicycle origin
+        camera.transform.localPosition = new Vector3(0.162f, 0.0f, -1.38f);
+        cameraRoll = true;
 
         q = new VizState();
-//        q.pitch = headAngle;
         SetBicycleTransform(q);
-//        sim = new BicycleSimulator(new BenchmarkParam());
-//        sim.Start();
         countdownInfo.text = "";
 
         if (GamePrefs.device != null) {
@@ -111,24 +106,13 @@ public class BicycleController : MonoBehaviour {
 
     void Update() {
         if (Input.GetKeyDown(KeyCode.R)) {
-            //sim.Stop();
             serial.Stop();
             Restart(resetCountdownLength);
         } else if (Input.GetKeyDown(KeyCode.S)) {
             serial.Stop();
+        } else if (Input.GetKeyDown(KeyCode.V)) {
+            cameraRoll = !cameraRoll;
         }
-//        if (stopSim) {
-//            return;
-//        }
-//        q.SetState(sim.state);
-//        try {
-//            SetConstraintPitch(q);
-//        }
-//        catch (MathNet.Numerics.NonConvergenceException) {
-//            stopSim = true;
-//            sim.Stop();
-//            Restart(resetCountdownLength);
-//        }
 
         string gitsha1 = serial.gitsha1;
         if (gitsha1 == null) {
@@ -157,24 +141,21 @@ public class BicycleController : MonoBehaviour {
                 Mathf.Rad2Deg*((q.wheelAngle + Math.PI) % (2*Math.PI) - Math.PI),
                 pose.v);
             sensorInfo.text = System.String.Format(
-                "firmware {0}\npose dt:\t\t{1} us\nunity dt:\t\t{2} us\nupdate dt:\t{3} us",
+                "firmware {0}\npose dt:\t\t{1} us\nunity dt:\t\t{2} us\nupdate dt:\t{3} us\ncamera roll: {4}",
                 gitsha1,
                 (dt * 1000 * 1000 / CH_CFG_ST_RESOLUTION).ToString("D6"),
                 (stopwatch.ElapsedTicks * 1000 * 1000 /
                     System.Diagnostics.Stopwatch.Frequency).ToString("D6"),
-                pose.computation_time.ToString("D6"));
+                pose.computation_time.ToString("D6"),
+                cameraRoll);
 
             timestamp = pose.timestamp;
             stopwatch.Reset(); // .NET 2.0 doesn't have Stopwatch.Restart()
             stopwatch.Start();
         }
-//            sim.wheelRate * rR * 3.6 * -1, // rad/s -> km/hr
-//            sim.feedbackTorque,
-//            sim.elapsedMilliseconds/1000);
     }
 
     IEnumerator countdown(float seconds) {
-//        sim.Stop();
         countdownInfo.text = System.String.Format(
             "Restarting in: {0}", seconds);
         float dt = 0.01f; // s
@@ -195,15 +176,25 @@ public class BicycleController : MonoBehaviour {
 
     void SetBicycleTransform(VizState q) {
         // Update x and y positions of the rear wheel contact, yaw and lean of
-        // the rear frame by modifying the transform of root bicycle game
+        // the rear frame by modifying the transform of robot bicycle game
         // object.
-        // Explictly apply the yaw and lean rotations.
+        // Explicitly apply the yaw and lean rotations.
 
         //    y and z axes are switched
         transform.localPosition = new Vector3(q.x, 0.0f, -q.y);
         transform.localRotation = Quaternion.Euler(90.0f, 0, 0) *
             Quaternion.Euler(0.0f, 0.0f, -Mathf.Rad2Deg*q.yaw) *
             Quaternion.Euler(-Mathf.Rad2Deg*q.lean, 0.0f, 0.0f);
+
+        // camera roll
+        float roll = 270;
+        if (!cameraRoll) {
+            roll = (roll + Mathf.Rad2Deg*q.lean) % 360.0f; // fails for angles > 360
+        }
+        camera.transform.localRotation = Quaternion.Euler(
+                camera.transform.localEulerAngles.x,
+                camera.transform.localEulerAngles.y,
+                roll);
 
         // All wheel and frame local transforms are with respect to the
         // container game or lean frame
@@ -241,62 +232,4 @@ public class BicycleController : MonoBehaviour {
             new Vector3(cF, 0.0f, ls/2), frontFrame.transform);
     }
 
-//    private float CalculateNominalPitch() {
-//        float theta1 = Mathf.Atan(ls / (cR + cF));
-//        float dropoutLength =
-//            Mathf.Sqrt(Mathf.Pow(cR + cF, 2) + Mathf.Pow(ls, 2));
-//        float theta2 = Mathf.Asin((rR - rF) / dropoutLength);
-//        return theta1 - theta2;
-//    }
-//
-//    private void SetConstraintPitch(VizState q) {
-//        Func<double, double> f0 = pitch => f(q.lean, pitch, q.steer);
-//        Func<double, double> df0 = pitch => df(q.lean, pitch, q.steer);
-//
-//        q.pitch = System.Convert.ToSingle(
-//            MathNet.Numerics.RootFinding.NewtonRaphson.FindRootNearGuess(f0,
-//                df0, q.pitch, 0, Math.PI/2, 1e-10, 100));
-//    }
-//
-//    // pitch angle configuration constraint
-//    private double f(double lean, double pitch, double steer) {
-//        return (rF*Math.Pow(Math.Cos(lean), 2)*Math.Pow(Math.Cos(pitch), 2) +
-//        (cF*Math.Sqrt(Math.Pow(Math.Sin(lean)*Math.Sin(steer) -
-//        Math.Sin(pitch)*Math.Cos(lean)*Math.Cos(steer), 2) +
-//        Math.Pow(Math.Cos(lean), 2)*Math.Pow(Math.Cos(pitch), 2)) +
-//        rF*(Math.Sin(lean)*Math.Sin(steer) -
-//        Math.Sin(pitch)*Math.Cos(lean)*Math.Cos(steer)))*(Math.Sin(lean)*Math.Sin(steer)
-//        - Math.Sin(pitch)*Math.Cos(lean)*Math.Cos(steer)) +
-//        Math.Sqrt(Math.Pow(Math.Sin(lean)*Math.Sin(steer) -
-//        Math.Sin(pitch)*Math.Cos(lean)*Math.Cos(steer), 2) +
-//        Math.Pow(Math.Cos(lean), 2)*Math.Pow(Math.Cos(pitch),
-//        2))*(-cR*Math.Sin(pitch) + ls*Math.Cos(pitch) -
-//        rR)*Math.Cos(lean))/Math.Sqrt(Math.Pow(Math.Sin(lean)*Math.Sin(steer)
-//        - Math.Sin(pitch)*Math.Cos(lean)*Math.Cos(steer), 2) +
-//        Math.Pow(Math.Cos(lean), 2)*Math.Pow(Math.Cos(pitch), 2));
-//    }
-//
-//    // derivative of f wrt to pitch
-//    private double df(double lean, double pitch, double steer) {
-//        return -(cF*Math.Cos(pitch)*Math.Cos(steer) +
-//        cR*Math.Cos(pitch) + ls*Math.Sin(pitch) +
-//        rF*Math.Sin(lean)*Math.Sin(steer)*Math.Cos(pitch)*Math.Cos(steer)/Math.Sqrt(Math.Pow(Math.Sin(lean),
-//        2)*Math.Pow(Math.Sin(pitch), 2)*Math.Pow(Math.Sin(steer), 2) +
-//        Math.Pow(Math.Sin(lean), 2)*Math.Pow(Math.Sin(steer), 2) -
-//        Math.Pow(Math.Sin(lean), 2) -
-//        2*Math.Sin(lean)*Math.Sin(pitch)*Math.Sin(steer)*Math.Cos(lean)*Math.Cos(steer)
-//        - Math.Pow(Math.Sin(pitch), 2)*Math.Pow(Math.Sin(steer), 2) +
-//        1) + rF*Math.Sin(pitch)*Math.Pow(Math.Sin(steer),
-//        2)*Math.Cos(lean)*Math.Cos(pitch)/Math.Sqrt(Math.Pow(Math.Sin(lean),
-//        2)*Math.Pow(Math.Sin(pitch), 2)*Math.Pow(Math.Sin(steer), 2) +
-//        Math.Pow(Math.Sin(lean), 2)*Math.Pow(Math.Sin(steer), 2) -
-//        Math.Pow(Math.Sin(lean), 2) -
-//        2*Math.Sin(lean)*Math.Sin(pitch)*Math.Sin(steer)*Math.Cos(lean)*Math.Cos(steer)
-//        - Math.Pow(Math.Sin(pitch), 2)*Math.Pow(Math.Sin(steer), 2) +
-//        1))*Math.Cos(lean);
-//    }
-//
-//    public void OnApplicationQuit() {
-//        sim.Stop();
-//    }
 }
