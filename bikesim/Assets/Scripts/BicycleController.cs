@@ -50,6 +50,7 @@ public class BicycleController : MonoBehaviour {
     public GameObject rearFrame;
     public GameObject frontFrame;
     public GameObject frontWheel;
+    public Camera camera;
     public Text sensorInfo;
     public Text stateInfo;
     public Text countdownInfo;
@@ -80,6 +81,9 @@ public class BicycleController : MonoBehaviour {
         rearWheel.transform.localScale = v;
         v = new Vector3(2*rF, wheelWidth, 2*rF);
         frontWheel.transform.localScale = v;
+
+        // set camera offset from bicycle origin
+        camera.transform.localPosition = new Vector3(0.162f, 0.0f, -1.38f);
 
         q = new VizState();
         SetBicycleTransform(q);
@@ -168,15 +172,21 @@ public class BicycleController : MonoBehaviour {
 
     void SetBicycleTransform(VizState q) {
         // Update x and y positions of the rear wheel contact, yaw and lean of
-        // the rear frame by modifying the transform of root bicycle game
+        // the rear frame by modifying the transform of robot bicycle game
         // object.
-        // Explictly apply the yaw and lean rotations.
+        // Explicitly apply the yaw and lean rotations.
 
         //    y and z axes are switched
         transform.localPosition = new Vector3(q.x, 0.0f, -q.y);
         transform.localRotation = Quaternion.Euler(90.0f, 0, 0) *
             Quaternion.Euler(0.0f, 0.0f, -Mathf.Rad2Deg*q.yaw) *
             Quaternion.Euler(-Mathf.Rad2Deg*q.lean, 0.0f, 0.0f);
+
+        // counter camera roll
+        camera.transform.localRotation = Quaternion.Euler(
+                camera.transform.localEulerAngles.x,
+                camera.transform.localEulerAngles.y,
+                (270 + Mathf.Rad2Deg*q.lean) % 360.0f); // fails for angles > 360
 
         // All wheel and frame local transforms are with respect to the
         // container game or lean frame
