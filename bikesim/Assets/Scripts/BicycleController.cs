@@ -66,18 +66,12 @@ public class BicycleController : MonoBehaviour {
     private ushort timestamp;
     private System.Diagnostics.Stopwatch stopwatch;
 
-    // dependent parameters
-//    private float headAngle; // rad
-
     private VizState q;
-//    private BicycleSimulator sim;
-//    private bool stopSim;
     private SerialThread serial;
     private BicyclePose pose;
 
     // Setup the Bicycle Configuration
     void Start () {
-//        stopSim = false;
 
         // Set component sizes
         const float wheelWidth = 0.01f;
@@ -87,13 +81,8 @@ public class BicycleController : MonoBehaviour {
         v = new Vector3(2*rF, wheelWidth, 2*rF);
         frontWheel.transform.localScale = v;
 
-//        headAngle = CalculateNominalPitch();
-
         q = new VizState();
-//        q.pitch = headAngle;
         SetBicycleTransform(q);
-//        sim = new BicycleSimulator(new BenchmarkParam());
-//        sim.Start();
         countdownInfo.text = "";
 
         if (GamePrefs.device != null) {
@@ -117,18 +106,6 @@ public class BicycleController : MonoBehaviour {
         } else if (Input.GetKeyDown(KeyCode.S)) {
             serial.Stop();
         }
-//        if (stopSim) {
-//            return;
-//        }
-//        q.SetState(sim.state);
-//        try {
-//            SetConstraintPitch(q);
-//        }
-//        catch (MathNet.Numerics.NonConvergenceException) {
-//            stopSim = true;
-//            sim.Stop();
-//            Restart(resetCountdownLength);
-//        }
 
         string gitsha1 = serial.gitsha1;
         if (gitsha1 == null) {
@@ -168,13 +145,9 @@ public class BicycleController : MonoBehaviour {
             stopwatch.Reset(); // .NET 2.0 doesn't have Stopwatch.Restart()
             stopwatch.Start();
         }
-//            sim.wheelRate * rR * 3.6 * -1, // rad/s -> km/hr
-//            sim.feedbackTorque,
-//            sim.elapsedMilliseconds/1000);
     }
 
     IEnumerator countdown(float seconds) {
-//        sim.Stop();
         countdownInfo.text = System.String.Format(
             "Restarting in: {0}", seconds);
         float dt = 0.01f; // s
@@ -241,62 +214,4 @@ public class BicycleController : MonoBehaviour {
             new Vector3(cF, 0.0f, ls/2), frontFrame.transform);
     }
 
-//    private float CalculateNominalPitch() {
-//        float theta1 = Mathf.Atan(ls / (cR + cF));
-//        float dropoutLength =
-//            Mathf.Sqrt(Mathf.Pow(cR + cF, 2) + Mathf.Pow(ls, 2));
-//        float theta2 = Mathf.Asin((rR - rF) / dropoutLength);
-//        return theta1 - theta2;
-//    }
-//
-//    private void SetConstraintPitch(VizState q) {
-//        Func<double, double> f0 = pitch => f(q.lean, pitch, q.steer);
-//        Func<double, double> df0 = pitch => df(q.lean, pitch, q.steer);
-//
-//        q.pitch = System.Convert.ToSingle(
-//            MathNet.Numerics.RootFinding.NewtonRaphson.FindRootNearGuess(f0,
-//                df0, q.pitch, 0, Math.PI/2, 1e-10, 100));
-//    }
-//
-//    // pitch angle configuration constraint
-//    private double f(double lean, double pitch, double steer) {
-//        return (rF*Math.Pow(Math.Cos(lean), 2)*Math.Pow(Math.Cos(pitch), 2) +
-//        (cF*Math.Sqrt(Math.Pow(Math.Sin(lean)*Math.Sin(steer) -
-//        Math.Sin(pitch)*Math.Cos(lean)*Math.Cos(steer), 2) +
-//        Math.Pow(Math.Cos(lean), 2)*Math.Pow(Math.Cos(pitch), 2)) +
-//        rF*(Math.Sin(lean)*Math.Sin(steer) -
-//        Math.Sin(pitch)*Math.Cos(lean)*Math.Cos(steer)))*(Math.Sin(lean)*Math.Sin(steer)
-//        - Math.Sin(pitch)*Math.Cos(lean)*Math.Cos(steer)) +
-//        Math.Sqrt(Math.Pow(Math.Sin(lean)*Math.Sin(steer) -
-//        Math.Sin(pitch)*Math.Cos(lean)*Math.Cos(steer), 2) +
-//        Math.Pow(Math.Cos(lean), 2)*Math.Pow(Math.Cos(pitch),
-//        2))*(-cR*Math.Sin(pitch) + ls*Math.Cos(pitch) -
-//        rR)*Math.Cos(lean))/Math.Sqrt(Math.Pow(Math.Sin(lean)*Math.Sin(steer)
-//        - Math.Sin(pitch)*Math.Cos(lean)*Math.Cos(steer), 2) +
-//        Math.Pow(Math.Cos(lean), 2)*Math.Pow(Math.Cos(pitch), 2));
-//    }
-//
-//    // derivative of f wrt to pitch
-//    private double df(double lean, double pitch, double steer) {
-//        return -(cF*Math.Cos(pitch)*Math.Cos(steer) +
-//        cR*Math.Cos(pitch) + ls*Math.Sin(pitch) +
-//        rF*Math.Sin(lean)*Math.Sin(steer)*Math.Cos(pitch)*Math.Cos(steer)/Math.Sqrt(Math.Pow(Math.Sin(lean),
-//        2)*Math.Pow(Math.Sin(pitch), 2)*Math.Pow(Math.Sin(steer), 2) +
-//        Math.Pow(Math.Sin(lean), 2)*Math.Pow(Math.Sin(steer), 2) -
-//        Math.Pow(Math.Sin(lean), 2) -
-//        2*Math.Sin(lean)*Math.Sin(pitch)*Math.Sin(steer)*Math.Cos(lean)*Math.Cos(steer)
-//        - Math.Pow(Math.Sin(pitch), 2)*Math.Pow(Math.Sin(steer), 2) +
-//        1) + rF*Math.Sin(pitch)*Math.Pow(Math.Sin(steer),
-//        2)*Math.Cos(lean)*Math.Cos(pitch)/Math.Sqrt(Math.Pow(Math.Sin(lean),
-//        2)*Math.Pow(Math.Sin(pitch), 2)*Math.Pow(Math.Sin(steer), 2) +
-//        Math.Pow(Math.Sin(lean), 2)*Math.Pow(Math.Sin(steer), 2) -
-//        Math.Pow(Math.Sin(lean), 2) -
-//        2*Math.Sin(lean)*Math.Sin(pitch)*Math.Sin(steer)*Math.Cos(lean)*Math.Cos(steer)
-//        - Math.Pow(Math.Sin(pitch), 2)*Math.Pow(Math.Sin(steer), 2) +
-//        1))*Math.Cos(lean);
-//    }
-//
-//    public void OnApplicationQuit() {
-//        sim.Stop();
-//    }
 }
