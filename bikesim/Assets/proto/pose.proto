@@ -1,0 +1,14 @@
+syntax = "proto2";
+import "nanopb.proto";
+
+// message type for stm32 -> Unity communication
+message BicyclePoseMessage {
+    required uint32 timestamp = 1;
+    required float x =          2;
+    required float y =          3;
+    required float yaw =        4;
+    required float roll =       5;
+    required float pitch =      6;
+    required float steer =      7;
+    required float rear_wheel = 8;
+}

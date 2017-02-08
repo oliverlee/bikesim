@@ -34,7 +34,7 @@ public class VizState {
         wheelAngle = System.Convert.ToSingle(q.wheelAngle);
         steer = System.Convert.ToSingle(q.steer);
     }
-    public void SetState(BicyclePose pose) {
+    public void SetState(pb.BicyclePoseMessage pose) {
         x = pose.x;
         y = pose.y;
         pitch = pose.pitch;
@@ -69,7 +69,7 @@ public class BicycleController : MonoBehaviour {
 
     private VizState q;
     private SerialThread serial;
-    private BicyclePose pose;
+    private pb.BicyclePoseMessage pose;
     private bool cameraRoll;
 
     // Setup the Bicycle Configuration
@@ -97,7 +97,7 @@ public class BicycleController : MonoBehaviour {
             serial = new SerialThread("/dev/tty.usbmodem311", 115200);
         }
         stopwatch = new System.Diagnostics.Stopwatch();
-        pose = new BicyclePose();
+        pose = new pb.BicyclePoseMessage();
 
         serial.Start();
         timestamp = 0;
@@ -124,7 +124,7 @@ public class BicycleController : MonoBehaviour {
             q.SetState(pose);
             // There is no operand to add between ushort in C#
             const int CH_CFG_ST_RESOLUTION = 10000;
-            int dt = pose.timestamp - timestamp; // system clock @ 10 kHz
+			int dt = (int)pose.timestamp - timestamp; // system clock @ 10 kHz
             if (dt < 0) {
                 dt += 0xffff;
             }
@@ -139,17 +139,17 @@ public class BicycleController : MonoBehaviour {
                 Mathf.Rad2Deg*((q.lean+ Math.PI) % (2*Math.PI) - Math.PI),
                 Mathf.Rad2Deg*((q.steer + Math.PI) % (2*Math.PI) - Math.PI),
                 Mathf.Rad2Deg*((q.wheelAngle + Math.PI) % (2*Math.PI) - Math.PI),
-                pose.v);
+                0.0); // TODO: add v to pose message
             sensorInfo.text = System.String.Format(
                 "firmware {0}\npose dt:\t\t{1} us\nunity dt:\t\t{2} us\nupdate dt:\t{3} us\ncamera roll: {4}",
                 gitsha1,
                 (dt * 1000 * 1000 / CH_CFG_ST_RESOLUTION).ToString("D6"),
                 (stopwatch.ElapsedTicks * 1000 * 1000 /
                     System.Diagnostics.Stopwatch.Frequency).ToString("D6"),
-                pose.computation_time.ToString("D6"),
+                "", //pose.computation_time.ToString("D6"), // TODO add computation_time to pose
                 cameraRoll);
 
-            timestamp = pose.timestamp;
+			timestamp = (ushort)pose.timestamp;
             stopwatch.Reset(); // .NET 2.0 doesn't have Stopwatch.Restart()
             stopwatch.Start();
         }
