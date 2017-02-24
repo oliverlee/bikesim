@@ -1,7 +1,9 @@
 using System;
 using System.Threading;
+using System.IO;
 using System.IO.Ports;
 using UnityEngine;
+using ProtoBuf;
 
 
 public class SerialThread {
@@ -32,7 +34,7 @@ public class SerialThread {
     private string _gitsha1;
     private System.Text.Encoding _ascii;
     private readonly object _pose_lock;
-    private BicyclePose _pose;
+    private pb.BicyclePoseMessage _pose;
     private int _packet_error;
 
     private System.IO.FileStream _file;
@@ -225,31 +227,17 @@ public class SerialThread {
     }
 
     private void PushReceivedPacket() {
-        const int EMPTY_PACKET_SIZE = 0;
-        const int GITSHA1_PACKET_SIZE = 7;
-        const int POSE_PACKET_SIZE = 36;
-
-        switch (_packet_size) {
-            case EMPTY_PACKET_SIZE:
-                return;
-            case GITSHA1_PACKET_SIZE:
-                _gitsha1 = _ascii.GetString(_inactive_buffer, 0, GITSHA1_PACKET_SIZE);
-                return;
-            case POSE_PACKET_SIZE:
-                BicyclePose pose = new BicyclePose();
-                pose.SetFromByteArray(_inactive_buffer);
-                lock(_pose_lock) {
-                    _pose = pose;
-                }
-                return;
-            default:
-                Debug.Log(String.Format("Invalid packet size: {0}", ++_packet_error));
-                break;
-        }
+		if (_packet_size != 0) {
+			using (var stream = new MemoryStream (_inactive_buffer)) {
+				lock (_pose_lock) {
+					_pose = Serializer.Deserialize<pb.BicyclePoseMessage> (stream);
+				}
+			}
+		}
     }
 
-    public BicyclePose PopBicyclePose() {
-        BicyclePose pose = null;
+    public pb.BicyclePoseMessage PopBicyclePose() {
+        pb.BicyclePoseMessage pose = null;
         lock(_pose_lock) {
             pose = _pose;
             _pose = null;
